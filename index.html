@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Doucebrise</title>
+    <meta name="description" content="Doucebrise — un jeu 3D cosy : explore l'île, apprivoise des animaux et personnalise ton personnage." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/ui/styles.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="loading" class="loading">
+      <div class="loading-card">
+        <div class="logo small">Doucebrise</div>
+        <div class="loading-bar"><span></span></div>
+        <p>L'île se réveille…</p>
+      </div>
+    </div>
+
+    <!-- Écran titre -->
+    <div id="title" class="title hidden">
+      <div class="title-card">
+        <div class="logo">Doucebrise</div>
+        <p class="tagline">Une petite île douce, des amis à poils et à plumes.</p>
+        <div class="title-buttons">
+          <button id="btn-continue" class="btn big primary hidden">Continuer</button>
+          <button id="btn-new" class="btn big">Nouvelle partie</button>
+        </div>
+        <p class="hint">Clavier + souris conseillés · Sauvegarde automatique</p>
+      </div>
+    </div>
+
+    <!-- Interface en jeu -->
+    <div id="hud" class="hud hidden">
+      <div class="hud-tl">
+        <div class="clock-card">
+          <span id="clock-icon" class="clock-icon">☀️</span>
+          <div>
+            <div id="clock-time" class="clock-time">08:30</div>
+            <div id="clock-day" class="clock-day">Jour 1</div>
+          </div>
+        </div>
+        <div id="zone-label" class="zone-label">Place du Village</div>
+      </div>
+      <div class="hud-tr">
+        <canvas id="minimap" class="minimap" width="172" height="172" title="Carte (M)"></canvas>
+        <div class="hud-buttons">
+          <button class="icon-btn" data-open="creator" title="Personnaliser (C)">👗<span>C</span></button>
+          <button class="icon-btn" data-open="pets" title="Animaux (P)">🐾<span>P</span></button>
+          <button class="icon-btn" data-open="map" title="Carte (M)">🗺️<span>M</span></button>
+          <button class="icon-btn" data-open="help" title="Aide (H)">❓<span>H</span></button>
+          <button id="btn-music" class="icon-btn" title="Musique">🎵</button>
+        </div>
+      </div>
+      <div id="followers" class="followers"></div>
+      <div id="inventory" class="inventory"></div>
+    </div>
+
+    <div id="prompt" class="prompt hidden"></div>
+    <div id="zone-banner" class="zone-banner"></div>
+    <div id="toasts" class="toasts"></div>
+
+    <!-- Personnalisation -->
+    <aside id="creator" class="panel side hidden" aria-label="Personnalisation">
+      <header class="panel-head">
+        <h2>Ton personnage</h2>
+        <label class="name-field">Prénom <input id="cr-name" maxlength="16" autocomplete="off" /></label>
+      </header>
+      <nav id="cr-tabs" class="tabs"></nav>
+      <div id="cr-body" class="panel-body"></div>
+      <footer class="panel-foot">
+        <button id="cr-random" class="btn">🎲 Au hasard</button>
+        <button id="cr-done" class="btn primary">C'est parti !</button>
+      </footer>
+    </aside>
+
+    <!-- Animaux -->
+    <aside id="pets" class="panel side hidden" aria-label="Animaux">
+      <header class="panel-head">
+        <h2>Mes animaux</h2>
+        <button class="close" data-close>✕</button>
+      </header>
+      <nav class="tabs">
+        <button class="tab active" data-pets-tab="companions">Compagnons</button>
+        <button class="tab" data-pets-tab="book">Carnet</button>
+      </nav>
+      <div id="pets-body" class="panel-body"></div>
+    </aside>
+
+    <!-- Carte -->
+    <div id="map" class="modal hidden">
+      <div class="modal-card map-card">
+        <button class="close" data-close>✕</button>
+        <h2>Île de Doucebrise</h2>
+        <canvas id="bigmap" width="560" height="560"></canvas>
+      </div>
+    </div>
+
+    <!-- Aide -->
+    <div id="help" class="modal hidden">
+      <div class="modal-card">
+        <button class="close" data-close>✕</button>
+        <h2>Comment jouer</h2>
+        <div class="help-grid">
+          <div><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flèches</div><div>Se déplacer</div>
+          <div><kbd>Maj</kbd></div><div>Courir (attention, ça effraie les animaux timides !)</div>
+          <div><kbd>Espace</kbd></div><div>Sauter</div>
+          <div>Glisser la souris · molette</div><div>Tourner la caméra · zoomer</div>
+          <div><kbd>E</kbd></div><div>Caresser · cueillir · pêcher</div>
+          <div><kbd>F</kbd></div><div>Donner à manger (le plat préféré en priorité)</div>
+          <div><kbd>R</kbd></div><div>Adopter (cœurs pleins) · suivre / attendre</div>
+          <div><kbd>C</kbd> <kbd>P</kbd> <kbd>M</kbd></div><div>Personnaliser · animaux · carte</div>
+        </div>
+        <p class="help-tip">💡 Chaque espèce a un plat préféré. Cueille des 🍓 baies, 🍎 pommes (verger), 🥕 carottes (prairie), 🌻 graines (tournesols) et pêche des 🐟 au ponton ou à l'étang. Remplis les cœurs d'un animal pour l'adopter !</p>
+      </div>
+    </div>
+
+    <!-- Boîte de dialogue générique -->
+    <div id="dialog" class="modal hidden">
+      <div class="modal-card small">
+        <h2 id="dialog-title"></h2>
+        <p id="dialog-text"></p>
+        <input id="dialog-input" maxlength="16" autocomplete="off" />
+        <div id="dialog-chips" class="chips"></div>
+        <div class="dialog-buttons">
+          <button id="dialog-cancel" class="btn">Plus tard</button>
+          <button id="dialog-ok" class="btn primary">Valider</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commandes tactiles -->
+    <div id="touch" class="touch hidden">
+      <div id="joystick" class="joystick"><div class="stick"></div></div>
+      <div class="touch-buttons">
+        <button data-key="KeyR" class="tbtn">R</button>
+        <button data-key="KeyF" class="tbtn">🍓</button>
+        <button data-key="KeyE" class="tbtn main">E</button>
+        <button data-key="Space" class="tbtn">⤒</button>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
