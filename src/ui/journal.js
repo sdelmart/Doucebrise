@@ -1,6 +1,6 @@
 import { STORY, CHAPTERS } from '../game/quests.js';
 import { ITEMS, RECIPES, countItem } from '../game/items.js';
-import { FISH, RARITY } from '../game/fish.js';
+import { FISH, RARITY, WHERE_LABELS, fishWhere } from '../game/fish.js';
 import { INSECTS, INSECT_RARITY } from '../game/insects.js';
 import { SKILLS, LEVELS, MAX_LEVEL, ACHIEVEMENTS, STAR_TRACK, STAR_STEP } from '../game/progress.js';
 import { FESTIVALS } from '../game/calendar.js';
@@ -263,11 +263,11 @@ export class Journal {
   }
 
   fishHint(f) {
-    const where = { mer: 'En mer', falaise: 'Falaise du phare', etang: 'Étang' }[f.where];
-    const parts = [where];
+    const parts = [fishWhere(f).map((w) => WHERE_LABELS[w]).join(' / ')];
     if (f.hours) parts.push(`${f.hours[0]} h–${f.hours[1]} h`);
     if (f.seasons) parts.push(f.seasons.map((i) => SEASONS[i].emoji).join(''));
-    if (f.rain) parts.push('🌧️');
+    if (f.rain === true) parts.push('🌧️');
+    if (f.rain === false) parts.push('☀️');
     return parts.join(' · ');
   }
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SPECIES } from '../animals/species.js';
 import { ITEMS, HOTBAR, countItem } from '../game/items.js';
-import { ZONES } from '../world/layout.js';
+import { ZONES, MAP_RANGE } from '../world/layout.js';
 import { STORY, CHAPTERS } from '../game/quests.js';
 import { JOB_TYPES } from '../game/jobs.js';
 
@@ -38,7 +38,9 @@ export class UI {
     this.mapT = 0;
 
     this.buildInventory();
-    this.mapImage = game.world.terrain.renderMap(384, 110);
+    this.mapImage = game.world.terrain.renderMap(1024, MAP_RANGE);
+    this.mapView = { cx: 0, cz: 0, half: 110 };
+    this.initBigMap();
 
     // Boutons du HUD.
     document.querySelectorAll('[data-open]').forEach((b) => {
@@ -369,7 +371,7 @@ export class UI {
     const p = this.game.house.inside ? this.game.world.village.doorFront(0, 1.6) : this.game.player.pos;
     const range = 46; // unités visibles de part et d'autre
     const img = this.mapImage;
-    const scale = img.width / 220;
+    const scale = img.width / (MAP_RANGE * 2);
     ctx.save();
     ctx.clearRect(0, 0, size, size);
     ctx.beginPath();
@@ -377,8 +379,8 @@ export class UI {
     ctx.clip();
     ctx.fillStyle = '#6fc6e2';
     ctx.fillRect(0, 0, size, size);
-    const sx = (p.x - range + 110) * scale;
-    const sy = (p.z - range + 110) * scale;
+    const sx = (p.x - range + MAP_RANGE) * scale;
+    const sy = (p.z - range + MAP_RANGE) * scale;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(img, sx, sy, range * 2 * scale, range * 2 * scale, 0, 0, size, size);
     const toMap = (x, z) => [((x - p.x + range) / (range * 2)) * size, ((z - p.z + range) / (range * 2)) * size];
@@ -386,25 +388,99 @@ export class UI {
     ctx.restore();
   }
 
+  /** Grande carte : zoom à la molette, déplacement à la souris ou au doigt. */
+  initBigMap() {
+    const c = this.el.bigmap;
+    const v = this.mapView;
+    const clampView = () => {
+      v.half = Math.min(MAP_RANGE, Math.max(30, v.half));
+      const m = MAP_RANGE - v.half;
+      v.cx = Math.min(m, Math.max(-m, v.cx));
+      v.cz = Math.min(m, Math.max(-m, v.cz));
+      this.drawBigMap();
+    };
+    const zoom = (f, mx = 0.5, my = 0.5) => {
+      // Zoom autour du point visé.
+      const wx = v.cx + (mx - 0.5) * 2 * v.half;
+      const wz = v.cz + (my - 0.5) * 2 * v.half;
+      v.half *= f;
+      v.half = Math.min(MAP_RANGE, Math.max(30, v.half));
+      v.cx = wx - (mx - 0.5) * 2 * v.half;
+      v.cz = wz - (my - 0.5) * 2 * v.half;
+      clampView();
+    };
+    c.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const r = c.getBoundingClientRect();
+      zoom(e.deltaY > 0 ? 1.18 : 1 / 1.18, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    }, { passive: false });
+    let drag = null;
+    c.addEventListener('pointerdown', (e) => {
+      drag = { x: e.clientX, y: e.clientY };
+      c.setPointerCapture(e.pointerId);
+    });
+    c.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const r = c.getBoundingClientRect();
+      v.cx -= ((e.clientX - drag.x) / r.width) * 2 * v.half;
+      v.cz -= ((e.clientY - drag.y) / r.height) * 2 * v.half;
+      drag = { x: e.clientX, y: e.clientY };
+      clampView();
+    });
+    const end = () => (drag = null);
+    c.addEventListener('pointerup', end);
+    c.addEventListener('pointercancel', end);
+    document.querySelectorAll('[data-mapzoom]').forEach((b) => {
+      b.addEventListener('click', () => zoom(Number(b.dataset.mapzoom) > 0 ? 1.4 : 1 / 1.4));
+    });
+    document.querySelector('[data-mapcenter]')?.addEventListener('click', () => {
+      this.centerBigMap();
+      clampView();
+    });
+  }
+
+  centerBigMap(half) {
+    const p = this.game.house.inside ? this.game.world.village.doorFront(0, 1.6) : this.game.player.pos;
+    this.mapView.cx = p.x;
+    this.mapView.cz = p.z;
+    if (half) this.mapView.half = half;
+    const m = MAP_RANGE - this.mapView.half;
+    this.mapView.cx = Math.min(m, Math.max(-m, this.mapView.cx));
+    this.mapView.cz = Math.min(m, Math.max(-m, this.mapView.cz));
+  }
+
   drawBigMap() {
     const c = this.el.bigmap;
     const ctx = c.getContext('2d');
     const size = c.width;
+    const v = this.mapView;
+    const img = this.mapImage;
+    const scale = img.width / (MAP_RANGE * 2);
     ctx.fillStyle = '#6fc6e2';
     ctx.fillRect(0, 0, size, size);
-    ctx.drawImage(this.mapImage, 0, 0, size, size);
-    const toMap = (x, z) => [((x + 110) / 220) * size, ((z + 110) / 220) * size];
-    ctx.font = '800 14px Nunito, sans-serif';
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, (v.cx - v.half + MAP_RANGE) * scale, (v.cz - v.half + MAP_RANGE) * scale, v.half * 2 * scale, v.half * 2 * scale, 0, 0, size, size);
+    const toMap = (x, z) => [((x - v.cx + v.half) / (v.half * 2)) * size, ((z - v.cz + v.half) / (v.half * 2)) * size];
+    const zoomK = MAP_RANGE / v.half;
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     for (const z of ZONES) {
+      // Grands noms d'île de loin, lieux détaillés de près.
+      const big = z.r >= 70;
+      if (big ? v.half < 130 : v.half > 200 && z.r < 20) continue;
       const [x, y] = toMap(z.x, z.z);
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillStyle = '#5b4636';
-      ctx.strokeText(`${z.emoji} ${z.name}`, x, y);
-      ctx.fillText(`${z.emoji} ${z.name}`, x, y);
+      if (x < -60 || y < -20 || x > size + 60 || y > size + 20) continue;
+      const fs = big ? 20 : Math.round(Math.min(17, 11 + zoomK * 1.2));
+      ctx.font = `${big ? 900 : 800} ${fs}px Nunito, sans-serif`;
+      const ly = big ? y - z.r * (size / (v.half * 2)) * 0.55 : y;
+      ctx.lineWidth = big ? 5 : 4;
+      ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillStyle = big ? '#3f6d8f' : '#5b4636';
+      const label = `${z.emoji} ${z.name}`;
+      ctx.strokeText(label, x, ly);
+      ctx.fillText(label, x, ly);
     }
-    this.drawMarkers(ctx, toMap, 1.4);
+    this.drawMarkers(ctx, toMap, Math.min(1.7, 1 + zoomK * 0.12));
   }
 
   drawMarkers(ctx, toMap, k) {
@@ -418,7 +494,13 @@ export class UI {
     ctx.textBaseline = 'middle';
     ctx.fillText('🏠', hx, hy);
     ctx.font = `${Math.round(12 * k)}px sans-serif`;
-    const places = [[v.shopSpots.cafe, '☕'], [v.shopSpots.garage, '🔧'], [v.jobBoard, '📋'], [v.shopSpots.marche, '🧺'], [v.shopSpots.menuiserie, '🪚'], [v.shopSpots.graines, '🌱'], [v.shopSpots.couture, '👗']];
+    const S = v.shopSpots;
+    const places = [[S.cafe, '☕'], [S.garage, '🔧'], [v.jobBoard, '📋'], [S.marche, '🧺'], [S.menuiserie, '🪚'], [S.graines, '🌱'], [S.couture, '👗'],
+      [S.patisserie, '🥐'], [S.atelier, '🪵'], [S.capitainerie, '⚓'], [S.galerie, '🖼️'], [S.plongee, '🤿'], [S.paillote, '🍹']];
+    const isl = g.world.islands;
+    for (const t of isl.travelPoints) places.push([t, '🧭']);
+    if (isl.spring) places.push([isl.spring, '♨️']);
+    if (isl.telescope) places.push([isl.telescope, '🔭']);
     for (const [pl, em] of places) {
       if (!pl) continue;
       const [px, py] = toMap(pl.x, pl.z);

@@ -122,11 +122,36 @@ export class Ambient {
     return { x: 40, y: 3, z: 8 };
   }
 
+  homeNear(focus, low = false) {
+    for (let t = 0; t < 12; t++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 12 + Math.random() * 45;
+      const x = focus.x + Math.cos(a) * r;
+      const z = focus.z + Math.sin(a) * r;
+      const h = this.world.heightAt(x, z);
+      if (h < 0.8) continue;
+      return { x, y: h + (low ? 0.6 + Math.random() * 1.8 : 0.6 + Math.random() * 1.2), z };
+    }
+    return null;
+  }
+
   update(dt, elapsed, night, focus, weather) {
     const calm = weather ? !weather.isRaining && !weather.isSnowing && weather.seasonIndex !== 3 : true;
     const day = calm ? 1 - night : 0;
     const { m, q, e, s, p, dir, flip } = TMP;
+    // Les papillons et lucioles suivent le joueur d'une île à l'autre.
+    this.relocateT = (this.relocateT || 0) - dt;
+    const relocate = this.relocateT <= 0;
+    if (relocate) this.relocateT = 1.5;
     this.butterflies.forEach((b, i) => {
+      if (relocate && Math.hypot(b.home.x - focus.x, b.home.z - focus.z) > 70) {
+        const h = this.homeNear(focus);
+        if (h) {
+          b.home = h;
+          b.pos.set(h.x, h.y, h.z);
+          b.target.copy(b.pos);
+        }
+      }
       b.phase += dt * 16;
       if (b.pos.distanceToSquared(b.target) < 0.3 || Math.random() < dt * 0.2) {
         b.target.set(
@@ -160,6 +185,13 @@ export class Ambient {
     this.fireflyUniforms.uTime.value = elapsed;
     this.fireflyUniforms.uAlpha.value = calm ? Math.max(0, night - 0.3) / 0.7 : 0;
     if (calm && night > 0.3) {
+      if (relocate) {
+        for (const f of this.fireflies) {
+          if (Math.hypot(f.x - focus.x, f.z - focus.z) < 75) continue;
+          const h = this.homeNear(focus, true);
+          if (h) Object.assign(f, { x: h.x, y: h.y, z: h.z });
+        }
+      }
       const pos = this.fireflyPoints.geometry.attributes.position;
       this.fireflies.forEach((f, i) => {
         const a = elapsed * 0.4 + f.a;

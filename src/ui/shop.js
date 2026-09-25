@@ -33,7 +33,10 @@ export class Shop {
     this.villager = villager;
     this.isOpen = true;
     g.input.enabled = false;
-    const names = { graines: 'Graines de Mamie Rose', marche: 'Marché de Pomme', menuiserie: 'Menuiserie de Bruno', couture: 'Couture de Lila', cafe: 'Café des Chats de Mimi', garage: 'Garage de Léo' };
+    const names = {
+      graines: 'Graines de Mamie Rose', marche: 'Marché de Pomme', menuiserie: 'Menuiserie de Bruno', couture: 'Couture de Lila', cafe: 'Café des Chats de Mimi', garage: 'Garage de Léo',
+      patisserie: 'Pâtisserie d\'Élise', atelier: 'Atelier de Hugo', capitainerie: 'Capitainerie de Nérée', galerie: 'Galerie de Maëlys', plongee: 'Club de plongée de Coralie', paillote: 'La Paillote de Paco',
+    };
     this.el.querySelector('#shop-title').textContent = names[shopId] || 'Boutique';
     this.el.querySelector('#shop-greet').textContent = villager ? `${villager.def.emoji} « ${villager.def.lines.shop} »` : '';
     this.tabs = g.shopTabs(shopId);

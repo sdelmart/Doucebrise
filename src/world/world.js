@@ -4,6 +4,7 @@ import { DayNight } from './sky.js';
 import { createWater } from './water.js';
 import { Colliders } from './collision.js';
 import { Village } from './village.js';
+import { IslandVillages } from './islands.js';
 import { Vegetation } from './vegetation.js';
 import { Ambient } from './ambient.js';
 import { Weather } from './weather.js';
@@ -32,6 +33,9 @@ export class World {
 
     this.village = new Village(this);
     scene.add(this.village.group);
+    this.islands = new IslandVillages(this);
+    this.renderDistance = 300;
+    this.particles = null;
     this.vegetation = new Vegetation(this);
     scene.add(this.vegetation.group);
     this.ambient = new Ambient(this);
@@ -118,6 +122,8 @@ export class World {
     }
     this.water.userData.update();
     this.village.update(dt, elapsed, night);
+    this.islands.update(dt, elapsed, night, focus, this.particles, this.renderDistance);
+    this.vegetation.updateIslands(focus, this.renderDistance);
     this.ambient.update(dt, elapsed, night, focus, this.weather);
   }
 }

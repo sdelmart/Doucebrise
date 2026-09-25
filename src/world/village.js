@@ -15,22 +15,22 @@ const _v = new THREE.Vector3();
 const _s = new THREE.Vector3(1, 1, 1);
 const _up = new THREE.Vector3(0, 1, 0);
 
-function place(geo, x, y, z, rotY = 0, scale = 1) {
+export function place(geo, x, y, z, rotY = 0, scale = 1) {
   _q.setFromAxisAngle(_up, rotY);
   _m.compose(_v.set(x, y, z), _q, _s.set(scale, scale, scale));
   geo.applyMatrix4(_m);
   return geo;
 }
 
-const WOOD = '#b98457';
-const WOOD_DARK = '#8f6243';
-const STONE = '#d6ccbb';
-const IRON = '#4e4c62';
+export const WOOD = '#b98457';
+export const WOOD_DARK = '#8f6243';
+export const STONE = '#d6ccbb';
+export const IRON = '#4e4c62';
 const WINDOW_NIGHT = new THREE.Color('#ffd98a');
 
 // --- Maisons -----------------------------------------------------------------
 
-function cottage({ w = 5.2, d = 4.6, h = 3.0, wall, roof, trim = '#fffaf0', door = '#9c6b4f', shutter }) {
+export function cottage({ w = 5.2, d = 4.6, h = 3.0, wall, roof, trim = '#fffaf0', door = '#9c6b4f', shutter }) {
   const s = new Shape();
   const glass = new Shape();
   const top = 0.5 + h;
@@ -88,7 +88,7 @@ function cottage({ w = 5.2, d = 4.6, h = 3.0, wall, roof, trim = '#fffaf0', door
   return { geo: s.build(), glass: glass.build(), w, d };
 }
 
-function paintGlass(geo) {
+export function paintGlass(geo) {
   const s = new Shape();
   s.add(geo, '#ffffff');
   return s.build();
@@ -96,7 +96,7 @@ function paintGlass(geo) {
 
 // --- Mobilier ----------------------------------------------------------------
 
-function lampGeo() {
+export function lampGeo() {
   const s = new Shape();
   s.add(G.cyl(0.26, 0.32, 0.25, 8), IRON, { pos: [0, 0.12, 0] });
   s.add(G.cyl(0.08, 0.11, 3.0, 8), IRON, { pos: [0, 1.6, 0] });
@@ -112,7 +112,7 @@ function lampGeo() {
   return { geo: s.build(), glow: glow.build() };
 }
 
-function benchGeo() {
+export function benchGeo() {
   const s = new Shape();
   for (let i = 0; i < 3; i++) s.add(G.box(2.2, 0.08, 0.16), WOOD, { pos: [0, 0.5, -0.2 + i * 0.2] });
   for (let i = 0; i < 2; i++) s.add(G.box(2.2, 0.16, 0.06), WOOD, { pos: [0, 0.78 + i * 0.22, -0.34], rot: [-0.15, 0, 0] });
@@ -123,7 +123,7 @@ function benchGeo() {
   return s.build();
 }
 
-function fenceGeo(points, h = 0.9, color = '#fff8ea') {
+export function fenceGeo(points, h = 0.9, color = '#fff8ea') {
   const s = new Shape();
   for (let i = 0; i < points.length - 1; i++) {
     const [ax, ay, az] = points[i];
@@ -145,7 +145,7 @@ function fenceGeo(points, h = 0.9, color = '#fff8ea') {
   return s.build();
 }
 
-function stallGeo() {
+export function stallGeo() {
   const s = new Shape();
   s.add(G.box(3.2, 1.0, 1.2), WOOD, { pos: [0, 0.5, 0] });
   s.add(G.box(3.4, 0.1, 1.4), WOOD_DARK, { pos: [0, 1.05, 0] });
@@ -195,7 +195,7 @@ function seedStandGeo() {
   return s.build();
 }
 
-function workbenchGeo() {
+export function workbenchGeo() {
   const s = new Shape();
   s.add(G.box(1.9, 0.12, 0.8), WOOD, { pos: [0, 0.85, 0] });
   for (const x of [-0.85, 0.85]) for (const z of [-0.3, 0.3]) s.add(G.box(0.1, 0.8, 0.1), WOOD_DARK, { pos: [x, 0.4, z] });
@@ -223,7 +223,7 @@ function tailorGeo() {
   return s.build();
 }
 
-function signBoard(text, w = 2.6, h = 0.6, bg = '#f6e7c8', fg = '#6b4a2e') {
+export function signBoard(text, w = 2.6, h = 0.6, bg = '#f6e7c8', fg = '#6b4a2e') {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = Math.round((512 * h) / w);
@@ -315,7 +315,7 @@ function lighthouse() {
   return { geo: s.build(), glass: glass.build(), lampY: H + 1.1 };
 }
 
-function boatGeo() {
+export function boatGeo() {
   const s = new Shape();
   s.add(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), '#f4f1ea', { scale: [0.95, 0.55, 2.1] });
   s.add(G.torus(1, 0.08, 6, 24), '#5b8fd6', { rot: [Math.PI / 2, 0, 0], scale: [0.95, 2.1, 1] });
@@ -371,7 +371,7 @@ function doghouseGeo() {
   return s.build();
 }
 
-function mailboxGeo() {
+export function mailboxGeo() {
   const s = new Shape();
   s.add(G.box(0.12, 1.1, 0.12), WOOD, { pos: [0, 0.55, 0] });
   s.add(G.box(0.45, 0.35, 0.6), '#5b8fd6', { pos: [0, 1.25, 0] });
@@ -1184,12 +1184,15 @@ export class Village {
     post.add(G.sphere(0.18, 8, 6), WOOD_DARK, { pos: [0, 3.65, 0] });
     this.static.addRaw(place(post.build(), x, y, z));
     this.world.colliders.addCircle(x, z, 0.25);
-    const targets = ['prairie', 'foret', 'etang', 'plage', 'colline', 'phare'];
+    const targets = ['prairie', 'foret', 'etang', 'plage', 'colline', 'phare', 'bourg', 'port'];
+    const travel = signBoard('🧭 Voyages', 1.5, 0.42, '#fff6d6', '#2f5f8a');
+    travel.position.set(x, y + 1.5, z + 0.16);
+    this.group.add(travel);
     targets.forEach((id, i) => {
       const zone = ZONES.find((zz) => zz.id === id);
-      const board = signBoard(`${zone.name}`, 2.0, 0.38);
+      const board = signBoard(`${zone.name}`, 2.0, 0.34);
       const a = Math.atan2(zone.x - x, zone.z - z);
-      board.position.set(x, y + 3.35 - i * 0.42, z);
+      board.position.set(x, y + 3.45 - i * 0.34, z);
       board.rotation.y = a - Math.PI / 2;
       board.translateX(1.05);
       this.group.add(board);
@@ -1237,7 +1240,7 @@ export class Village {
   }
 }
 
-function rotate2(x, z, rot) {
+export function rotate2(x, z, rot) {
   const c = Math.cos(rot);
   const s = Math.sin(rot);
   return [x * c + z * s, -x * s + z * c];

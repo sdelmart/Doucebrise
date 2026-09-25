@@ -143,7 +143,7 @@ export class Animal {
 
   canGo(x, z) {
     const h = this.world.groundAt(x, z);
-    if (this.species === 'canard') return h > -3;
+    if (this.species === 'canard' || this.species === 'loutre') return h > -3;
     return h > 0.25;
   }
 
@@ -269,7 +269,7 @@ export class Animal {
 
     // Hauteur : sol, ou surface de l'eau pour les canards.
     const ground = this.inBed ? this.pos.y : this.world.groundAt(this.pos.x, this.pos.z);
-    this.swimming = this.species === 'canard' && ground < -0.1;
+    this.swimming = (this.species === 'canard' || this.species === 'loutre') && ground < -0.1;
     const targetY = this.swimming ? -0.12 + Math.sin(this.t * 2) * 0.02 : ground;
     this.pos.y = damp(this.pos.y, targetY, 12, dt);
     this.animate(dt);

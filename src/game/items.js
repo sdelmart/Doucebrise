@@ -4,7 +4,7 @@
 
 export const ITEMS = {
   // Cueillette (nourriture de base des animaux)
-  baie: { label: 'Baies', emoji: '🫐', cat: 'food', price: 6, feed: true },
+  baie: { label: 'Baies', emoji: '🍒', cat: 'food', price: 6, feed: true },
   pomme: { label: 'Pommes', emoji: '🍎', cat: 'food', price: 10, feed: true },
   carotte: { label: 'Carottes', emoji: '🥕', cat: 'food', price: 12, feed: true },
   graine: { label: 'Graines', emoji: '🌻', cat: 'food', price: 4, feed: true },
@@ -23,6 +23,16 @@ export const ITEMS = {
   champignon: { label: 'Champignons', emoji: '🍄', cat: 'forage', price: 16 },
   coquillage: { label: 'Coquillages', emoji: '🐚', cat: 'forage', price: 12 },
   fleur: { label: 'Fleurs', emoji: '🌷', cat: 'forage', price: 8 },
+  myrtille: { label: 'Myrtilles', emoji: '🫐', cat: 'food', price: 14, feed: true },
+  'noix-coco': { label: 'Noix de coco', emoji: '🥥', cat: 'food', price: 28, feed: true },
+  'pomme-pin': { label: 'Pommes de pin', emoji: '🌰', cat: 'forage', price: 8, feed: true },
+  edelweiss: { label: 'Edelweiss', emoji: '🌼', cat: 'forage', price: 30 },
+  hibiscus: { label: 'Hibiscus', emoji: '🌺', cat: 'forage', price: 16 },
+  cristal: { label: 'Cristaux', emoji: '💎', cat: 'forage', price: 70, desc: 'Ils scintillent sur les flancs du Pic des Neiges.' },
+  corail: { label: 'Corail', emoji: '🪸', cat: 'forage', price: 40 },
+  'etoile-mer': { label: 'Étoiles de mer', emoji: '✴️', cat: 'forage', price: 26 },
+  perle: { label: 'Perle', emoji: '🦪', cat: 'forage', price: 180, desc: 'Un trésor du lagon, rare et précieux.' },
+  'fragment-etoile': { label: 'Fragment d\'étoile', emoji: '🌠', cat: 'forage', price: 220, desc: 'Tombé d\'une étoile filante, après un vœu.' },
 
   // Graines à planter
   'sem-carotte': { label: 'Semis de carottes', emoji: '🌱', cat: 'seed', crop: 'carotte', buy: 10, price: 3 },
@@ -40,6 +50,16 @@ export const ITEMS = {
   popcorn: { label: 'Pop-corn', emoji: '🍿', cat: 'dish', price: 65 },
   jus: { label: 'Jus de fruits', emoji: '🧃', cat: 'dish', price: 55 },
   omelette: { label: 'Poêlée forestière', emoji: '🍳', cat: 'dish', price: 60 },
+  'tarte-myrtille': { label: 'Tarte aux myrtilles', emoji: '🫐', cat: 'dish', price: 110 },
+  crepe: { label: 'Crêpes', emoji: '🥞', cat: 'dish', price: 80 },
+  'jus-coco': { label: 'Jus de coco', emoji: '🥥', cat: 'dish', price: 70 },
+  brochette: { label: 'Brochettes de la mer', emoji: '🍢', cat: 'dish', price: 95 },
+  'salade-tropicale': { label: 'Salade tropicale', emoji: '🥗', cat: 'dish', price: 120 },
+  'soupe-bois': { label: 'Soupe des bois', emoji: '🥣', cat: 'dish', price: 90 },
+  croissant: { label: 'Croissant', emoji: '🥐', cat: 'dish', price: 30 },
+  chocolat: { label: 'Chocolat chaud', emoji: '☕', cat: 'dish', price: 35 },
+  glace: { label: 'Glace', emoji: '🍦', cat: 'dish', price: 30 },
+  cocktail: { label: 'Cocktail de fruits', emoji: '🍹', cat: 'dish', price: 40 },
 };
 
 export const CATEGORIES = [
@@ -66,6 +86,12 @@ export const RECIPES = [
   { id: 'popcorn', needs: { mais: 2 }, known: false, from: 'Noé' },
   { id: 'omelette', needs: { champignon: 2, tomate: 1 }, known: false, from: 'Lila' },
   { id: 'soupe', needs: { citrouille: 1, carotte: 2 }, known: false, from: 'Bruno' },
+  { id: 'tarte-myrtille', needs: { myrtille: 3, pomme: 1 }, known: false, from: 'Élise' },
+  { id: 'crepe', needs: { mais: 1, fraise: 2 }, known: false, from: 'Élise' },
+  { id: 'soupe-bois', needs: { champignon: 2, carotte: 1, 'pomme-pin': 1 }, known: false, from: 'Hugo' },
+  { id: 'jus-coco', needs: { 'noix-coco': 1, fraise: 1 }, known: false, from: 'Paco' },
+  { id: 'brochette', needs: { poisson: 2, tomate: 1 }, known: false, from: 'Nérée' },
+  { id: 'salade-tropicale', needs: { 'noix-coco': 1, pomme: 1, fraise: 1 }, known: false, from: 'Coralie' },
 ];
 
 export function itemLabel(id, n = 1) {

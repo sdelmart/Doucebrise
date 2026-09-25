@@ -721,6 +721,14 @@ export class Character {
           s.add(G.torus(0.082, 0.01, 5, 18), c, { pos: [x, ey - 0.01, ez], rot: [0, side * 0.2, 0], scale: [1, 0.85, 1] });
           break;
         }
+        case 'plongee':
+          if (side === 1) {
+            s.add(G.box(0.46, 0.2, 0.06), '#7fdcbd', { pos: [0, ey, ez - 0.01] });
+            s.add(G.box(0.4, 0.15, 0.05), '#dff4ff', { pos: [0, ey, ez + 0.02] });
+            s.add(G.torus(0.36, 0.02, 4, 20), '#2e2e3a', { pos: [0, ey, 0.02], rot: [Math.PI / 2, 0, 0], scale: [1.05, 1, 1] });
+            s.add(G.cyl(0.025, 0.025, 0.5, 6), '#ffd84d', { pos: [0.34, ey + 0.2, 0.05] });
+          }
+          break;
         case 'lune': {
           const ms = new THREE.Shape();
           ms.absarc(0, 0, 0.085, 0.5, Math.PI * 2 - 0.5, false);
@@ -748,9 +756,9 @@ export class Character {
           break;
       }
       // Branches jusqu'aux oreilles.
-      if (a.glasses !== 'monocle') s.add(G.box(0.012, 0.012, 0.3), a.glasses === 'coeur' || a.glasses === 'lune' ? '#4e4c62' : c, { pos: [side * 0.345, ey + 0.01, 0.2], rot: [0, side * 0.2, 0] });
+      if (a.glasses !== 'monocle' && a.glasses !== 'plongee') s.add(G.box(0.012, 0.012, 0.3), a.glasses === 'coeur' || a.glasses === 'lune' ? '#4e4c62' : c, { pos: [side * 0.345, ey + 0.01, 0.2], rot: [0, side * 0.2, 0] });
     }
-    if (a.glasses !== 'monocle') s.add(G.cyl(0.008, 0.008, 0.08, 4), a.glasses === 'coeur' ? '#4e4c62' : c, { pos: [0, ey + 0.015, ez + 0.01], rot: [0, 0, Math.PI / 2] });
+    if (a.glasses !== 'monocle' && a.glasses !== 'plongee') s.add(G.cyl(0.008, 0.008, 0.08, 4), a.glasses === 'coeur' ? '#4e4c62' : c, { pos: [0, ey + 0.015, ez + 0.01], rot: [0, 0, Math.PI / 2] });
     this.addPart(this.head, s.build(), vertexColorToon(), { outline: false, shadow: false });
   }
 
@@ -886,6 +894,16 @@ export class Character {
         }
         s.add(G.sphere(0.02, 6, 5), '#ff8fab', { pos: [0, 0.22, -0.34 * b] });
         for (const x of [-0.1, 0.1]) s.add(G.box(0.035, 0.3, 0.02), darken(c, 0.25), { pos: [x, 0.24, 0.175 * b], rot: [-0.1, 0, 0] });
+        this.addPart(this.torso, s.build());
+        break;
+      }
+      case 'sacRando': {
+        const s = new Shape();
+        s.add(G.box(0.36, 0.5, 0.2), c, { pos: [0, 0.2, -0.28 * b] });
+        s.add(G.cyl(0.1, 0.1, 0.42, 10), '#6fcf97', { pos: [0, 0.5, -0.28 * b], rot: [0, 0, Math.PI / 2] });
+        s.add(G.box(0.26, 0.16, 0.06), darken(c, 0.2), { pos: [0, 0.08, -0.4 * b] });
+        s.add(G.cyl(0.015, 0.015, 0.6, 4), '#b8c0cc', { pos: [0.2, 0.2, -0.32 * b], rot: [0.2, 0, 0.3] });
+        for (const x of [-0.12, 0.12]) s.add(G.box(0.04, 0.34, 0.02), darken(c, 0.3), { pos: [x, 0.24, 0.175 * b], rot: [-0.1, 0, 0] });
         this.addPart(this.torso, s.build());
         break;
       }

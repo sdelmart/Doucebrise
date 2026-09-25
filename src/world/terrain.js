@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { createRng, createNoise2D, fbm, smoothstep, lerp, clamp, distToPolyline } from '../core/math.js';
 import { toon, addSeason } from '../core/materials.js';
-import { WORLD_SEED, PATHS, LANDMARKS } from './layout.js';
+import { WORLD_SEED, PATHS, LANDMARKS, ISLANDS, MAP_RANGE, islandAt } from './layout.js';
 
 // Terrain de l'île : une grille de hauteurs partagée entre le rendu et le gameplay,
 // pour que les pieds du personnage collent exactement au sol affiché.
 
-export const TERRAIN_SIZE = 300;
-export const TERRAIN_SEGMENTS = 240;
+export const TERRAIN_SIZE = 520;
+export const TERRAIN_SEGMENTS = 416;
 export const SEA_FLOOR = -8;
 
 const COLORS = {
@@ -23,6 +23,14 @@ const COLORS = {
   plaza: new THREE.Color('#ead9bb'),
   rock: new THREE.Color('#aba398'),
   hill: new THREE.Color('#c4dc74'),
+  pineGrass: new THREE.Color('#6fb567'),
+  alpine: new THREE.Color('#9fd07a'),
+  snow: new THREE.Color('#f4f8ff'),
+  pebble: new THREE.Color('#b9b3aa'),
+  stone: new THREE.Color('#d8d2c6'),
+  tropic: new THREE.Color('#b6e07a'),
+  tropicB: new THREE.Color('#8fd46a'),
+  coralTiles: new THREE.Color('#f3d8b8'),
 };
 
 const angDiff = (a, b) => {
@@ -83,6 +91,56 @@ export class Terrain {
   }
 
   computeHeight(x, z) {
+    let h = this.mainHeight(x, z);
+    for (const I of Object.values(ISLANDS)) h = Math.max(h, this.islandHeight(x, z, I));
+    return h;
+  }
+
+  /** Relief d'une île secondaire (montagne des Pins, lagon de l'île Corail). */
+  islandHeight(x, z, I) {
+    const dx = x - I.x;
+    const dz = z - I.z;
+    const r = Math.hypot(dx, dz);
+    if (r > I.r + 50) return SEA_FLOOR;
+    const a = Math.atan2(dz, dx);
+    const ca = Math.cos(a);
+    const sa = Math.sin(a);
+    const coast = I.r + 7 * this.noiseA(ca * 1.1 + I.seed, sa * 1.1 - I.seed) + 4 * this.noiseB(ca * 2.7 + I.seed, sa * 2.7 + I.seed);
+    const inland = coast - r;
+    let h = I.base + fbm(this.noiseA, x * 0.018 + I.seed, z * 0.018 - I.seed, 4) * I.rough + this.noiseC(x * 0.07, z * 0.07) * 0.3;
+    if (I.id === 'pins') {
+      const P = LANDMARKS.peak;
+      const d = Math.hypot(x - P.x, z - P.z) + this.noiseB(x * 0.05, z * 0.05) * 5;
+      h += Math.pow(Math.max(0, 1 - d / 46), 1.7) * 21 + Math.max(0, 1 - d / 12) * 3;
+      h += bump(x, z, -146, -176, 20) * 5 + bump(x, z, -190, -140, 16) * 4;
+      const B = LANDMARKS.bourg;
+      h = lerp(h, B.h, smoothstep(B.r * 2.1, B.r, Math.hypot(x - B.x, z - B.z)));
+      const S = LANDMARKS.hotspring;
+      h = lerp(h, 2.6, smoothstep(S.r * 2.4, S.r * 1.4, Math.hypot(x - S.x, z - S.z)));
+    } else {
+      h += bump(x, z, LANDMARKS.lookout.x, LANDMARKS.lookout.z, 22) * LANDMARKS.lookout.h;
+      const Pt = LANDMARKS.port;
+      h = lerp(h, Pt.h, smoothstep(Pt.r * 2, Pt.r, Math.hypot(x - Pt.x, z - Pt.z)));
+    }
+    const pd = this.pathDistance(x, z);
+    h = lerp(h, h * 0.9 + 0.25, smoothstep(4, 1, pd));
+    const bw = I.beach + this.noiseC(ca * 3 + I.seed, sa * 3) * 2;
+    const shore = clamp((0.15 - bw * 0.007) * inland + 0.35, SEA_FLOOR, 3);
+    h = lerp(shore, h, smoothstep(4 + bw, 18 + bw, inland));
+    if (I.id === 'pins') {
+      const L = LANDMARKS.lake;
+      const ld = Math.hypot(x - L.x, z - L.z) + this.noiseB(x * 0.12, z * 0.12) * 2;
+      h = lerp(h, -2.2, smoothstep(L.r * 1.3, L.r * 0.6, ld));
+    } else {
+      const G = LANDMARKS.lagoon;
+      const gd = Math.hypot(x - G.x, z - G.z) + this.noiseB(x * 0.08, z * 0.08) * 3;
+      const k = smoothstep(G.r * 1.35, G.r * 0.75, gd);
+      h = lerp(h, Math.max(-0.9, Math.min(h, -0.9)), k);
+    }
+    return clamp(h, SEA_FLOOR, 40);
+  }
+
+  mainHeight(x, z) {
     const r = Math.hypot(x, z);
     const inland = this.coastRadius(x, z) - r;
     let h = 2.4 + fbm(this.noiseA, x * 0.016, z * 0.016, 4) * 2.6 + this.noiseC(x * 0.07, z * 0.07) * 0.3;
@@ -158,6 +216,30 @@ export class Terrain {
     const plaza = Math.hypot(x, z) + n2 * 0.6;
     out.lerp(COLORS.plaza, smoothstep(14.5, 13, plaza));
 
+    const isl = islandAt(x, z);
+    if (isl === 'pins') {
+      out.lerp(COLORS.pineGrass, 0.55 + n2 * 0.15);
+      const B = LANDMARKS.bourg;
+      out.lerp(COLORS.alpine, smoothstep(30, 14, Math.hypot(x - B.x, z - B.z)) * 0.6);
+      out.lerp(COLORS.path, smoothstep(2.6, 1.5, pd));
+      out.lerp(COLORS.stone, smoothstep(11.5, 10, Math.hypot(x - B.x, z - B.z) + n2 * 0.6));
+      out.lerp(COLORS.rock, smoothstep(0.86, 0.72, normalY));
+      out.lerp(COLORS.rock, smoothstep(11, 15, h) * 0.6);
+      out.lerp(COLORS.snow, smoothstep(14.5, 17.5, h + n1 * 1.5));
+      out.lerp(COLORS.pebble, smoothstep(1.3, 0.8, h + n2 * 0.15));
+      out.lerp(COLORS.wetSand, smoothstep(0.1, -0.6, h) * 0.6);
+      return out;
+    }
+    if (isl === 'corail') {
+      out.copy(COLORS.tropic).lerp(COLORS.tropicB, smoothstep(-0.3, 0.6, n1));
+      out.lerp(COLORS.path, smoothstep(2.6, 1.5, pd));
+      const P = LANDMARKS.port;
+      out.lerp(COLORS.coralTiles, smoothstep(12.5, 11, Math.hypot(x - P.x, z - P.z) + n2 * 0.6));
+      out.lerp(COLORS.rock, smoothstep(0.82, 0.7, normalY));
+      out.lerp(COLORS.sand, smoothstep(1.8, 1.1, h + n2 * 0.15));
+      out.lerp(COLORS.wetSand, smoothstep(0.1, -0.6, h));
+      return out;
+    }
     out.lerp(COLORS.rock, smoothstep(0.82, 0.7, normalY));
     out.lerp(COLORS.sand, smoothstep(1.35, 0.85, h + n2 * 0.15));
     out.lerp(COLORS.wetSand, smoothstep(0.1, -0.6, h));
@@ -238,26 +320,33 @@ export class Terrain {
   }
 
   /** Image de la carte (vue du dessus) pour la mini-carte. */
-  renderMap(size = 256, range = 110) {
+  renderMap(size = 256, range = MAP_RANGE) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
     const img = ctx.createImageData(size, size);
     const col = new THREE.Color();
-    const water = new THREE.Color('#7fd3e6');
-    const deep = new THREE.Color('#4aa8d8');
+    const water = new THREE.Color('#8fdcec');
+    const deep = new THREE.Color('#3f97cf');
+    const foam = new THREE.Color('#e8fbff');
+    const step = (2 * range) / size;
     for (let py = 0; py < size; py++) {
       for (let px = 0; px < size; px++) {
         const x = (px / size) * 2 * range - range;
         const z = (py / size) * 2 * range - range;
         const h = this.heightAt(x, z);
         if (h < 0) {
-          col.copy(water).lerp(deep, smoothstep(0, 5, -h));
+          col.copy(water).lerp(deep, smoothstep(0, 7, -h));
+          // Liseré d'écume près des côtes.
+          col.lerp(foam, smoothstep(-0.5, 0, h) * 0.6);
         } else {
           this.colorAt(x, z, h, 1, col);
-          const shade = 0.88 + clamp(h / 14, 0, 1) * 0.2;
-          col.multiplyScalar(shade);
+          // Ombrage du relief (lumière venant du nord-ouest).
+          const dx = this.heightAt(x + step, z) - this.heightAt(x - step, z);
+          const dz = this.heightAt(x, z + step) - this.heightAt(x, z - step);
+          const shade = clamp(1 + (-dx - dz) * (0.9 / step) * 0.35, 0.62, 1.3);
+          col.multiplyScalar(shade * (0.94 + clamp(h / 20, 0, 1) * 0.12));
         }
         const i = (py * size + px) * 4;
         img.data[i] = Math.round(clamp(col.r, 0, 1) ** (1 / 2.2) * 255);
@@ -267,6 +356,19 @@ export class Terrain {
       }
     }
     ctx.putImageData(img, 0, 0);
+    // Chemins.
+    const k = size / (2 * range);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const [w, c] of [[3.4, 'rgba(120, 90, 60, 0.35)'], [2.2, 'rgba(250, 236, 205, 0.95)']]) {
+      ctx.lineWidth = w * k;
+      ctx.strokeStyle = c;
+      for (const path of PATHS) {
+        ctx.beginPath();
+        path.forEach(([x, z], i) => ctx[i ? 'lineTo' : 'moveTo']((x + range) * k, (z + range) * k));
+        ctx.stroke();
+      }
+    }
     return canvas;
   }
 }

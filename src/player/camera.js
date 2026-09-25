@@ -82,7 +82,7 @@ export class FollowCamera {
         this.yaw = lerpAngle(this.yaw, behind, 1 - Math.exp(-0.5 * dt * (player.speed / 4)));
       }
       look.copy(player.pos).add(new THREE.Vector3(0, this.photo ? 0.9 : 1.25, 0));
-      // Si une maison cache le joueur, la caméra monte au-dessus du toit (et, en dernier
+      // Si une maison ou une colline cache le joueur, la caméra monte au-dessus (et, en dernier
       // recours, se rapproche).
       const place = (pitch, dist) => {
         const cp = Math.cos(pitch);
@@ -91,7 +91,11 @@ export class FollowCamera {
       const blocked = () => {
         for (let i = 2; i <= 12; i++) {
           const t = i / 12;
-          if (this.world.cameraBlocked(look.x + (desired.x - look.x) * t, look.y + (desired.y - look.y) * t, look.z + (desired.z - look.z) * t)) return t;
+          const x = look.x + (desired.x - look.x) * t;
+          const y = look.y + (desired.y - look.y) * t;
+          const z = look.z + (desired.z - look.z) * t;
+          // Maisons, et relief (collines, montagne) entre la caméra et le joueur.
+          if (this.world.cameraBlocked(x, y, z) || y < this.world.heightAt(x, z) + 0.35) return t;
         }
         return 0;
       };

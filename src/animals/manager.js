@@ -32,6 +32,28 @@ const SPAWNS = [
   ['tortue', 2, 8, 86, 7],
 ];
 
+// Îles des Pins et Corail (après la colonie du café : identifiants stables).
+const ISLAND_SPAWNS = [
+  ['ecureuil', 4, -140, -128, 20],
+  ['ecureuil', 2, -118, -100, 10],
+  ['chevre', 4, -170, -156, 14],
+  ['renard', 1, -160, -150, 16],
+  ['faon', 2, -150, -100, 16],
+  ['loutre', 3, -186, -112, 10],
+  ['lapin', 2, -112, -128, 10],
+  ['chien', 1, -128, -112, 10],
+  ['chat', 2, -126, -120, 10],
+  ['oiseau', 2, -138, -142, 16],
+  ['perroquet', 4, 170, 106, 16],
+  ['perroquet', 1, 141, 72, 8],
+  ['tortue', 3, 200, 84, 10],
+  ['tortue', 2, 150, 124, 8],
+  ['chat', 3, 142, 74, 10],
+  ['chien', 1, 136, 58, 8],
+  ['poule', 3, 152, 88, 8],
+  ['loutre', 2, 214, 110, 8],
+];
+
 const TRUST_PET = 7;
 const TRUST_PET_DAILY = 35;
 const TRUST_FOOD = 12;
@@ -49,7 +71,7 @@ export class AnimalManager {
     let n = 0;
     // Colonie de chats devant le Café des Chats (ajoutée après les autres : les identifiants restent stables).
     const cafe = this.world.village.cafe;
-    const spawns = [...SPAWNS, ['chat', 5, cafe.x + cafe.fwd[0] * 6, cafe.z + cafe.fwd[1] * 6, 6]];
+    const spawns = [...SPAWNS, ['chat', 5, cafe.x + cafe.fwd[0] * 6, cafe.z + cafe.fwd[1] * 6, 6], ...ISLAND_SPAWNS];
     for (const [species, count, cx, cz, r] of spawns) {
       for (let i = 0; i < count; i++) {
         const pos = this.findSpot(rng, cx, cz, r, species);
@@ -71,7 +93,7 @@ export class AnimalManager {
       const x = cx + Math.cos(a) * d;
       const z = cz + Math.sin(a) * d;
       const h = this.world.groundAt(x, z);
-      if (species === 'canard' ? h < -0.3 : h > 0.5) {
+      if (species === 'canard' ? h < -0.3 : species === 'loutre' ? h > -1.5 && h < 0.8 : h > 0.5) {
         const res = this.world.colliders.resolve(x, z, 0.5);
         if (Math.hypot(res.x - x, res.z - z) < 0.01) return { x, z };
       }

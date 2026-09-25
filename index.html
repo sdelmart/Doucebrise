@@ -110,8 +110,16 @@
     <div id="map" class="modal hidden">
       <div class="modal-card map-card">
         <button class="close" data-close>✕</button>
-        <h2>Île de Doucebrise</h2>
-        <canvas id="bigmap" width="560" height="560"></canvas>
+        <h2>Archipel de Doucebrise</h2>
+        <div class="map-wrap">
+          <canvas id="bigmap" width="720" height="720"></canvas>
+          <div class="map-tools">
+            <button class="btn small" data-mapzoom="-1" title="Zoomer (molette)">＋</button>
+            <button class="btn small" data-mapzoom="1" title="Dézoomer (molette)">－</button>
+            <button class="btn small" data-mapcenter title="Centrer sur moi">⌖</button>
+          </div>
+        </div>
+        <p class="note map-help">Molette : zoom · glisser : déplacer · 🧭 panneaux de voyage</p>
       </div>
     </div>
 

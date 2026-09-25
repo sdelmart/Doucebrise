@@ -7,7 +7,7 @@ import { FollowCamera } from './player/camera.js';
 import { DEFAULT_APPEARANCE, normalizeAppearance, randomAppearance, isLocked, shopClothes, OPTIONS } from './player/appearance.js';
 import { AnimalManager } from './animals/manager.js';
 import { VillagerManager } from './npc/villagers.js';
-import { ITEMS, createInventory } from './game/items.js';
+import { ITEMS, RECIPES, createInventory } from './game/items.js';
 import { Fishing } from './game/fish.js';
 import { Insects } from './game/insects.js';
 import { Resources } from './game/activities.js';
@@ -18,9 +18,10 @@ import { Calendar } from './game/calendar.js';
 import { Garden } from './game/garden.js';
 import { Quests } from './game/quests.js';
 import { Cooking } from './game/cooking.js';
+import { Archipelago } from './game/travel.js';
 import { House } from './house/house.js';
 import { DecorMode } from './house/decor.js';
-import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS, FURNITURE_CATS } from './house/furniture.js';
+import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS, FURNITURE_CATS, shopFurniture } from './house/furniture.js';
 import { HOME_SIZES, ROOF_STYLES, FACADES, HOME_EXTRAS } from './world/home.js';
 import { Input } from './core/input.js';
 import { Particles } from './core/particles.js';
@@ -40,6 +41,7 @@ const PET_NAMES = ['Moka', 'Caramel', 'Noisette', 'Biscuit', 'Plume', 'Pépite',
 const EMOTES = { Digit1: ['wave', 1.6], Digit2: ['dance', 5], Digit3: ['sit', 0], Digit4: ['kiss', 1.6], Digit5: ['clap', 1.8] };
 const TOOLS = { 'tool:filet': '🥅 Filet à papillons', 'tool:plumeau': '🪶 Plumeau' };
 const UPGRADE_PRICES = [0, 4000, 10000];
+const RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
 const PANELS = ['#creator', '#pets', '#map', '#help', '#journal', '#bag', '#settings'];
 
 // Chef d'orchestre : rendu, boucle, états (titre / création / jeu), interactions, sauvegarde.
@@ -63,6 +65,7 @@ export class Game {
     this.audio = new Audio();
     this.world = new World(this.scene);
     this.particles = new Particles(this.scene);
+    this.world.particles = this.particles;
 
     const appearance = this.save ? normalizeAppearance(this.save.appearance) : { ...DEFAULT_APPEARANCE };
     this.character = new Character(appearance);
@@ -88,6 +91,7 @@ export class Game {
     this.house = new House(this);
     this.cooking = new Cooking(this);
     this.quests = new Quests(this);
+    this.archipelago = new Archipelago(this);
     this.cam = new FollowCamera(this.camera, this.world);
 
     this.ui = new UI(this);
@@ -246,7 +250,7 @@ export class Game {
   }
 
   get busy() {
-    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || !document.querySelector('#dialog').classList.contains('hidden');
+    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || !document.querySelector('#dialog').classList.contains('hidden');
   }
 
   openPanel(name) {
@@ -277,6 +281,7 @@ export class Game {
         break;
       case 'map':
         document.querySelector('#map').classList.remove('hidden');
+        this.ui.centerBigMap(110);
         this.ui.drawBigMap();
         break;
       case 'journal':
@@ -340,7 +345,7 @@ export class Game {
       if (e.code === 'Escape') this.closePanels();
       return;
     }
-    if (this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || !document.querySelector('#dialog').classList.contains('hidden')) return;
+    if (this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || !document.querySelector('#dialog').classList.contains('hidden')) return;
     if (this.decor.active) return;
     if (this.photo.active) {
       if (e.code === 'Escape' || e.code === 'KeyO') this.photo.exit();
@@ -503,10 +508,21 @@ export class Game {
       buy: () => this.unlocks.add(key),
     });
     const count = (id) => (this.house.storage[id] || 0) + this.house.placed.filter((p) => p.id === id).length;
-    const furn = (filter) => () => SHOP_FURNITURE.filter(filter).map((f) => ({
+    const furnEntry = (f) => ({
       id: f.id, label: f.label, emoji: f.emoji, price: f.price, repeatable: true,
       desc: `${f.where === 'out' ? 'Jardin' : f.where === 'both' ? 'Maison ou jardin' : f.wall ? 'Au mur' : 'Maison'}${count(f.id) ? ` · tu en as ${count(f.id)}` : ''}`,
       buy: () => this.house.addToStorage(f.id),
+    });
+    const furn = (filter) => () => SHOP_FURNITURE.filter(filter).map(furnEntry);
+    const shopFurn = (shop) => () => shopFurniture(shop).map(furnEntry);
+    const recipes = (ids) => ids.map((id) => ({
+      id: `recette:${id}`, label: `Recette : ${ITEMS[id].label}`, emoji: ITEMS[id].emoji, price: 250 + ITEMS[id].price * 4,
+      desc: `Ingrédients : ${Object.entries(RECIPE_BY_ID[id]?.needs || {}).map(([k, n]) => `${ITEMS[k].emoji}×${n}`).join(' ')}`,
+      owned: this.cooking.known.has(id), ownedLabel: 'Connue ✓',
+      buy: () => {
+        this.cooking.learn(id);
+        setTimeout(() => this.ui.toast(`📖 Nouvelle recette : ${ITEMS[id].emoji} ${ITEMS[id].label} ! Cuisine-la sur ta cuisinière.`, 3500), 400);
+      },
     }));
     switch (shopId) {
       case 'graines':
@@ -563,6 +579,41 @@ export class Game {
             owned: this.vehicles.has(id), buy: () => this.vehicles.buy(id),
           })),
         }];
+      case 'patisserie':
+        return [
+          { id: 'douceurs', label: '🥐 Douceurs', items: () => [item('croissant', 45), item('chocolat', 50), ...['tarte-myrtille', 'crepe', 'tarte'].map((id) => item(id, Math.round(ITEMS[id].price * 1.4), { desc: 'Tout juste sorti du four !' }))] },
+          { id: 'ingredients', label: '🧺 Ingrédients', items: () => [item('myrtille', 22), item('fraise', 34), item('mais', 34), item('pomme', 22)] },
+          { id: 'recettes', label: '📖 Recettes', items: () => recipes(['tarte-myrtille', 'crepe']) },
+        ];
+      case 'atelier':
+        return [
+          { id: 'chalet', label: '🪵 Meubles de chalet', items: shopFurn('atelier') },
+          { id: 'foret', label: '🌲 De la forêt', items: () => [item('pomme-pin', 14), item('champignon', 24), item('myrtille', 22)] },
+          { id: 'recettes', label: '📖 Recettes', items: () => recipes(['soupe-bois']) },
+          { id: 'vendre', label: '💰 Vendre' },
+        ];
+      case 'capitainerie':
+        return [
+          { id: 'marine', label: '⚓ Déco marine', items: shopFurn('capitainerie') },
+          { id: 'peche', label: '🎣 Pêche', items: () => [item('appat', 12), item('poisson', 40),
+            { id: 'rod:fibre', label: 'Canne en fibre', emoji: '🎣', price: 800, desc: 'Ça mord plus vite, zone plus large.', owned: ['fibre', 'doree'].includes(this.fishing.rod), buy: () => this.setRod('fibre') },
+            { id: 'rod:doree', label: 'Canne dorée', emoji: '✨', price: 3000, desc: 'La meilleure : poissons rares plus fréquents.', owned: this.fishing.rod === 'doree', buy: () => this.setRod('doree') }] },
+          { id: 'recettes', label: '📖 Recettes', items: () => recipes(['brochette', 'maki']) },
+          { id: 'vendre', label: '💰 Vendre' },
+        ];
+      case 'galerie':
+        return [{ id: 'tableaux', label: '🖼️ Tableaux & art', items: shopFurn('galerie') }];
+      case 'plongee':
+        return [
+          { id: 'lagon', label: '🐠 Trésors du lagon', items: shopFurn('plongee') },
+          { id: 'recettes', label: '📖 Recettes', items: () => recipes(['salade-tropicale']) },
+        ];
+      case 'paillote':
+        return [
+          { id: 'boissons', label: '🍹 Rafraîchissements', items: () => [item('glace', 42), item('cocktail', 55), item('jus-coco', Math.round(ITEMS['jus-coco'].price * 1.4)), item('noix-coco', 36)] },
+          { id: 'plage', label: '🏖️ Esprit plage', items: shopFurn('paillote') },
+          { id: 'recettes', label: '📖 Recettes', items: () => recipes(['jus-coco']) },
+        ];
       default:
         return [{ id: 'rien', label: 'Boutique', items: () => [] }];
     }
@@ -680,7 +731,11 @@ export class Game {
     this.player.frozen = false;
     this.player.seated = false;
     if (s.placed) s.placed.occupied = false;
-    if (!s.ground) {
+    if (s.bath) {
+      const sp = this.world.islands.spring;
+      const a = Math.atan2(s.x - sp.x, s.z - sp.z);
+      this.player.teleport(sp.x + Math.sin(a) * (sp.r + 1.6), sp.z + Math.cos(a) * (sp.r + 1.6), a);
+    } else if (!s.ground) {
       const nx = this.player.pos.x + Math.sin(this.player.rotY) * 0.7;
       const nz = this.player.pos.z + Math.cos(this.player.rotY) * 0.7;
       this.player.teleport(nx, nz, this.player.rotY);
@@ -695,7 +750,8 @@ export class Game {
 
     if (this.sitting) {
       const mv = input.moveVector();
-      this.ui.setPrompt({ pos: this.player.pos.clone().add(up), title: '🪑 Assis', actions: [{ key: 'E', label: 'Se lever' }] });
+      const bath = this.sitting.bath;
+      this.ui.setPrompt({ pos: this.player.pos.clone().add(up), title: bath ? '♨️ Source chaude' : '🪑 Assis', sub: bath && this.archipelago.relaxed ? 'Bien-être actif ✨' : '', actions: [{ key: 'E', label: bath ? 'Sortir de l\'eau' : 'Se lever' }] });
       if (input.hit('KeyE', 'Space') || Math.hypot(mv.x, mv.y) > 0.3) this.standUp();
       return;
     }
@@ -810,6 +866,27 @@ export class Game {
     if (Math.hypot(jb.x - this.player.pos.x, jb.z - this.player.pos.z) < 1.8) {
       this.ui.setPrompt({ pos: new THREE.Vector3(jb.bx, 2.3 + 3.2, jb.bz), title: '📋 Petits boulots', sub: this.jobs.active ? 'Mission en cours' : 'Des missions payées chaque jour', actions: [{ key: 'E', label: 'Consulter' }] });
       if (input.hit('KeyE')) this.jobs.open();
+      return;
+    }
+
+    // Archipel : panneaux des voyages, longue-vue, source chaude.
+    const arch = this.archipelago;
+    const sign = !this.house.inside && arch.nearestSign();
+    if (sign) {
+      this.ui.setPrompt({ pos: new THREE.Vector3(sign.x - 1.2, this.player.pos.y + 3.4, sign.z - 1.2), title: '🧭 Voyages', sub: 'Le bateau de Nérée relie les villages', actions: [{ key: 'E', label: 'Voyager' }] });
+      if (input.hit('KeyE')) arch.open(sign);
+      return;
+    }
+    if (!this.house.inside && arch.nearTelescope()) {
+      const t = this.world.islands.telescope;
+      this.ui.setPrompt({ pos: new THREE.Vector3(t.x, t.y + 2.6, t.z), title: '🔭 Longue-vue', sub: this.world.sky.isNight ? 'Idéal pour observer les étoiles' : 'Vue sur tout l\'archipel', actions: [{ key: 'E', label: this.world.sky.isNight ? 'Observer le ciel' : 'Regarder au loin' }] });
+      if (input.hit('KeyE')) arch.stargaze();
+      return;
+    }
+    if (!this.house.inside && !this.vehicles.riding && arch.inSpring()) {
+      const sp = this.world.islands.spring;
+      this.ui.setPrompt({ pos: new THREE.Vector3(sp.x, sp.y + 2.2, sp.z), title: '♨️ Source chaude', sub: arch.bathedDay === this.world.sky.day ? 'Déjà détendu·e aujourd\'hui' : 'Bonus « Bien-être » une fois par jour', actions: [{ key: 'E', label: 'Se prélasser' }] });
+      if (input.hit('KeyE')) arch.bathe();
       return;
     }
 
@@ -1075,6 +1152,7 @@ export class Game {
       vehicles: this.vehicles.serialize(),
       jobs: this.jobs.serialize(),
       calendar: this.calendar.serialize(),
+      archipelago: this.archipelago.serialize(),
       settings: { ...this.settings, music: this.audio.musicOn, sfx: this.audio.sfxOn },
     });
   }
@@ -1105,6 +1183,7 @@ export class Game {
     this.vehicles.restore(s.vehicles);
     this.jobs.restore(s.jobs);
     this.calendar.restore(s.calendar);
+    this.archipelago.restore(s.archipelago);
     if (s.settings) {
       this.audio.musicOn = !!s.settings.music;
       this.audio.sfxOn = s.settings.sfx !== false;

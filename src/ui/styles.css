@@ -283,8 +283,13 @@ kbd, .key {
 #dialog-input { width: 100%; text-align: center; font-size: 20px; margin: 6px 0 10px; }
 #dialog-chips { justify-content: center; margin-bottom: 12px; }
 .dialog-buttons { display: flex; justify-content: center; gap: 10px; }
-.map-card { width: min(620px, 100%); text-align: center; }
-#bigmap { width: min(560px, 80vh, 100%); aspect-ratio: 1; border-radius: 22px; border: 3px solid var(--line); }
+.map-card { width: min(700px, 100%); text-align: center; }
+#bigmap { width: min(640px, 74vh, 100%); aspect-ratio: 1; border-radius: 22px; border: 3px solid var(--line); cursor: grab; touch-action: none; display: block; margin: 0 auto; }
+#bigmap:active { cursor: grabbing; }
+.map-wrap { position: relative; display: inline-block; max-width: 100%; }
+.map-tools { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.map-tools .btn { width: 38px; height: 38px; padding: 0; font-size: 18px; }
+.map-help { margin: 8px 0 0; }
 
 /* ---------- Tactile ---------- */
 

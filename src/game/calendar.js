@@ -60,12 +60,16 @@ export class Calendar {
     return this.festivalOn();
   }
 
+  birthdaysOf(season = this.season, day = this.dayInSeason) {
+    return Object.entries(BIRTHDAYS).filter(([, [s, d]]) => s === season && d === day).map(([id]) => id);
+  }
+
   birthdayOf(season = this.season, day = this.dayInSeason) {
-    return Object.entries(BIRTHDAYS).find(([, [s, d]]) => s === season && d === day)?.[0] || null;
+    return this.birthdaysOf(season, day)[0] || null;
   }
 
   isBirthday(villagerId) {
-    return this.birthdayOf() === villagerId;
+    return this.birthdaysOf().includes(villagerId);
   }
 
   /** Prix de vente, avec les bonus de fête. */
@@ -91,10 +95,10 @@ export class Calendar {
     if (f?.id === 'peche' && this.contest?.day !== day) this.contest = { day, best: 0, fish: null, done: false };
     if (!announce) return;
     if (f) setTimeout(() => g.ui.toast(`${f.emoji} Aujourd'hui : ${f.label} ! ${f.desc}`, 6000), 1800);
-    const b = this.birthdayOf();
-    if (b) {
-      const v = g.villagers.get(b);
-      setTimeout(() => g.ui.toast(`🎂 C'est l'anniversaire de ${v.def.name} aujourd'hui ! Un cadeau lui ferait très plaisir.`, 5000), f ? 7000 : 1800);
+    const bs = this.birthdaysOf();
+    if (bs.length) {
+      const names = bs.map((id) => g.villagers.get(id).def.name).join(' et de ');
+      setTimeout(() => g.ui.toast(`🎂 C'est l'anniversaire de ${names} aujourd'hui ! Un cadeau leur ferait très plaisir.`, 5000), f ? 7000 : 1800);
     }
   }
 
@@ -122,10 +126,10 @@ export class Calendar {
     // Veille d'anniversaire.
     const tomorrowSeason = Math.floor(day / DAYS_PER_SEASON) % 4;
     const tomorrowDay = (day % DAYS_PER_SEASON) + 1;
-    const b = this.birthdayOf(tomorrowSeason, tomorrowDay);
-    if (b) {
-      const v = g.villagers.get(b);
-      this.addLetter({ from: 'rose', text: `Psst ! Demain, c'est l'anniversaire de ${v.def.name}. Ne l'oublie pas, un petit cadeau lui ferait tant plaisir ! 🎂` });
+    const bs = this.birthdaysOf(tomorrowSeason, tomorrowDay);
+    if (bs.length) {
+      const names = bs.map((id) => g.villagers.get(id).def.name).join(' et de ');
+      this.addLetter({ from: 'rose', text: `Psst ! Demain, c'est l'anniversaire de ${names}. N'oublie pas, un petit cadeau fait toujours tant plaisir ! 🎂` });
     }
     // Nuit des étoiles : tout le monde envoie un petit mot.
     if (this.festival?.id === 'etoiles') {

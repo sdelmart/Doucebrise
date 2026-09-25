@@ -251,12 +251,258 @@ export const VILLAGERS = [
       shop: 'Deux roues, quatre roues, zéro roue… j\'ai tout ce qu\'il te faut !',
     },
   },
+  // --- Bourg-Sapin -------------------------------------------------------------------
+  {
+    id: 'aurele',
+    name: 'Grand-père Aurèle',
+    emoji: '👴',
+    house: 8,
+    shop: null,
+    job: 'Gardien de la source',
+    work: { at: (w) => ({ x: w.islands.spring.x - 7, z: w.islands.spring.z + 1.5, rot: Math.PI / 2 }), path: [[-120, -136], [-117, -148]] },
+    appearance: { skin: '#e6ae88', height: 0.9, build: 1.05, eyes: 'doux', eyeColor: '#3f7cc0', brows: 'epais', mouth: 'sourire', blush: true, lashes: false, hair: 'rase', hairColor: '#f7f5f0', hairTip: '#f7f5f0', top: 'pull', topColor: '#c0584a', topColor2: '#fff3d6', pattern: 'carreaux', bottom: 'pantalon', bottomColor: '#6b4a3a', shoes: 'bottes', shoesColor: '#6b4a3a', hat: 'bonnet', hatColor: '#3d5a98', glasses: 'rondes', glassesColor: '#c58b52', back: 'echarpe', backColor: '#ffd84d' },
+    loves: ['edelweiss', 'soupe', 'tarte-myrtille'],
+    likes: ['myrtille', 'champignon', 'pomme-pin', 'cristal', 'jus'],
+    dislikes: ['maki'],
+    rewards: { 40: { items: { 'pomme-pin': 5 } }, 60: { furniture: 'poele' }, 100: { furniture: 'lampe-lune' } },
+    lines: {
+      hello: ['Ah, un visiteur ! Approche, approche, l\'eau est bonne.', 'Bonjour, jeune pousse. Tu as l\'air d\'avoir marché longtemps.', 'Les étoiles m\'avaient dit que tu viendrais.'],
+      friend: ['Tu es toujours le bienvenu près de ma source.', 'Tu me rappelles le temps où le phare brillait tous les soirs.'],
+      chat: [
+        'Un bain à la source chaude, et tous les soucis s\'envolent. Essaie donc !',
+        'La nuit, depuis le belvédère, on voit filer des étoiles. Fais un vœu, surtout !',
+        'Les edelweiss ne poussent que là-haut, près des cristaux. Ce sont des fleurs courageuses.',
+        'Le Pic des Neiges garde son manteau blanc toute l\'année. Il n\'aime pas avoir froid aux épaules.',
+        'Quand j\'étais jeune, on traversait le Pont des Brumes à la lanterne.',
+      ],
+      rain: ['La pluie chante sur les toits des chalets. Écoute…'],
+      snow: ['Rien ne vaut un bain chaud quand il neige.'],
+      autumn: ['Les mélèzes deviennent dorés. C\'est ma saison préférée.'],
+      evening: ['Regarde le ciel ce soir. Il se passe toujours quelque chose là-haut.'],
+      gift: { love: 'Oh… tu m\'as fait un vieux cœur tout neuf. Merci.', like: 'Merci, c\'est très gentil.', neutral: 'Merci, jeune pousse.', dislike: 'Hmm, je ne suis pas sûr de savoir quoi en faire.' },
+      shop: '',
+    },
+  },
+  {
+    id: 'elise',
+    name: 'Élise',
+    emoji: '👩‍🍳',
+    house: 9,
+    shop: 'patisserie',
+    job: 'Pâtissière',
+    appearance: { skin: '#fbd5bd', height: 0.98, eyes: 'rieurs', eyeColor: '#6b4226', brows: 'fins', mouth: 'rire', blush: true, freckles: true, lashes: true, hair: 'chignon', hairColor: '#c58b52', hairTip: '#e3b875', top: 'robe', topColor: '#fff3d6', topColor2: '#ff8fab', pattern: 'carreaux', shoes: 'ballerines', shoesColor: '#c0584a', hat: 'noeud', hatColor: '#ff6f91', glasses: 'aucune', back: 'aucun' },
+    loves: ['tarte', 'fraise', 'confiture'],
+    likes: ['myrtille', 'pomme', 'jus', 'crepe', 'edelweiss'],
+    dislikes: ['poisson'],
+    rewards: { 40: { recipe: 'crepe' }, 60: { furniture: 'gateau-etage' }, 100: { recipe: 'tarte-myrtille' } },
+    lines: {
+      hello: ['Bonjour ! Ça sent bon, hein ? Ce sont mes croissants !', 'Coucou ! Tu tombes à pic, la fournée sort du four !', 'Oh, un nouveau visage ! Tu veux goûter ?'],
+      friend: ['Pour toi, j\'ai toujours une petite douceur en réserve.', 'Tu es mon goûteur officiel, maintenant !'],
+      chat: [
+        'Le secret d\'une bonne tarte aux myrtilles ? Des myrtilles cueillies le matin !',
+        'Un chocolat chaud au coin du feu, c\'est le paradis, non ?',
+        'Grand-père Aurèle prend toujours deux croissants. Il dit que c\'est pour les oiseaux…',
+        'Hugo m\'a fabriqué un rouleau à pâtisserie. Il est trop beau pour s\'en servir !',
+        'J\'ai appris la pâtisserie à Port-Corail, avant de monter vivre ici.',
+      ],
+      rain: ['Jour de pluie, jour de gâteaux !'],
+      snow: ['La neige, c\'est comme du sucre glace sur le monde.'],
+      autumn: ['Tarte aux pommes et cannelle… l\'automne, quoi !'],
+      evening: ['Le soir, je prépare la pâte de demain. Elle doit dormir, elle aussi !'],
+      gift: { love: 'Ooooh ! Tu sais parler à mon cœur de pâtissière !', like: 'Merci ! Je vais en faire quelque chose de bon !', neutral: 'Merci, c\'est gentil !', dislike: 'Oh… ça ne va pas trop dans mes gâteaux, ça.' },
+      shop: 'Des douceurs toutes chaudes, et quelques recettes secrètes !',
+    },
+  },
+  {
+    id: 'hugo',
+    name: 'Hugo',
+    emoji: '🪓',
+    house: 10,
+    shop: 'atelier',
+    job: 'Bûcheron-sculpteur',
+    appearance: { skin: '#d39469', height: 1.12, build: 1.25, head: 0.98, eyes: 'points', eyeColor: '#3b2519', brows: 'epais', mouth: 'sourire', blush: true, lashes: false, hair: 'boucles', hairColor: '#8a4a2a', hairTip: '#8a4a2a', top: 'veste', topColor: '#e5484d', topColor2: '#2e2e3a', pattern: 'carreaux', bottom: 'pantalon', bottomColor: '#3d5a98', shoes: 'bottes', shoesColor: '#6b4a3a', hat: 'bonnet', hatColor: '#ffd84d', glasses: 'aucune', back: 'aucun' },
+    loves: ['soupe', 'omelette', 'pomme-pin'],
+    likes: ['champignon', 'myrtille', 'tarte', 'mais', 'croissant'],
+    dislikes: ['fleur', 'hibiscus'],
+    rewards: { 40: { furniture: 'banc-rondins' }, 60: { furniture: 'luge' }, 100: { furniture: 'lit-chalet' } },
+    lines: {
+      hello: ['Salut ! Attention aux copeaux !', 'Hé ! Belle journée pour couper du bois.', 'Tiens, bonjour. Tu viens voir mes sculptures ?'],
+      friend: ['Tu sais, je t\'ai sculpté un petit truc. …Plus tard. Il n\'est pas fini.', 'T\'es solide, toi. Comme un vieux chêne.'],
+      chat: [
+        'Chaque arbre que je coupe, j\'en replante deux. C\'est la règle de la montagne.',
+        'Bruno, sur l\'île principale ? On se dispute toujours sur le meilleur bois. Il a tort.',
+        'Les pommes de pin, ça fait de super allume-feux. Et les écureuils adorent !',
+        'Mon poêle à bois chauffe tout le chalet. Je peux t\'en fabriquer un.',
+        'Le vent du nord sent la résine. J\'adore ça.',
+      ],
+      rain: ['La pluie, ça fait pousser les sapins. Pas de quoi se plaindre !'],
+      snow: ['Luge ! Qui vient faire de la luge ?'],
+      autumn: ['L\'automne, je rentre le bois pour l\'hiver. Tout un art.'],
+      evening: ['Rien de mieux qu\'une soirée au coin du feu.'],
+      gift: { love: 'Ha ! C\'est parfait ! Merci, l\'ami !', like: 'Super, merci !', neutral: 'Merci bien.', dislike: 'Euh… je vais le poser sur une étagère. Tout en haut.' },
+      shop: 'Des meubles de chalet, taillés dans le pin de l\'île !',
+    },
+  },
+  {
+    id: 'sacha',
+    name: 'Sacha',
+    emoji: '🧗',
+    house: 11,
+    shop: null,
+    job: 'Guide de montagne',
+    work: { at: (w) => ({ x: w.islands.telescope.x - 2.2, z: w.islands.telescope.z + 2.2, rot: 2.4 }), path: [[-140, -134], [-156, -150], [-166, -158]], wander: 3 },
+    appearance: { skin: '#b87850', height: 1.02, build: 0.98, eyes: 'petillants', eyeColor: '#3d9970', brows: 'froncés', mouth: 'sourire', blush: false, freckles: true, lashes: true, hair: 'queue', hairColor: '#2a1d17', hairTip: '#6e4430', top: 'sweat', topColor: '#6fcf97', topColor2: '#2e2e3a', pattern: 'uni', bottom: 'pantalon', bottomColor: '#7a7f8c', shoes: 'baskets', shoesColor: '#ff8a3d', hat: 'casquette', hatColor: '#ff8a3d', glasses: 'soleil', glassesColor: '#4e4c62', back: 'sac', backColor: '#e5484d' },
+    loves: ['cristal', 'jus-coco', 'brochette'],
+    likes: ['myrtille', 'pomme', 'noix-coco', 'jus', 'edelweiss'],
+    dislikes: ['confiture'],
+    rewards: { 40: { items: { cristal: 2 } }, 60: { furniture: 'skis-deco' }, 100: { clothing: 'back:sacRando' } },
+    lines: {
+      hello: ['Yo ! Tu montes au sommet aujourd\'hui ?', 'Salut ! Belle visibilité ce matin, on voit jusqu\'au phare !', 'Hé ! Toi aussi tu cherches les cristaux ?'],
+      friend: ['On forme une super cordée, toi et moi.', 'Un jour, on grimpera ensemble jusqu\'aux nuages !'],
+      chat: [
+        'Les cristaux poussent sur les flancs du Pic. Ils brillent même la nuit !',
+        'Du belvédère, la longue-vue montre toute l\'île. Et la nuit… les étoiles filantes !',
+        'Le Lac Miroir porte bien son nom : le matin, il reflète le Pic à la perfection.',
+        'Ne cours pas trop sur les chemins de montagne, ça glisse !',
+        'Mon rêve ? Voir une aurore boréale depuis le sommet. Il paraît que ça arrive en hiver.',
+      ],
+      rain: ['Pas de grimpe sous la pluie. Même moi je suis raisonnable !'],
+      snow: ['La neige fraîche, c\'est magique… mais attention où tu mets les pieds.'],
+      autumn: ['Les couleurs de l\'automne vues d\'en haut, c\'est dingue.'],
+      evening: ['Le coucher de soleil depuis le belvédère… je ne m\'en lasse pas.'],
+      gift: { love: 'Génial ! Tu me connais par cœur !', like: 'Top, merci !', neutral: 'Merci !', dislike: 'Ah… on va dire que c\'est l\'intention qui compte.' },
+      shop: '',
+    },
+  },
+  // --- Port-Corail -------------------------------------------------------------------
+  {
+    id: 'neree',
+    name: 'Capitaine Nérée',
+    emoji: '🧑‍✈️',
+    house: 17,
+    shop: 'capitainerie',
+    job: 'Capitaine du port',
+    appearance: { skin: '#7a4630', height: 1.08, build: 1.15, eyes: 'doux', eyeColor: '#3b2519', brows: 'epais', mouth: 'sourire', blush: false, lashes: false, hair: 'court', hairColor: '#dcdde3', hairTip: '#dcdde3', top: 'veste', topColor: '#ffffff', topColor2: '#3d5a98', pattern: 'uni', bottom: 'pantalon', bottomColor: '#3d5a98', shoes: 'bottes', shoesColor: '#2e2e3a', hat: 'capitaine', hatColor: '#3d5a98', glasses: 'aucune', back: 'aucun' },
+    loves: ['brochette', 'maki', 'perle'],
+    likes: ['poisson', 'noix-coco', 'soupe', 'corail', 'etoile-mer'],
+    dislikes: ['edelweiss'],
+    rewards: { 40: { items: { appat: 10 } }, 60: { furniture: 'maquette-bateau' }, 100: { furniture: 'barre-gouvernail' } },
+    lines: {
+      hello: ['Bienvenue à bord ! Enfin, à terre. Enfin, bienvenue !', 'Ahoy, matelot !', 'Belle marée aujourd\'hui. Tout va bien au port.'],
+      friend: ['Tu as le pied marin, je le vois tout de suite.', 'Tant que je serai capitaine, tu auras toujours une place sur mon bateau.'],
+      chat: [
+        'Mon bateau-navette relie les villages. Parle-moi si tu veux voyager !',
+        'Marin, sur l\'île principale ? On a fait nos premières pêches ensemble. On se dispute encore sur qui a pris le plus gros.',
+        'Le lagon regorge de poissons colorés. Coralie les connaît tous par leur prénom.',
+        'Les poteaux « Voyages » sur les places te ramènent vite d\'un village à l\'autre.',
+        'Un bon capitaine écoute toujours la mer. Elle a beaucoup à dire.',
+      ],
+      rain: ['Grain à l\'horizon ! Rentrez les voiles !'],
+      snow: ['De la neige sur les palmiers… voilà qui est rare !'],
+      autumn: ['Les tempêtes d\'automne font de belles vagues.'],
+      evening: ['Le phare du port s\'allume. La journée est finie, matelot.'],
+      gift: { love: 'Par tous les océans ! C\'est un trésor !', like: 'Merci, matelot !', neutral: 'C\'est gentil.', dislike: 'Hmm… Je vais le donner aux mouettes.' },
+      shop: 'Voyages, appâts et trésors de marin !',
+    },
+  },
+  {
+    id: 'coralie',
+    name: 'Coralie',
+    emoji: '🤿',
+    house: 19,
+    shop: 'plongee',
+    job: 'Biologiste marine',
+    appearance: { skin: '#9a5f3e', height: 1.0, eyes: 'rond', eyeColor: '#4fb6c9', brows: 'doux', mouth: 'sourire', blush: true, lashes: true, hair: 'couettes', hairColor: '#2a1d17', hairTip: '#7fdcbd', top: 'tshirt', topColor: '#7fdcbd', topColor2: '#ffffff', pattern: 'rayures', bottom: 'short', bottomColor: '#3d5a98', shoes: 'sabots', shoesColor: '#ffd84d', hat: 'aucun', hatColor: '#ffd84d', glasses: 'rondes', glassesColor: '#4fb6c9', back: 'aucun' },
+    loves: ['corail', 'jus-coco', 'salade-tropicale'],
+    likes: ['etoile-mer', 'coquillage', 'perle', 'fraise', 'hibiscus'],
+    dislikes: ['maki', 'brochette'],
+    rewards: { 40: { furniture: 'bocal-poisson' }, 60: { furniture: 'aquarium' }, 100: { clothing: 'glasses:plongee' } },
+    lines: {
+      hello: ['Salut ! Tu as vu la raie manta ce matin ?', 'Coucou ! J\'ai les cheveux encore mouillés, désolée !', 'Bonjour ! Le lagon est magnifique aujourd\'hui.'],
+      friend: ['Tu es comme un poisson-clown : toujours là quand il faut.', 'On devrait faire une sortie en bateau ensemble !'],
+      chat: [
+        'Les coraux du lagon abritent des centaines d\'espèces. Il faut les protéger !',
+        'Parfois, en ramassant du corail, on trouve une perle. C\'est très rare !',
+        'La raie manta ne vient que les soirs d\'été, au lagon. Un vrai rêve de pêcheur.',
+        'Les étoiles de mer peuvent faire repousser leurs bras. Incroyable, non ?',
+        'J\'étudie les tortues de la Plage Coquillage. Elles reviennent chaque année !',
+      ],
+      rain: ['Sous l\'eau, la pluie ne mouille pas ! Ha ha !'],
+      snow: ['Même en hiver, le lagon reste doux. Un petit miracle.'],
+      autumn: ['L\'automne, les poissons migrateurs passent par ici.'],
+      evening: ['La nuit, le plancton brille dans le lagon. C\'est magique.'],
+      gift: { love: 'Waouh ! Merci infiniment !', like: 'Trop gentil !', neutral: 'Merci !', dislike: 'Oh non… pauvres poissons.' },
+      shop: 'Aquariums, bocaux et petits trésors du lagon !',
+    },
+  },
+  {
+    id: 'paco',
+    name: 'Paco',
+    emoji: '🍹',
+    house: 14,
+    shop: 'paillote',
+    job: 'Patron de la paillote',
+    work: { at: (w) => w.village.shopSpots.paillote, path: [[162, 76], [184, 86], [190, 94]] },
+    appearance: { skin: '#c68a5e', height: 1.05, build: 1.1, eyes: 'rieurs', eyeColor: '#3b2519', brows: 'doux', mouth: 'rire', blush: true, lashes: false, hair: 'herisse', hairColor: '#2a1d17', hairTip: '#ffcf5c', top: 'tshirt', topColor: '#ffb27a', topColor2: '#6fcf97', pattern: 'fleurs', bottom: 'short', bottomColor: '#6fa8dc', shoes: 'sabots', shoesColor: '#ff6f91', hat: 'paille', hatColor: '#ff6f91', glasses: 'soleil', glassesColor: '#ff8fab', back: 'aucun' },
+    loves: ['jus-coco', 'popcorn', 'glace'],
+    likes: ['noix-coco', 'fraise', 'jus', 'hibiscus', 'mais'],
+    dislikes: ['soupe'],
+    rewards: { 40: { recipe: 'jus-coco' }, 60: { furniture: 'bouee-licorne' }, 100: { furniture: 'bar-tiki' } },
+    lines: {
+      hello: ['Holaaa ! Un petit jus ?', 'Hé, l\'ami ! Pose-toi, profite du soleil !', 'Bienvenue à la paillote, le meilleur endroit du monde !'],
+      friend: ['Pour toi, c\'est toujours la maison qui régale !', 'Toi, tu as compris le secret de la vie : profiter !'],
+      chat: [
+        'Le secret d\'un bon jus de coco ? Une noix fraîchement tombée !',
+        'Les couchers de soleil sur le lagon… rien ne bat ça. Rien !',
+        'J\'organise parfois des soirées au bord de l\'eau. Il y a de la musique et des lampions !',
+        'Coralie dit que je fais peur aux poissons avec mes chansons. Jalouse !',
+        'Tu as essayé le hamac ? Attention, on ne peut plus en sortir.',
+      ],
+      rain: ['La pluie ? Parfait pour un chocolat… euh, un jus chaud ?'],
+      snow: ['De la neige à la plage ?! On fait un bonhomme de sable-neige !'],
+      autumn: ['L\'automne, c\'est encore l\'été ici. Enfin presque.'],
+      evening: ['Le soir, les lampions s\'allument. C\'est l\'heure de danser !'],
+      gift: { love: '¡Increíble! Tu es un·e champion·ne !', like: 'Ooh merci, l\'ami !', neutral: 'Merci, c\'est cool.', dislike: 'Aïe aïe aïe… non merci, amigo.' },
+      shop: 'Jus, glaces et tout pour la plage !',
+    },
+  },
+  {
+    id: 'maelys',
+    name: 'Maëlys',
+    emoji: '🎨',
+    house: 18,
+    shop: 'galerie',
+    job: 'Peintre',
+    appearance: { skin: '#ffe6d6', height: 0.96, eyes: 'chat', eyeColor: '#7a5cc2', brows: 'fins', mouth: 'langue', blush: true, lashes: true, hair: 'carre', hairColor: '#7fb8ff', hairTip: '#c7a4ff', top: 'salopette', topColor: '#fff3d6', topColor2: '#b69cf0', pattern: 'pois', bottom: 'short', shoes: 'baskets', shoesColor: '#b69cf0', hat: 'beret', hatColor: '#e5484d', glasses: 'aucune', back: 'aucun' },
+    loves: ['hibiscus', 'edelweiss', 'crepe'],
+    likes: ['fleur', 'coquillage', 'etoile-mer', 'confiture', 'cristal'],
+    dislikes: ['champignon'],
+    rewards: { 40: { furniture: 'tableau-phare' }, 60: { furniture: 'chevalet' }, 100: { furniture: 'portrait' } },
+    lines: {
+      hello: ['Oh ! Ne bouge pas, la lumière est parfaite sur toi !', 'Bonjour ! Tu aimes les couleurs ? Moi, je les adore.', 'Coucou ! J\'ai de la peinture sur le nez, c\'est ça ?'],
+      friend: ['Tu es ma muse, tu le sais ?', 'Un jour, je peindrai ton portrait. Un vrai !'],
+      chat: [
+        'Le phare au coucher du soleil… c\'est mon tableau préféré.',
+        'Prends des photos (touche O) et montre-les-moi ! J\'adore les belles lumières.',
+        'Les maisons du port, je les ai toutes aidé à peindre. Chacune sa couleur !',
+        'La montagne des Pins est si différente d\'ici. Deux mondes, une seule île… enfin, un archipel !',
+        'Le bleu du lagon, je n\'arrive jamais à le reproduire. Il est trop beau.',
+      ],
+      rain: ['La pluie adoucit toutes les couleurs. C\'est poétique.'],
+      snow: ['Le blanc, c\'est la couleur la plus difficile à peindre.'],
+      autumn: ['Orange, ocre, carmin… mes pinceaux sont en fête !'],
+      evening: ['L\'heure dorée ! Vite, mon chevalet !'],
+      gift: { love: 'C\'est une œuvre d\'art ! Merci !', like: 'Oh, charmant ! Merci !', neutral: 'Merci, c\'est gentil.', dislike: 'Hmm… ça ne m\'inspire pas trop.' },
+      shop: 'Des tableaux pour égayer ta maison !',
+    },
+  },
 ];
 
 
 // Anniversaires : saison (0 printemps … 3 hiver) et jour de la saison.
 export const BIRTHDAYS = {
   noe: [0, 1], lila: [0, 3], pomme: [1, 1], marin: [1, 3], mimi: [2, 1], rose: [2, 3], bruno: [3, 1], leo: [3, 3],
+  elise: [0, 2], sacha: [0, 1], coralie: [1, 1], paco: [1, 2], neree: [1, 3], maelys: [2, 2], hugo: [3, 1], aurele: [3, 2],
 };
 
 // Scènes d'amitié : à 2 puis 4 cœurs, une confidence et un choix de réponse.
@@ -350,6 +596,97 @@ export const HEART_EVENTS = {
   ],
 };
 
+Object.assign(HEART_EVENTS, {
+  aurele: [
+    { at: 40, text: 'Tu sais pourquoi je veille sur cette source ? Ma femme adorait s\'y baigner en regardant les étoiles. Depuis, je la garde chaude pour elle.', choices: [
+      c('C\'est une belle façon de se souvenir.', 'Oui… Et maintenant, elle a des visiteurs. Ça lui aurait plu.', 10),
+      c('Elle doit veiller sur vous de là-haut.', 'Tu crois ? Alors je lui ferai un signe ce soir. Merci, jeune pousse.', 9),
+      c('L\'eau n\'est pas trop chaude ?', 'Ha ha ! Juste ce qu\'il faut pour de vieux os.', 3),
+    ] },
+    { at: 80, text: 'Autrefois, on voyait le phare de Doucebrise depuis le belvédère. Il guidait les bateaux de nuit. Grâce à toi, j\'ai l\'impression qu\'il brille de nouveau… même quand il est éteint.', choices: [
+      c('On le rallumera ensemble.', 'Ensemble… Oui. Tiens, prends cette lampe. Elle éclairait mes soirées d\'étoiles.', 10, { furniture: { 'lampe-lune': 1 } }),
+      c('Les étoiles aussi nous guident.', 'Tu as raison. Tiens, prends cette lampe, elle les imite si bien.', 10, { furniture: { 'lampe-lune': 1 } }),
+    ] },
+  ],
+  elise: [
+    { at: 40, text: 'Je vais te confier un secret : j\'ai raté mon premier gâteau d\'anniversaire. Il s\'est effondré devant tout le village ! J\'ai failli arrêter la pâtisserie.', choices: [
+      c('Et pourtant tu es devenue la meilleure !', 'La meilleure ? Oh, arrête… Bon, peut-être un peu. Hi hi !', 10),
+      c('Un gâteau effondré reste délicieux.', 'C\'est exactement ce que m\'a dit Aurèle ! Il en a mangé trois parts.', 9),
+      c('Tu aurais dû ajouter plus de farine.', 'Hmm… Merci pour le conseil, chef.', 2),
+    ] },
+    { at: 80, text: 'Je rêve de créer un gâteau qui raconte l\'archipel : une couche de montagne, une couche de lagon, et un phare au sommet. Tu m\'aides à le goûter ?', choices: [
+      c('Avec grand plaisir !', 'Parfait ! Tiens, voilà la recette de ma tarte aux myrtilles, pour te remercier.', 10, { recipe: 'tarte-myrtille' }),
+      c('Seulement s\'il y a de la crème !', 'Plein de crème ! Tiens, en attendant, ma recette de tarte aux myrtilles.', 10, { recipe: 'tarte-myrtille' }),
+    ] },
+  ],
+  hugo: [
+    { at: 40, text: 'Tu vois ce vieux sapin, là-bas ? C\'est mon grand-père qui l\'a planté. Je ne le couperai jamais. Il fait partie de la famille.', choices: [
+      c('Il est magnifique.', 'Hein ? Oui… il l\'est. Merci de le remarquer.', 10),
+      c('Tu devrais lui donner un nom !', 'Un nom ? …Gustave. Il s\'appellera Gustave. Ha !', 9),
+      c('Il ferait un beau buffet.', '…Jamais de la vie.', 1),
+    ] },
+    { at: 80, text: 'J\'ai fini ce que je sculptais pour toi. C\'est… un petit ours en bois. Il te ressemble, un peu. Enfin, je trouve.', choices: [
+      c('Il est adorable, merci !', 'Ha ! Je savais qu\'il te plairait. Et tiens, un lit de chalet, pour qu\'il ait où dormir.', 10, { furniture: { 'lit-chalet': 1 } }),
+      c('Je ne ressemble pas à un ours !', 'Si, un peu. Un gentil ours ! Tiens, un lit de chalet pour vous deux.', 8, { furniture: { 'lit-chalet': 1 } }),
+    ] },
+  ],
+  sacha: [
+    { at: 40, text: 'Un jour, je me suis perdue dans le brouillard, là-haut. J\'ai eu très peur. C\'est un cristal qui brillait qui m\'a montré le chemin.', choices: [
+      c('Tu es courageuse d\'y être retournée.', 'On ne laisse pas la peur décider à sa place. Mais merci.', 10),
+      c('Les cristaux protègent la montagne.', 'C\'est ce que je crois aussi. Tu es de la montagne, toi.', 9),
+      c('Tu devrais prendre une boussole.', 'J\'en ai trois maintenant. Ha ha !', 4),
+    ] },
+    { at: 80, text: 'Je voudrais emmener tout le monde voir le lever du soleil depuis le sommet. Mais ils disent que c\'est trop haut… Tu viendrais, toi ?', choices: [
+      c('Évidemment, je serai là !', 'Génial ! Tiens, mon vieux sac de rando. Il a vu tous les sommets.', 10, { clothing: 'back:sacRando' }),
+      c('On emmènera même Aurèle !', 'Sur mon dos s\'il le faut ! Tiens, mon sac de rando, il porte bonheur.', 10, { clothing: 'back:sacRando' }),
+    ] },
+  ],
+  neree: [
+    { at: 40, text: 'Mon premier bateau s\'appelait « La Douce ». Il a coulé dans une tempête… Je m\'en suis sorti grâce à Marin. Je ne l\'ai jamais vraiment remercié.', choices: [
+      c('Il n\'est jamais trop tard pour le faire.', 'Tu as raison, matelot. La prochaine fois que je le vois, je lui offre un maki.', 10),
+      c('Il le sait sûrement déjà.', 'Peut-être… Marin est un vieux loup de mer. Il comprend sans les mots.', 8),
+      c('Tu devrais racheter un bateau.', 'J\'en ai quatre au port, ha ha !', 3),
+    ] },
+    { at: 80, text: 'J\'ai baptisé ma nouvelle navette. Je voulais te demander… accepterais-tu qu\'elle porte ton nom ?', choices: [
+      c('Ce serait un honneur !', 'Alors c\'est dit ! Et tiens, la barre de mon ancien bateau. Accroche-la chez toi.', 10, { furniture: { 'barre-gouvernail': 1 } }),
+      c('Seulement si tu m\'emmènes naviguer !', 'Marché conclu ! Tiens, la barre de mon ancien bateau, en souvenir.', 10, { furniture: { 'barre-gouvernail': 1 } }),
+    ] },
+  ],
+  coralie: [
+    { at: 40, text: 'Quand j\'étais petite, j\'avais peur de l\'eau. C\'est une tortue qui m\'a donné envie de plonger : elle nageait si calmement…', choices: [
+      c('Et maintenant tu protèges les tortues !', 'La boucle est bouclée, hein ? Hi hi.', 10),
+      c('Les tortues sont de bonnes profs.', 'Les meilleures ! Patientes et sages.', 9),
+      c('Moi aussi j\'ai peur de l\'eau…', 'On ira doucement, alors. Promis.', 6),
+    ] },
+    { at: 80, text: 'J\'ai trouvé une perle géante en nettoyant le lagon. Je voudrais qu\'elle serve à quelque chose de beau. Tu as une idée ?', choices: [
+      c('Offre-la au phare, comme une lumière.', 'Quelle idée magnifique… Tiens, mes lunettes de plongée. Je veux que tu voies le lagon comme moi.', 10, { clothing: 'glasses:plongee' }),
+      c('Garde-la, elle te ressemble.', 'Oh… Merci. Tiens, mes lunettes de plongée, pour toi.', 10, { clothing: 'glasses:plongee' }),
+    ] },
+  ],
+  paco: [
+    { at: 40, text: 'Tu sais, avant, j\'étais cuisinier dans un grand restaurant, très loin. Toujours pressé, toujours stressé. Ici, j\'ai appris à respirer.', choices: [
+      c('La paillote te va beaucoup mieux.', 'Hein ? Oui ! Le soleil, le lagon, les amis… Que demander de plus ?', 10),
+      c('Tu cuisines toujours aussi bien !', 'Ha ! Mes jus sont des chefs-d\'œuvre, c\'est vrai.', 9),
+      c('Tu ne t\'ennuies pas ?', 'M\'ennuyer ? Avec un hamac ? Jamais !', 4),
+    ] },
+    { at: 80, text: 'J\'organise une fête sur la plage pour tout l\'archipel. Tu seras mon invité·e d\'honneur ! Tu choisis la musique ?', choices: [
+      c('De la musique douce, au coucher du soleil.', 'Parfait ! Et tiens, mon bar tiki. Pour que la fête continue chez toi !', 10, { furniture: { 'bar-tiki': 1 } }),
+      c('Des chansons de Paco, évidemment !', 'Ha ha ! Tu es mon public préféré ! Tiens, mon bar tiki, amigo.', 10, { furniture: { 'bar-tiki': 1 } }),
+    ] },
+  ],
+  maelys: [
+    { at: 40, text: 'Je peins beaucoup, mais je ne montre presque rien. J\'ai peur qu\'on trouve mes tableaux… ratés.', choices: [
+      c('Tes couleurs rendent les gens heureux.', 'C\'est vrai ? … Alors je vais en exposer un de plus.', 10),
+      c('Moi, je les trouve magnifiques.', 'Tu dis ça pour me faire plaisir… mais ça marche. Merci.', 9),
+      c('Certains sont un peu étranges…', 'Étranges… C\'est peut-être un compliment, non ?', 4),
+    ] },
+    { at: 80, text: 'J\'ai fini le portrait dont je t\'avais parlé. C\'est… toi, au milieu de l\'archipel, avec le phare derrière. Tu veux le voir ?', choices: [
+      c('Oh, c\'est magnifique !', 'Il est à toi. Accroche-le chez toi, et pense à moi en le regardant !', 10, { furniture: { portrait: 1 } }),
+      c('Tu m\'as fait plus beau/belle qu\'en vrai !', 'Pas du tout ! Je peins ce que je vois. Tiens, il est pour toi.', 10, { furniture: { portrait: 1 } }),
+    ] },
+  ],
+});
+
 // Petites phrases en bulle (quand on passe à côté) et bavardages entre voisins.
 export const BUBBLES = {
   rose: ['♪ Tra la la…', 'Mes tomates poussent bien !', 'Quelle douceur, aujourd\'hui.'],
@@ -360,6 +697,14 @@ export const BUBBLES = {
   noe: ['Vrouuuum !', 'Un papillon !', 'Je suis un explorateur !'],
   mimi: ['Minou minou !', 'Miaou ♪', 'Qui veut de la pâtée ?'],
   leo: ['Vroum vroum !', 'Où est ma clé de 12 ?', 'Pouet pouet !'],
+  aurele: ['Ahh, quelle vue…', 'Les étoiles seront belles ce soir.', '*fredonne une vieille chanson*'],
+  elise: ['Croissants tout chauds !', 'Un peu plus de sucre…', '♪ Tarte, tarte, tarte…'],
+  hugo: ['Toc, toc, toc…', 'Du bon pin, ça !', 'Qui veut une bûche ?'],
+  sacha: ['On grimpe ?', 'Quelle vue !', 'Le sommet m\'appelle !'],
+  neree: ['Ahoy !', 'Vent d\'ouest, bonne pêche.', 'Larguez les amarres !'],
+  coralie: ['Une tortue !', 'Le lagon est si clair…', 'Blub blub !'],
+  paco: ['¡Hola!', 'Jus de coco frais !', '♪ La la la, la playa…'],
+  maelys: ['Quelle lumière !', 'Un peu de bleu ici…', 'Ne bouge pas !'],
 };
 
 export const CHATTER = [
@@ -373,6 +718,12 @@ export const CHATTER = [
   ['Tu crois qu\'il va pleuvoir ?', 'Mes genoux disent que oui !'],
   ['Les lapins ont encore mangé mes carottes.', 'Ils sont trop mignons pour qu\'on leur en veuille !'],
   ['Tu connais le mot de passe du club de Noé ?', 'Chut, c\'est secret !'],
+  ['Tu es montée au belvédère ?', 'Oui ! On voit même le port d\'en haut !'],
+  ['Elle est chaude, la source, aujourd\'hui ?', 'Parfaite, comme toujours !'],
+  ['Les croissants d\'Élise…', 'Un délice. J\'en rêve la nuit.'],
+  ['Le bateau de Nérée repart à quelle heure ?', 'Quand il veut, c\'est le capitaine !'],
+  ['Tu as vu les couleurs du lagon ?', 'Maëlys dit qu\'elles sont impossibles à peindre.'],
+  ['On va à la paillote ce soir ?', 'Paco a promis des lampions !'],
 ];
 
 let bubbleTex = null;
@@ -402,26 +753,29 @@ function bubbleTexture() {
 const RING = 6.8;
 const WALK = 2.3;
 
-function ring(a) {
-  return [Math.cos(a) * RING, Math.sin(a) * RING];
+const MAIN_CENTER = { x: 0, z: 0, ring: RING };
+
+function ring(a, c = MAIN_CENTER) {
+  return [c.x + Math.cos(a) * c.ring, c.z + Math.sin(a) * c.ring];
 }
 
-/** Lieu : position finale + chemin d'approche depuis l'anneau de la place. */
-function location(pos, approach = [], rot = 0, extra = {}) {
+/** Lieu : position finale + chemin d'approche depuis l'anneau de la place du village. */
+function location(pos, approach = [], rot = 0, extra = {}, c = MAIN_CENTER) {
   const first = approach.length ? approach[0] : pos;
-  return { pos, approach: [...approach, pos], angle: Math.atan2(first[1], first[0]), rot, ...extra };
+  return { pos, approach: [...approach, pos], angle: Math.atan2(first[1] - c.z, first[0] - c.x), rot, center: c, ...extra };
 }
 
 function route(from, to) {
   const pts = [];
+  const c = to.center || MAIN_CENTER;
   const back = [...from.approach].reverse().slice(1);
   pts.push(...back);
   let a0 = from.angle;
   const a1 = to.angle;
   let d = ((a1 - a0 + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-  pts.push(ring(a0));
+  pts.push(ring(a0, c));
   const steps = Math.ceil(Math.abs(d) / 0.5);
-  for (let i = 1; i <= steps; i++) pts.push(ring(a0 + (d * i) / steps));
+  for (let i = 1; i <= steps; i++) pts.push(ring(a0 + (d * i) / steps, c));
   pts.push(...to.approach);
   return pts;
 }
@@ -457,14 +811,24 @@ export class Villager {
 
   buildLocations() {
     const v = this.game.world.village;
+    const house = v.houses[this.def.house];
+    const vid = house.village || 'main';
+    const c = v.centers?.[vid] || MAIN_CENTER;
+    this.villageId = vid;
     const door = v.doorFront(this.def.house);
     const doorPt = [door.x, door.z];
     const L = {};
-    L.home = location(doorPt, [[door.x * 0.62, door.z * 0.62]], door.rot + Math.PI, { inside: true });
+    const loc = (pos, approach, rot, extra) => location(pos, approach, rot, extra, c);
+    L.home = loc(doorPt, [[c.x + (door.x - c.x) * 0.62, c.z + (door.z - c.z) * 0.62]], door.rot + Math.PI, { inside: true });
     // Petite balade du matin : un point dégagé de la place.
-    const sa = Math.atan2(door.z, door.x) + 0.3;
-    L.stroll = location([Math.cos(sa) * 7.4, Math.sin(sa) * 7.4], [], door.rot);
-    if (this.def.shop) {
+    const sa = Math.atan2(door.z - c.z, door.x - c.x) + 0.3;
+    L.stroll = loc([c.x + Math.cos(sa) * (c.ring + 0.6), c.z + Math.sin(sa) * (c.ring + 0.6)], [], door.rot);
+    const w = this.def.work;
+    if (w) {
+      // Lieu de travail hors de la place, rejoint par un chemin.
+      const spot = typeof w.at === 'function' ? w.at(this.game.world) : w.at;
+      L.work = loc([spot.x, spot.z], (w.path || []).map((p) => [p[0], p[1]]), spot.rot ?? 0, { wander: w.wander, fishing: w.fishing });
+    } else if (this.def.shop) {
       // On contourne l'étal par le côté pour se placer derrière.
       const s = v.shopSpots[this.def.shop];
       const fx = Math.sin(s.rot);
@@ -472,20 +836,21 @@ export class Villager {
       const side = this.def.shop === 'marche' ? -2.4 : 1.9; // côté opposé aux tonneaux pour le marché
       const sx = fz * side;
       const sz = -fx * side;
-      L.work = location([s.x, s.z], [[s.x + fx * 2.2 + sx, s.z + fz * 2.2 + sz], [s.x + sx, s.z + sz]], s.rot);
+      L.work = loc([s.x, s.z], [[s.x + fx * 2.2 + sx, s.z + fz * 2.2 + sz], [s.x + sx, s.z + sz]], s.rot);
     } else if (this.def.id === 'marin') {
       const f = this.game.world.fishingSpots.find((sp) => sp.habitat === 'mer');
       const path = PATHS[4].slice(1).map((p) => [p[0], p[1]]);
-      L.work = location([f.x + 1.1, f.z - 5], path, 0, { fishing: true });
+      L.work = loc([f.x + 1.1, f.z - 5], path, 0, { fishing: true });
     } else {
       const path = PATHS[0].slice(1, 2).map((p) => [p[0], p[1]]);
-      L.work = location([42, 12], path, 0, { wander: 7 });
+      L.work = loc([42, 12], path, 0, { wander: 7 });
     }
-    const benchIndex = { rose: 0, bruno: 2, marin: 4, pomme: 6, lila: 1, noe: 7, mimi: 3, leo: 5 }[this.def.id];
-    const b = v.benches[benchIndex % v.benches.length];
+    const benches = v.benchesBy?.[vid] || v.benches;
+    const benchIndex = { rose: 0, bruno: 2, marin: 4, pomme: 6, lila: 1, noe: 7, mimi: 3, leo: 5, aurele: 0, elise: 3, hugo: 5, sacha: 6, neree: 1, coralie: 2, paco: 5, maelys: 7 }[this.def.id] ?? 0;
+    const b = benches[benchIndex % benches.length];
     const bx = b.x + Math.sin(b.rot) * 0.9;
     const bz = b.z + Math.cos(b.rot) * 0.9;
-    L.evening = location([b.x, b.z], [[bx * 0.75, bz * 0.75], [bx, bz]], b.rot, { sit: b.y });
+    L.evening = loc([b.x, b.z], [[c.x + (bx - c.x) * 0.75, c.z + (bz - c.z) * 0.75], [bx, bz]], b.rot, { sit: b.y });
     this.L = L;
   }
 

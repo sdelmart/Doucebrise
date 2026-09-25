@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { ITEMS } from './items.js';
 
-// Cueillette : baies, pommes, carottes, graines, champignons, coquillages, fleurs.
+// Cueillette : baies, pommes, carottes, graines, champignons, coquillages, fleurs,
+// et sur les îles : myrtilles, cristaux, pommes de pin, noix de coco, corail (perles).
 
 export class Resources {
   constructor(game) {
@@ -28,7 +29,7 @@ export class Resources {
     let best = null;
     let bestD = Infinity;
     for (const n of this.nodes) {
-      const reach = n.type === 'apple' ? maxDist + 1.1 : n.type === 'bush' ? maxDist + 0.5 : maxDist;
+      const reach = n.type === 'apple' || n.type === 'palm' ? maxDist + 1.1 : n.type === 'bush' || n.type === 'crystal' ? maxDist + 0.5 : maxDist;
       const d = Math.hypot(n.x - p.pos.x, n.z - p.pos.z);
       if (d < reach && d < bestD && this.available(n)) {
         best = n;
@@ -63,12 +64,19 @@ export class Resources {
     n.harvestedAt = this.now();
     g.world.vegetation.setResourceVisible(n, false);
     g.player.face(n.x, n.z);
-    g.player.character.play(n.type === 'apple' ? 'wave' : 'pick', 0.8);
+    g.player.character.play(n.type === 'apple' || n.type === 'palm' ? 'wave' : 'pick', 0.8);
     g.particles.emit('sparkle', new THREE.Vector3(n.x, n.y, n.z), { count: 2, spread: 0.8 });
     g.audio?.play('pick');
     const f = ITEMS[n.item];
     g.ui.toast(`+${count} ${f.emoji} ${f.label}`);
     g.emit('gather', { item: n.item, count });
+    // Trouvaille bonus (une perle dans le corail…).
+    if (n.bonus && Math.random() < n.bonus.chance * (1 + g.progress.perk('cueillette') * 0.1)) {
+      const b = ITEMS[n.bonus.item];
+      g.inventory[n.bonus.item] = (g.inventory[n.bonus.item] || 0) + 1;
+      setTimeout(() => g.ui.toast(`✨ Quelle chance ! +1 ${b.emoji} ${b.label}`, 3000), 500);
+      g.emit('gather', { item: n.bonus.item, count: 1 });
+    }
     g.progress.addXp('cueillette', 3 + count);
     g.ui.refreshInventory();
     g.requestSave();

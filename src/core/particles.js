@@ -74,6 +74,16 @@ const DRAW = {
     ctx.strokeText('!', 32, 34);
     ctx.fillText('!', 32, 34);
   },
+  smoke: (ctx) => {
+    const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+    g.addColorStop(0, 'rgba(255,255,255,0.85)');
+    g.addColorStop(0.6, 'rgba(245,245,250,0.35)');
+    g.addColorStop(1, 'rgba(240,240,250,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(32, 32, 30, 0, Math.PI * 2);
+    ctx.fill();
+  },
   drop: (ctx) => {
     ctx.fillStyle = '#8fd6f5';
     ctx.beginPath();
@@ -95,7 +105,7 @@ export class Particles {
     this.active = [];
   }
 
-  emit(kind, pos, { count = 1, spread = 0.3, rise = 0.9, life = 1.4, size = 0.35, delay = 0.12 } = {}) {
+  emit(kind, pos, { count = 1, spread = 0.3, rise = 0.9, life = 1.4, size = 0.35, delay = 0.12, grow = kind === 'smoke' ? 2.2 : 0, alpha = kind === 'smoke' ? 0.55 : 1 } = {}) {
     for (let i = 0; i < count; i++) {
       let sp = this.pool.pop();
       if (!sp) {
@@ -107,7 +117,7 @@ export class Particles {
       sp.visible = true;
       sp.position.set(pos.x + (Math.random() - 0.5) * spread, pos.y, pos.z + (Math.random() - 0.5) * spread);
       sp.scale.setScalar(0.001);
-      this.active.push({ sp, t: -i * delay, life, rise, size, drift: (Math.random() - 0.5) * 0.4 });
+      this.active.push({ sp, t: -i * delay, life, rise, size, grow, alpha, drift: (Math.random() - 0.5) * (kind === 'smoke' ? 0.8 : 0.4) });
     }
   }
 
@@ -126,8 +136,8 @@ export class Particles {
       p.sp.position.y += p.rise * dt;
       p.sp.position.x += p.drift * dt;
       const pop = Math.min(1, p.t * 6);
-      p.sp.scale.setScalar(p.size * pop * (1 + Math.sin(p.t * 8) * 0.05));
-      p.sp.material.opacity = k > 0.7 ? (1 - k) / 0.3 : 1;
+      p.sp.scale.setScalar(p.size * pop * (1 + Math.sin(p.t * 8) * 0.05) * (1 + p.grow * k));
+      p.sp.material.opacity = (k > 0.7 ? (1 - k) / 0.3 : 1) * p.alpha;
     }
   }
 }

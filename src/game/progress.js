@@ -1,4 +1,5 @@
 import { createRng } from '../core/math.js';
+import { ZONES } from '../world/layout.js';
 
 // Progression : métiers (XP et niveaux), défis du jour, succès, titres
 // et carnet d'étoiles (une piste de récompenses).
@@ -115,6 +116,21 @@ export const ACHIEVEMENTS = [
   A('scenes', 'Confident·e', 'Vivre 5 scènes d\'amitié.', (g, s) => s.heartEvent >= 5, { coins: 500 }),
   A('histoire', 'Le Cœur de Doucebrise', 'Rallumer le phare.', (g) => g.quests.lighthouseLit, { title: 'Cœur de Doucebrise', coins: 1000 }),
   A('chapitre-4', 'À mi-chemin', 'Terminer le chapitre 4.', (g) => g.quests.chapterIndex >= 4),
+  // Archipel.
+  A('bourg', 'Air de la montagne', 'Arriver à Bourg-Sapin.', (g) => g.progress.zones.has('bourg')),
+  A('port', 'Parfum d\'iode', 'Arriver à Port-Corail.', (g) => g.progress.zones.has('port')),
+  A('sommet', 'Sur le toit de l\'archipel', 'Atteindre le Pic des Neiges.', (g) => g.progress.zones.has('pic'), { coins: 300 }),
+  A('cartographe', 'Cartographe', 'Découvrir tous les lieux de l\'archipel.', (g) => ZONES.every((z) => g.progress.zones.has(z.id)), { title: 'Cartographe', coins: 1000 }),
+  A('voyage', 'Globe-trotter', 'Voyager d\'un village à l\'autre avec Nérée.', (g, s) => s.travel >= 1),
+  A('source', 'Détente absolue', 'Se prélasser dans la source chaude.', (g, s) => s.bathe >= 1),
+  A('etoile-filante', 'Fais un vœu', 'Faire un vœu sous une étoile filante.', (g, s) => s.wish >= 1),
+  A('voeux-10', 'Attrape-étoiles', 'Faire 10 vœux sous les étoiles filantes.', (g, s) => s.wish >= 10, { title: 'Attrape-étoiles', furniture: { 'etoile-murale': 1 } }),
+  A('telescope', 'Astronome en herbe', 'Observer le ciel au télescope de Sacha.', (g, s) => s.stargaze >= 1),
+  A('aquarium-30', 'Grand aquarium', 'Pêcher 30 espèces différentes.', (g) => Object.keys(g.fishing.best).length >= 30, { title: 'Maître pêcheur', furniture: { 'aquarium-geant': 1 } }),
+  A('insectes-20', 'Muséum d\'histoire naturelle', 'Attraper 20 espèces d\'insectes.', (g) => Object.keys(g.insects.caught).length >= 20, { coins: 1200 }),
+  A('service', 'Coup de main', 'Terminer une quête d\'habitant.', (g, s) => s.sidequest >= 1),
+  A('service-15', 'Bon·ne samaritain·e', 'Terminer 15 quêtes d\'habitants.', (g, s) => s.sidequest >= 15, { coins: 800 }),
+  A('service-all', 'Héros de l\'archipel', 'Terminer toutes les quêtes des habitants.', (g) => g.sideQuests?.allDone(), { title: 'Héros de l\'archipel', coins: 3000 }),
 ];
 
 // --- Carnet d'étoiles ------------------------------------------------------------------
@@ -144,6 +160,7 @@ export class Progress {
     this.starClaimed = 0;
     this.daily = { day: 0, list: [] };
     this.talkedToday = new Set();
+    this.zones = new Set();
 
     const bump = (k, n = 1) => (this.stats[k] = (this.stats[k] || 0) + n);
     const on = (e, fn) => game.on(e, (d = {}) => {
@@ -184,6 +201,12 @@ export class Progress {
       if (d.id === 'montgolfiere') bump('fly');
     });
     on('facade', () => bump('facade'));
+    on('travel', () => bump('travel'));
+    on('bathe', () => bump('bathe'));
+    on('wish', () => bump('wish'));
+    on('stargaze', () => bump('stargaze'));
+    on('sidequest', () => bump('sidequest'));
+    on('zone', (d) => this.zones.add(d.zone));
     on('mail', () => bump('mail'));
     on('heartEvent', () => bump('heartEvent'));
     on('vehicle', () => {});
@@ -215,6 +238,7 @@ export class Progress {
   addXp(skill, amount) {
     const g = this.game;
     const before = this.level(skill);
+    if (g.archipelago?.relaxed) amount *= 1.2;
     this.xp[skill] = (this.xp[skill] || 0) + Math.round(amount);
     g.ui.xpPop?.(SKILLS[skill].emoji, Math.round(amount));
     const after = this.level(skill);
@@ -345,7 +369,7 @@ export class Progress {
   serialize() {
     return {
       xp: this.xp, sr: this.skillRewards, st: this.stats, done: [...this.done], titles: [...this.titles],
-      title: this.title, stars: this.stars, sc: this.starClaimed, daily: this.daily,
+      title: this.title, stars: this.stars, sc: this.starClaimed, daily: this.daily, zones: [...this.zones],
     };
   }
 
@@ -360,6 +384,7 @@ export class Progress {
     this.stars = d.stars || 0;
     this.starClaimed = d.sc || 0;
     if (d.daily) this.daily = d.daily;
+    this.zones = new Set(d.zones || []);
   }
 }
 

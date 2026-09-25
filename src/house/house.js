@@ -443,7 +443,7 @@ export class House {
       const d = Math.hypot(b.x - pl.x, b.z - pl.z);
       if (d < bestD) {
         bestD = d;
-        best = { x: b.x, z: b.z, y: 2.3, seatY: 0.5, rot: b.rot };
+        best = { x: b.x, z: b.z, y: b.y - 0.5, seatY: 0.5, rot: b.rot };
       }
     }
     return best;

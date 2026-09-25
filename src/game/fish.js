@@ -12,7 +12,8 @@ export const RARITY = [
   { label: 'Légendaire', color: '#e0a000', xp: 90, weight: 1.3 },
 ];
 
-// where : mer (ponton et falaise), falaise (falaise seulement), etang.
+// where : mer (ponton, port, falaise), falaise (falaise seulement), etang, lac (Lac Miroir),
+// lagon (Lagon Turquoise) — ou une liste de ces lieux.
 // hours : [début, fin] (peut passer minuit), seasons : indices de saison, rain : seulement sous la pluie.
 const F = (id, label, emoji, rarity, where, size, price, extra = {}) => ({ id, label, emoji, rarity, where, size, price, ...extra });
 export const FISH = [
@@ -24,8 +25,8 @@ export const FISH = [
   F('dorade', 'Dorade', '🐟', 1, 'mer', [25, 45], 55),
   F('bar', 'Bar', '🐟', 1, 'mer', [30, 60], 65, { seasons: [2, 3] }),
   F('calamar', 'Calamar', '🦑', 1, 'mer', [20, 40], 70, { hours: [19, 5] }),
-  F('poisson-clown', 'Poisson-clown', '🐠', 1, 'mer', [8, 12], 85, { seasons: [0, 1], hours: [8, 18] }),
-  F('hippocampe', 'Hippocampe', '🐠', 2, 'mer', [10, 20], 160, { seasons: [1, 2] }),
+  F('poisson-clown', 'Poisson-clown', '🐠', 1, ['mer', 'lagon'], [8, 12], 85, { seasons: [0, 1], hours: [8, 18] }),
+  F('hippocampe', 'Hippocampe', '🐠', 2, ['mer', 'lagon'], [10, 20], 160, { seasons: [1, 2] }),
   F('pieuvre', 'Pieuvre', '🐙', 2, 'mer', [40, 90], 190, { hours: [18, 6] }),
   F('raie', 'Raie', '🐟', 2, 'falaise', [50, 120], 210),
   F('poisson-lune', 'Poisson-lune', '🐡', 3, 'falaise', [80, 180], 800, { seasons: [1], hours: [10, 17] }),
@@ -33,14 +34,49 @@ export const FISH = [
   F('gardon', 'Gardon', '🐟', 0, 'etang', [12, 25], 18),
   F('perche', 'Perche', '🐟', 0, 'etang', [15, 35], 28),
   F('carpe', 'Carpe', '🐟', 1, 'etang', [30, 70], 60),
-  F('truite', 'Truite arc-en-ciel', '🌈', 1, 'etang', [25, 50], 80, { rain: true }),
+  F('truite', 'Truite arc-en-ciel', '🌈', 1, ['etang', 'lac'], [25, 50], 80, { rain: true }),
   F('anguille', 'Anguille', '🐍', 1, 'etang', [40, 90], 90, { hours: [19, 5] }),
   F('poisson-chat', 'Poisson-chat', '🐱', 1, 'etang', [30, 60], 75, { hours: [17, 7] }),
   F('koi', 'Carpe koï', '🎏', 2, 'etang', [40, 80], 260, { seasons: [0, 1] }),
-  F('brochet', 'Brochet', '🐟', 2, 'etang', [50, 110], 230, { seasons: [2, 3] }),
+  F('brochet', 'Brochet', '🐟', 2, ['etang', 'lac'], [50, 110], 230, { seasons: [2, 3] }),
   F('esturgeon', 'Esturgeon', '🐟', 3, 'etang', [100, 200], 1000, { seasons: [3] }),
   F('poisson-dore', 'Poisson doré', '✨', 3, 'etang', [5, 10], 1200, { hours: [5, 8] }),
+  // Lac Miroir (île des Pins) : eaux froides de montagne.
+  F('ombre', 'Ombre commun', '🐟', 0, 'lac', [20, 40], 30),
+  F('ecrevisse', 'Écrevisse', '🦞', 0, 'lac', [8, 15], 35),
+  F('omble', 'Omble chevalier', '🐟', 1, 'lac', [25, 55], 90),
+  F('lotte', 'Lotte de lac', '🐟', 1, 'lac', [30, 60], 95, { hours: [18, 6] }),
+  F('saumon', 'Saumon', '🍣', 2, 'lac', [50, 100], 280, { seasons: [2] }),
+  F('huchon', 'Huchon', '🐉', 3, 'lac', [90, 160], 1100, { seasons: [3], hours: [6, 10] }),
+  // Lagon Turquoise (île Corail) : poissons tropicaux.
+  F('demoiselle', 'Demoiselle bleue', '🐟', 0, 'lagon', [5, 10], 28),
+  F('chirurgien', 'Poisson chirurgien', '🐠', 0, 'lagon', [15, 30], 38),
+  F('perroquet', 'Poisson-perroquet', '🦜', 1, 'lagon', [30, 60], 95),
+  F('barracuda', 'Barracuda', '🐟', 1, 'lagon', [60, 120], 110, { hours: [6, 20] }),
+  F('poisson-ange', 'Poisson-ange', '👼', 2, 'lagon', [15, 30], 240, { seasons: [0, 1] }),
+  F('merou', 'Mérou', '🐟', 2, 'lagon', [60, 130], 260),
+  F('raie-manta', 'Raie manta', '🪽', 3, 'lagon', [200, 450], 1400, { seasons: [1], rain: false, hours: [9, 16] }),
+  F('coelacanthe', 'Cœlacanthe', '🦕', 3, 'lagon', [120, 190], 1600, { hours: [0, 4] }),
 ];
+
+/** Lieux où l'on peut pêcher chaque habitat de poisson. */
+const HABITAT_OK = {
+  mer: ['mer', 'falaise'],
+  falaise: ['falaise'],
+  etang: ['etang'],
+  lac: ['lac'],
+  lagon: ['lagon'],
+};
+
+export const WHERE_LABELS = { mer: 'En mer', falaise: 'Falaise du phare', etang: 'Étang', lac: 'Lac Miroir', lagon: 'Lagon Turquoise' };
+
+export function fishWhere(f) {
+  return Array.isArray(f.where) ? f.where : [f.where];
+}
+
+function fishHere(f, habitat) {
+  return fishWhere(f).some((w) => HABITAT_OK[w]?.includes(habitat));
+}
 
 // Chaque poisson est un objet du sac (vendable), compté comme « poisson » pour les recettes et les chats.
 for (const f of FISH) {
@@ -108,10 +144,11 @@ export class Fishing {
     const season = w.weather.seasonIndex;
     const rain = w.weather.isRaining;
     return FISH.filter((f) => {
-      if (f.where === 'etang' ? spot.habitat !== 'etang' : f.where === 'falaise' ? spot.habitat !== 'falaise' : spot.habitat === 'etang') return false;
+      if (!fishHere(f, spot.habitat)) return false;
       if (f.hours && !inHours(h, f.hours)) return false;
       if (f.seasons && !f.seasons.includes(season)) return false;
-      if (f.rain && !rain) return false;
+      if (f.rain === true && !rain) return false;
+      if (f.rain === false && rain) return false;
       return true;
     });
   }

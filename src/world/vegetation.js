@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Shape, G, toon, addWind, addSeason, paintGradientY } from '../core/materials.js';
 import { createRng, smoothstep } from '../core/math.js';
+import { ISLANDS, LANDMARKS } from './layout.js';
 
 // Végétation instanciée : arbres, buissons à baies, fleurs, herbe, rochers,
 // champignons, tournesols et carottes sauvages (les trois derniers sont récoltables).
@@ -215,6 +216,147 @@ function carrotGeo() {
   return s.build();
 }
 
+// --- Îles : sapins enneigés, palmiers, cristaux, coraux… -------------------------
+
+function treePineSnow() {
+  const s = new Shape();
+  s.add(G.cyl(0.18, 0.3, 2.0, 7), '#7a5038', { pos: [0, 1.0, 0] });
+  const tiers = [[2.1, 2.6, 2.3], [1.65, 2.3, 3.6], [1.2, 2.0, 4.8], [0.72, 1.5, 5.8]];
+  for (const [r, h, y] of tiers) {
+    s.add(G.cone(r, h, 9), (g) => paintGradientY(g, '#2f7650', '#5fae78', 1.2, 6.8), { pos: [0, y, 0] });
+    s.add(G.cone(r * 0.8, h * 0.45, 9), '#f4f8ff', { pos: [0, y + h * 0.3, 0] });
+  }
+  return s.build();
+}
+
+function treeFir() {
+  const s = new Shape();
+  s.add(G.cyl(0.14, 0.24, 1.6, 7), '#7a5038', { pos: [0, 0.8, 0] });
+  s.add(G.cone(1.25, 5.2, 8), (g) => paintGradientY(g, '#2f6f4c', '#6fb07f', 1.0, 6.6), { pos: [0, 3.9, 0] });
+  return s.build();
+}
+
+function palmGeo() {
+  const s = new Shape();
+  let x = 0;
+  let y = 0;
+  for (let i = 0; i < 7; i++) {
+    const nx = x + 0.12 + i * 0.03;
+    const ny = y + 0.85;
+    const len = Math.hypot(nx - x, ny - y);
+    const g = G.cyl(0.2 - i * 0.012, 0.23 - i * 0.012, len, 8);
+    s.add(g, i % 2 ? '#b98a5f' : '#a47a52', { pos: [(x + nx) / 2, (y + ny) / 2, 0], rot: [0, 0, -Math.atan2(nx - x, ny - y)] });
+    s.add(G.torus(0.2 - i * 0.012, 0.03, 4, 10), '#8f6a45', { pos: [x, y, 0], rot: [Math.PI / 2, 0, -Math.atan2(nx - x, ny - y)] });
+    x = nx;
+    y = ny;
+  }
+  const top = [x, y, 0];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    for (let k = 0; k < 4; k++) {
+      const d = 0.45 + k * 0.55;
+      const droop = -0.12 * k * k;
+      s.add(G.sphere(0.32 - k * 0.04, 6, 4), (g) => paintGradientY(g, '#3f9a4f', '#8fd46a', -1.5, 0.3), {
+        pos: [top[0] + Math.cos(a) * d, top[1] + droop + 0.1, top[2] + Math.sin(a) * d],
+        rot: [0, -a, 0],
+        scale: [1.5, 0.22, 0.55],
+      });
+    }
+  }
+  return { geo: s.build(), top };
+}
+
+function coconutsGeo(top) {
+  const s = new Shape();
+  for (const [x, z] of [[0.18, 0.1], [-0.12, 0.16], [0.02, -0.2], [-0.2, -0.05]]) s.add(G.sphere(0.16, 8, 6), '#6b4a2e', { pos: [top[0] + x, top[1] - 0.25, top[2] + z] });
+  return s.build();
+}
+
+function crystalGeo() {
+  const s = new Shape();
+  s.add(G.dodeca(0.6), '#9a948c', { scale: [1.2, 0.5, 1] });
+  const cols = ['#c9a0ff', '#9fd8ff', '#ffb3e6', '#b9f0ff'];
+  const spikes = [[0, 0, 0, 0.9, 0], [0.3, 0, 0.2, 0.6, 0.35], [-0.3, 0, 0.1, 0.7, -0.3], [0.1, 0, -0.3, 0.55, 0.2], [-0.15, 0, 0.3, 0.45, -0.5]];
+  spikes.forEach(([x, y, z, h, tilt], i) => {
+    s.add(G.cyl(0.13, 0.16, h, 6), cols[i % cols.length], { pos: [x, y + h / 2 + 0.1, z], rot: [tilt * 0.5, 0, tilt] });
+    s.add(G.cone(0.13, 0.22, 6), cols[i % cols.length], { pos: [x - Math.sin(tilt) * h * 0.5, y + h + 0.2, z + Math.sin(tilt * 0.5) * h * 0.25], rot: [tilt * 0.5, 0, tilt] });
+  });
+  return s.build();
+}
+
+function edelweissGeo() {
+  const s = new Shape();
+  s.add(G.cyl(0.018, 0.022, 0.3, 4, true), '#8fb58a', { pos: [0, 0.15, 0] });
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    s.add(G.sphere(0.06, 5, 3), '#f7f7f0', { pos: [Math.cos(a) * 0.07, 0.31, Math.sin(a) * 0.07], rot: [0, -a, 0.15], scale: [1.3, 0.3, 0.55] });
+  }
+  s.add(G.sphere(0.035, 6, 4), '#ffe27a', { pos: [0, 0.33, 0] });
+  return s.build();
+}
+
+function hibiscusGeo() {
+  const s = new Shape();
+  s.add(G.ico(0.45, 1), (g) => paintGradientY(g, '#3f8f4a', '#79c65f', 0, 0.8), { pos: [0, 0.4, 0], scale: [1.2, 0.9, 1.1] });
+  const cols = ['#ff5d73', '#ff8fb1', '#ffb347'];
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.3;
+    const x = Math.cos(a) * 0.42;
+    const z = Math.sin(a) * 0.38;
+    for (let p = 0; p < 5; p++) {
+      const pa = (p / 5) * Math.PI * 2;
+      s.add(G.sphere(0.07, 5, 3), cols[i % 3], { pos: [x + Math.cos(pa) * 0.06, 0.62 + Math.sin(i) * 0.1, z + Math.sin(pa) * 0.06], scale: [1, 0.4, 1] });
+    }
+    s.add(G.sphere(0.03, 4, 3), '#ffe27a', { pos: [x, 0.66 + Math.sin(i) * 0.1, z] });
+  }
+  return s.build();
+}
+
+function coralGeo() {
+  const s = new Shape();
+  const cols = ['#ff7f91', '#ffb3a0', '#c9a0ff'];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const h = 0.25 + (i % 3) * 0.1;
+    s.add(G.cyl(0.035, 0.05, h, 5), cols[i % 3], { pos: [Math.cos(a) * 0.12, h / 2, Math.sin(a) * 0.12], rot: [Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4] });
+    s.add(G.sphere(0.05, 5, 4), cols[(i + 1) % 3], { pos: [Math.cos(a) * (0.12 + h * 0.4), h, Math.sin(a) * (0.12 + h * 0.4)] });
+  }
+  return s.build();
+}
+
+function starfishGeo() {
+  const s = new Shape();
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    s.add(G.sphere(0.07, 6, 4), '#ff8a5c', { pos: [Math.cos(a) * 0.09, 0.02, Math.sin(a) * 0.09], rot: [0, -a, 0], scale: [1.8, 0.35, 0.6] });
+  }
+  s.add(G.sphere(0.06, 6, 4), '#ff9f7a', { pos: [0, 0.03, 0], scale: [1, 0.4, 1] });
+  return s.build();
+}
+
+function pineconeGeo() {
+  const s = new Shape();
+  for (const [x, z, r] of [[0, 0, 0], [0.22, 0.1, 1], [-0.15, 0.18, 2]]) {
+    s.add(G.sphere(0.07, 7, 6), '#8a5a3a', { pos: [x, 0.07, z], rot: [Math.PI / 2, r, 0], scale: [0.8, 1.5, 0.8] });
+    s.add(G.cone(0.075, 0.1, 6), '#6b4228', { pos: [x, 0.07, z + 0.1], rot: [Math.PI / 2, 0, 0] });
+  }
+  return s.build();
+}
+
+function blueberryBushGeo() {
+  const s = new Shape();
+  canopy(s, [[0, 0.45, 0, 0.62], [0.45, 0.35, 0.15, 0.45], [-0.4, 0.35, -0.1, 0.48]], '#3f7f55', '#79b87a', 0, 1.0);
+  return s.build();
+}
+
+function blueberriesGeo() {
+  const s = new Shape();
+  for (const [x, y, z] of [[0.4, 0.7, 0.35], [-0.35, 0.7, 0.4], [0.6, 0.45, 0.4], [-0.6, 0.55, 0.15], [0.1, 0.95, 0.25], [0.25, 0.45, 0.7], [-0.15, 0.4, 0.7], [0.1, 1.0, -0.3]]) {
+    s.add(G.sphere(0.075, 7, 5), '#4a5fb8', { pos: [x, y, z] });
+  }
+  return s.build();
+}
+
 // --- Mise en place ------------------------------------------------------------
 
 function makeInstanced(geo, material, count, { cast = true, receive = true } = {}) {
@@ -264,6 +406,270 @@ export class Vegetation {
     this.placeMushrooms(rng, staticMat);
     this.placeSunflowers(rng, tallMat);
     this.placeCarrots(rng, flowerMat);
+    this.mats = { leafMat, pineMat, bushMat, flowerMat, grassMat, tallMat, staticMat };
+    this.islandGroups = {};
+    this.placePins(createRng(9191));
+    this.placeCorail(createRng(7373));
+  }
+
+  /** Végétation d'une île secondaire, dans son propre groupe (masqué quand elle est loin). */
+  islandGroup(id) {
+    if (!this.islandGroups[id]) {
+      const g = new THREE.Group();
+      g.name = `vegetation-${id}`;
+      g.userData.island = ISLANDS[id];
+      this.group.add(g);
+      this.islandGroups[id] = g;
+    }
+    return this.islandGroups[id];
+  }
+
+  addTo(id, mesh) {
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.computeBoundingSphere();
+    this.islandGroup(id).add(mesh);
+    return mesh;
+  }
+
+  placePins(rng) {
+    const I = ISLANDS.pins;
+    const { pineMat, leafMat, staticMat, flowerMat, bushMat } = this.mats;
+    const area = { area: I.r + 12, center: [I.x, I.z] };
+    const pines = makeInstanced(treePine(), pineMat, 520);
+    const firs = makeInstanced(treeFir(), pineMat, 260);
+    const snowy = makeInstanced(treePineSnow(), pineMat, 200);
+    const golden = makeInstanced(treeRound('#f0a45a', '#ffd98a', '#8a5a43'), leafMat, 40);
+    const tint = () => _c.setScalar(rng.range(0.9, 1.08));
+    this.scatter(rng, 900, 12000, { ...area, pad: 1.9, pathPad: 2.6, minH: 0.8, maxSlope: 0.5 }, (x, z, h) => {
+      const B = LANDMARKS.bourg;
+      if (Math.hypot(x - B.x, z - B.z) < 22 && rng() < 0.85) return false;
+      // Sommet dégagé (roche et neige), clairières autour du lac et de la source.
+      if (h > 16 || (h > 12 && rng() < 0.6)) return false;
+      const P = LANDMARKS.peak;
+      const L = LANDMARKS.lake;
+      const S = LANDMARKS.hotspring;
+      if (Math.hypot(x - P.x, z - P.z) < 14) return false;
+      if (Math.hypot(x - L.x, z - L.z) < L.r + 9 && rng() < 0.75) return false;
+      if (Math.hypot(x - S.x, z - S.z) < S.r + 8) return false;
+      const high = h > 10;
+      const mesh = high ? (rng() < 0.7 ? snowy : firs) : rng() < 0.5 ? pines : rng() < 0.75 ? firs : rng() < 0.93 ? snowy : golden;
+      if (mesh.count >= mesh.instanceMatrix.count) return false;
+      pushInstance(mesh, x, h - 0.1, z, rng.range(0, 6.28), rng.range(0.85, 1.45), tint());
+      this.world.colliders.addCircle(x, z, 0.55);
+      this.world.reserve(x, z, 1.1);
+      return true;
+    });
+    [pines, firs, snowy, golden].forEach((m) => this.addTo('pins', m));
+
+    // Rochers du Pic.
+    const rocks = makeInstanced(rockGeo(), staticMat, 120);
+    this.scatter(rng, 110, 3000, { ...area, pad: 1.5, pathPad: 2.2, minH: 0.3, maxSlope: 0.9 }, (x, z, h) => {
+      const sc = rng.range(0.5, 1.6) * (h > 9 ? 1.4 : 1);
+      pushInstance(rocks, x, h + 0.1 * sc, z, rng.range(0, 6.28), sc, _c.setScalar(rng.range(0.9, 1.1)));
+      if (sc > 0.7) this.world.colliders.addCircle(x, z, 0.85 * sc);
+      this.world.reserve(x, z, 1.1 * sc);
+    });
+    this.addTo('pins', rocks);
+
+    // Cristaux sur les flancs de la montagne (récoltables).
+    const crystals = makeInstanced(crystalGeo(), toon('#ffffff', { vertexColors: true, emissive: '#6a5aa0', emissiveIntensity: 0.25 }), 16, { cast: true });
+    const P = LANDMARKS.peak;
+    let n = 0;
+    for (let t = 0; t < 600 && n < 14; t++) {
+      const a = rng.range(0, Math.PI * 2);
+      const r = rng.range(8, 32);
+      const x = P.x + Math.cos(a) * r;
+      const z = P.z + Math.sin(a) * r;
+      const h = this.world.heightAt(x, z);
+      if (h < 5 || !this.world.canPlace(x, z, { minH: 5, maxSlope: 0.7, pathPad: 1.5, pad: 2 })) continue;
+      const i = pushInstance(crystals, x, h - 0.05, z, rng.range(0, 6.28), rng.range(0.9, 1.3));
+      this.world.colliders.addCircle(x, z, 0.6);
+      this.world.reserve(x, z, 1.5);
+      this.resources.push({ type: 'crystal', x, z, y: h + 0.8, mesh: crystals, index: i, label: 'Détacher un cristal', item: 'cristal', amount: [1, 2], regrow: 30 });
+      n++;
+    }
+    this.addTo('pins', crystals);
+
+    // Myrtilles, edelweiss, pommes de pin, champignons.
+    const bb = makeInstanced(blueberryBushGeo(), bushMat, 30);
+    const berries = makeInstanced(blueberriesGeo(), toon('#ffffff', { vertexColors: true }), 30, { cast: false });
+    this.scatter(rng, 24, 3000, { ...area, pad: 1.8, pathPad: 2.2, maxSlope: 0.35 }, (x, z, h) => {
+      if (h > 12) return false;
+      const rot = rng.range(0, 6.28);
+      pushInstance(bb, x, h - 0.05, z, rot, 1);
+      const i = pushInstance(berries, x, h - 0.05, z, rot, 1);
+      this.world.colliders.addCircle(x, z, 0.6);
+      this.world.reserve(x, z, 1.3);
+      this.resources.push({ type: 'bush', x, z, y: h + 0.8, mesh: berries, index: i, label: 'Cueillir des myrtilles', item: 'myrtille', amount: [2, 3], regrow: 8 });
+    });
+    this.addTo('pins', bb);
+    this.addTo('pins', berries);
+    const edel = makeInstanced(edelweissGeo(), flowerMat, 160, { cast: false });
+    for (let c = 0; c < 26; c++) {
+      const cx = I.x + rng.range(-60, 60);
+      const cz = I.z + rng.range(-60, 60);
+      let pick = c % 2 === 0;
+      for (let k = 0; k < 7; k++) {
+        const x = cx + rng.range(-2, 2);
+        const z = cz + rng.range(-2, 2);
+        const h = this.world.heightAt(x, z);
+        if (h < 6 || edel.count >= 160 || !this.world.canPlace(x, z, { minH: 6, maxSlope: 0.6, pathPad: 1.2, pad: 0.2 })) continue;
+        const i = pushInstance(edel, x, h - 0.02, z, rng.range(0, 6.28), rng.range(0.9, 1.4));
+        if (pick) {
+          pick = false;
+          this.resources.push({ type: 'flower', x, z, y: h + 0.4, mesh: edel, index: i, label: 'Cueillir un edelweiss', item: 'edelweiss', amount: [1, 1], regrow: 16 });
+        }
+      }
+    }
+    this.addTo('pins', edel);
+    const cones = makeInstanced(pineconeGeo(), staticMat, 40, { cast: false });
+    this.scatter(rng, 30, 2000, { ...area, pad: 0.6, pathPad: 1.5, maxSlope: 0.5 }, (x, z, h) => {
+      if (h > 12) return false;
+      const i = pushInstance(cones, x, h, z, rng.range(0, 6.28), 1.3);
+      this.resources.push({ type: 'cone', x, z, y: h + 0.3, mesh: cones, index: i, label: 'Ramasser des pommes de pin', item: 'pomme-pin', amount: [1, 3], regrow: 10 });
+    });
+    this.addTo('pins', cones);
+    const shrooms = makeInstanced(mushroomGeo(), staticMat, 50, { cast: false });
+    let m = 0;
+    this.scatter(rng, 40, 2000, { ...area, pad: 0.5, pathPad: 1.5, maxSlope: 0.45 }, (x, z, h) => {
+      if (h > 10) return false;
+      const i = pushInstance(shrooms, x, h - 0.02, z, rng.range(0, 6.28), rng.range(0.8, 1.6));
+      if (m++ % 3 === 0) this.resources.push({ type: 'mushroom', x, z, y: h + 0.3, mesh: shrooms, index: i, label: 'Ramasser des champignons', item: 'champignon', amount: [1, 2], regrow: 14 });
+    });
+    this.addTo('pins', shrooms);
+    this.placeIslandGrass(rng, 'pins', 5200, 12);
+  }
+
+  placeCorail(rng) {
+    const I = ISLANDS.corail;
+    const { leafMat, staticMat, flowerMat, tallMat } = this.mats;
+    const area = { area: I.r + 12, center: [I.x, I.z] };
+    const palmMat = addSeason(addWind(toon('#ffffff', { vertexColors: true }), { strength: 0.012, base: 3.5, key: 'palm' }), { leaf: 0.3, snowLo: 0.4, snowHi: 0.8, snow: 0.5 });
+    const palm = palmGeo();
+    const palms = makeInstanced(palm.geo, palmMat, 170);
+    const coconuts = makeInstanced(coconutsGeo(palm.top), toon('#ffffff', { vertexColors: true }), 40);
+    const round = makeInstanced(treeRound('#5fb35a', '#b5e07a'), leafMat, 40);
+    const tint = () => _c.setScalar(rng.range(0.92, 1.08));
+    let k = 0;
+    this.scatter(rng, 150, 6000, { ...area, pad: 2.6, pathPad: 2.5, minH: 0.5, maxSlope: 0.4 }, (x, z, h) => {
+      const Pt = LANDMARKS.port;
+      if (Math.hypot(x - Pt.x, z - Pt.z) < 18) return false;
+      const palmsHere = h < 4 || rng() < 0.75;
+      if (palmsHere) {
+        if (palms.count >= 170) return false;
+        const rot = rng.range(0, 6.28);
+        const sc = rng.range(0.85, 1.25);
+        pushInstance(palms, x, h - 0.1, z, rot, sc, tint());
+        if (k++ % 4 === 0 && coconuts.count < 40) {
+          const ci = pushInstance(coconuts, x, h - 0.1, z, rot, sc);
+          this.resources.push({ type: 'palm', x, z, y: h + 1.5, mesh: coconuts, index: ci, label: 'Secouer le cocotier', item: 'noix-coco', amount: [1, 2], regrow: 12 });
+        }
+      } else {
+        if (round.count >= 40) return false;
+        pushInstance(round, x, h - 0.1, z, rng.range(0, 6.28), rng.range(0.9, 1.2), tint());
+      }
+      this.world.colliders.addCircle(x, z, 0.45);
+      this.world.reserve(x, z, 1.6);
+      return true;
+    });
+    this.addTo('corail', palms);
+    this.addTo('corail', coconuts);
+    this.addTo('corail', round);
+
+    // Hibiscus, fleurs, étoiles de mer, coquillages, coraux du lagon.
+    const hib = makeInstanced(hibiscusGeo(), tallMat, 40);
+    this.scatter(rng, 32, 3000, { ...area, pad: 1.6, pathPad: 2, maxSlope: 0.35 }, (x, z, h) => {
+      const i = pushInstance(hib, x, h - 0.05, z, rng.range(0, 6.28), rng.range(0.9, 1.3));
+      this.world.colliders.addCircle(x, z, 0.45);
+      this.world.reserve(x, z, 1.1);
+      if (i % 2 === 0) this.resources.push({ type: 'flower', x, z, y: h + 0.8, mesh: hib, index: i, label: 'Cueillir un hibiscus', item: 'hibiscus', amount: [1, 2], regrow: 10 });
+    });
+    this.addTo('corail', hib);
+    const flowers = ['#ff8fb1', '#ffd84d', '#ff9f68'].map((c) => makeInstanced(flowerGeo(c), flowerMat, 160, { cast: false }));
+    for (let c = 0; c < 40; c++) {
+      const cx = I.x + rng.range(-55, 55);
+      const cz = I.z + rng.range(-55, 55);
+      const mesh = rng.pick(flowers);
+      for (let j = 0; j < 7; j++) {
+        const x = cx + rng.range(-2, 2);
+        const z = cz + rng.range(-2, 2);
+        if (mesh.count >= 160 || !this.world.canPlace(x, z, { pad: 0.3, pathPad: 1.8, minH: 1.4, maxSlope: 0.3 })) continue;
+        pushInstance(mesh, x, this.world.heightAt(x, z) - 0.02, z, rng.range(0, 6.28), rng.range(0.8, 1.3));
+      }
+    }
+    flowers.forEach((f) => this.addTo('corail', f));
+    const stars = makeInstanced(starfishGeo(), staticMat, 40, { cast: false });
+    const corals = makeInstanced(coralGeo(), staticMat, 70, { cast: false });
+    let sp = 0;
+    for (let t = 0; t < 3000; t++) {
+      const a = rng.range(0, Math.PI * 2);
+      const r = rng.range(I.r - 20, I.r + 22);
+      const x = I.x + Math.cos(a) * r;
+      const z = I.z + Math.sin(a) * r;
+      const h = this.world.heightAt(x, z);
+      if (h > 0.15 && h < 1.2 && stars.count < 40 && t % 2 === 0) {
+        const i = pushInstance(stars, x, h + 0.02, z, rng.range(0, 6.28), rng.range(0.9, 1.4));
+        if (sp++ % 2 === 0) this.resources.push({ type: 'shell', x, z, y: h + 0.2, mesh: stars, index: i, label: 'Ramasser une étoile de mer', item: 'etoile-mer', amount: [1, 1], regrow: 12 });
+      } else if (h > -0.5 && h < 0.1 && corals.count < 70) {
+        const i = pushInstance(corals, x, h, z, rng.range(0, 6.28), rng.range(1, 1.8));
+        if (corals.count % 3 === 0) this.resources.push({ type: 'coral', x, z, y: Math.max(h, 0) + 0.3, mesh: corals, index: i, label: 'Ramasser du corail', item: 'corail', amount: [1, 1], regrow: 14, bonus: { item: 'perle', chance: 0.12 } });
+      }
+    }
+    this.addTo('corail', stars);
+    this.addTo('corail', corals);
+    const rocks = makeInstanced(rockGeo(), staticMat, 40);
+    this.scatter(rng, 30, 1500, { ...area, pad: 2, pathPad: 2.5, minH: -1.5, maxSlope: 0.6 }, (x, z, h) => {
+      const sc = rng.range(0.4, 1.1);
+      pushInstance(rocks, x, h + 0.1 * sc, z, rng.range(0, 6.28), sc, _c.setScalar(rng.range(0.95, 1.12)));
+      if (sc > 0.6) this.world.colliders.addCircle(x, z, 0.9 * sc);
+      this.world.reserve(x, z, 1.2 * sc);
+    });
+    this.addTo('corail', rocks);
+    this.placeIslandGrass(rng, 'corail', 4200, 20);
+  }
+
+  /** Herbe d'une île, découpée en tuiles pour ne dessiner que ce qui est proche. */
+  placeIslandGrass(rng, id, count, TILE) {
+    const I = ISLANDS[id];
+    const terrain = this.world.terrain;
+    const buckets = new Map();
+    let placed = 0;
+    for (let t = 0; t < count * 3 && placed < count; t++) {
+      const x = I.x + rng.range(-I.r - 8, I.r + 8);
+      const z = I.z + rng.range(-I.r - 8, I.r + 8);
+      const h = terrain.heightAt(x, z);
+      if (h < 1.3 || (id === 'pins' && h > 13)) continue;
+      if (terrain.pathDistance(x, z) < 1.9) continue;
+      if (terrain.slopeAt(x, z) > 0.32) continue;
+      const key = `${Math.floor(x / TILE)},${Math.floor(z / TILE)}`;
+      if (!buckets.has(key)) buckets.set(key, []);
+      const col = terrain.colorAt(x, z, h, 1, new THREE.Color()).multiplyScalar(1.25);
+      buckets.get(key).push([x, h - 0.03, z, rng.range(0, 6.28), rng.range(0.7, 1.4), col]);
+      placed++;
+    }
+    const geo = this.grassGeo || (this.grassGeo = grassGeo());
+    for (const list of buckets.values()) {
+      const mesh = makeInstanced(geo, this.mats.grassMat, list.length, { cast: false });
+      let cx = 0;
+      let cz = 0;
+      for (const [x, y, z, r, sc, col] of list) {
+        pushInstance(mesh, x, y, z, r, sc, col);
+        cx += x;
+        cz += z;
+      }
+      mesh.userData.center = new THREE.Vector2(cx / list.length, cz / list.length);
+      this.addTo(id, mesh);
+      this.grassChunks.push(mesh);
+    }
+  }
+
+  /** Masque les îles lointaines (distance d'affichage). */
+  updateIslands(focus, range) {
+    for (const g of Object.values(this.islandGroups)) {
+      const I = g.userData.island;
+      g.visible = Math.hypot(I.x - focus.x, I.z - focus.z) - I.r < range;
+    }
   }
 
   add(mesh) {

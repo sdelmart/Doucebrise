@@ -1488,6 +1488,443 @@ def('lampadaire-jardin', {
   },
 });
 
+// --- Atelier de Hugo (Bourg-Sapin) : style chalet --------------------------------------
+const LOG = '#a8714a';
+const LOG_L = '#c99466';
+function logBox(s, w, h, d, col, pos) {
+  s.add(G.box(w, h, d), col, { pos });
+}
+def('poele', {
+  label: 'Poêle à bois', emoji: '🔥', price: 700, w: 0.9, d: 0.8, color: '#3d3744', cat: 'salon', shop: 'atelier', anim: 'fire',
+  light: { y: 0.6, color: '#ff9a4a', intensity: 6, dist: 7, flicker: true },
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.4, 0.42, 0.9, 16), c, { pos: [0, 0.55, 0] });
+    s.add(G.cyl(0.45, 0.45, 0.08, 16), dark(c, 0.3), { pos: [0, 1.04, 0] });
+    s.add(G.cyl(0.1, 0.1, 1.6, 10), c, { pos: [0, 1.85, -0.1] });
+    for (const a of [0.8, 2.4, 3.9, 5.5]) s.add(G.box(0.08, 0.2, 0.08), c, { pos: [Math.cos(a) * 0.32, 0.08, Math.sin(a) * 0.32] });
+    s.add(G.box(0.46, 0.4, 0.05), dark(c, 0.3), { pos: [0, 0.55, 0.41] });
+    s.add(G.box(0.8, 0.05, 0.4), '#b8b0a4', { pos: [0, 0.02, 0.4] });
+    return s.build();
+  },
+  glow() {
+    return new Shape().add(G.cone(0.14, 0.3, 6), '#ffb347', { pos: [0, 0.55, 0.4] }).add(G.box(0.36, 0.3, 0.02), '#ff7b3a', { pos: [0, 0.52, 0.42] }).build();
+  },
+});
+def('banc-rondins', {
+  label: 'Banc en rondins', emoji: '🪵', price: 260, w: 1.6, d: 0.6, color: LOG, where: 'both', cat: 'jardin', shop: 'atelier', seats: [[-0.4, 0, 0.5], [0.4, 0, 0.5]],
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.2, 0.2, 1.6, 10), c, { pos: [0, 0.4, 0], rot: [0, 0, Math.PI / 2], scale: [1, 1, 0.8] });
+    for (const x of [-0.6, 0.6]) s.add(G.cyl(0.18, 0.2, 0.34, 10), light(c, 0.1), { pos: [x, 0.17, 0] });
+    s.add(G.cyl(0.14, 0.14, 1.6, 10), c, { pos: [0, 0.78, -0.25], rot: [0, 0, Math.PI / 2] });
+    for (const x of [-0.6, 0.6]) s.add(G.cyl(0.06, 0.06, 0.5, 6), dark(c, 0.2), { pos: [x, 0.55, -0.25] });
+    return s.build();
+  },
+});
+def('table-rondins', {
+  label: 'Table en rondins', emoji: '🪵', price: 320, w: 1.5, d: 0.9, color: LOG, where: 'both', cat: 'cuisine', shop: 'atelier',
+  build(c) {
+    const s = new Shape();
+    for (let i = 0; i < 4; i++) s.add(G.cyl(0.12, 0.12, 1.5, 8), i % 2 ? c : light(c, 0.1), { pos: [0, 0.78, -0.33 + i * 0.22], rot: [0, 0, Math.PI / 2] });
+    for (const x of [-0.6, 0.6]) {
+      s.add(G.cyl(0.08, 0.08, 0.78, 8), dark(c, 0.15), { pos: [x, 0.39, -0.3], rot: [0.25, 0, 0] });
+      s.add(G.cyl(0.08, 0.08, 0.78, 8), dark(c, 0.15), { pos: [x, 0.39, 0.3], rot: [-0.25, 0, 0] });
+    }
+    s.add(G.cyl(0.1, 0.12, 0.14, 10), '#c0584a', { pos: [0.3, 0.97, 0] });
+    return s.build();
+  },
+});
+def('etagere-rondins', {
+  label: 'Étagère rustique', emoji: '🪵', price: 300, w: 1.2, d: 0.4, color: LOG, cat: 'salon', shop: 'atelier',
+  build(c) {
+    const s = new Shape();
+    for (const x of [-0.55, 0.55]) s.add(G.cyl(0.07, 0.07, 1.8, 8), c, { pos: [x, 0.9, 0] });
+    for (const y of [0.3, 0.9, 1.5]) s.add(G.box(1.2, 0.08, 0.38), light(c, 0.1), { pos: [0, y, 0] });
+    s.add(G.cyl(0.1, 0.12, 0.25, 10), '#e0a07a', { pos: [-0.3, 1.66, 0] });
+    s.add(G.sphere(0.13, 8, 6), '#5fae55', { pos: [-0.3, 1.85, 0] });
+    for (let i = 0; i < 4; i++) s.add(G.box(0.06, 0.3, 0.2), ['#c0584a', '#3d5a98', '#ffd84d', '#6fcf97'][i], { pos: [0.1 + i * 0.08, 1.07, 0] });
+    s.add(G.cyl(0.1, 0.1, 0.2, 10), '#fff3d6', { pos: [0.3, 0.44, 0] });
+    s.add(G.box(0.3, 0.2, 0.25), '#b98457', { pos: [-0.25, 0.44, 0] });
+    return s.build();
+  },
+});
+def('luge', {
+  label: 'Luge en bois', emoji: '🛷', price: 180, w: 0.6, d: 1.3, color: '#c0584a', where: 'both', cat: 'deco', shop: 'atelier',
+  build(c) {
+    const s = new Shape();
+    for (let i = 0; i < 4; i++) s.add(G.box(0.5, 0.05, 0.18), light(c, 0.1), { pos: [0, 0.3, -0.45 + i * 0.26] });
+    for (const x of [-0.24, 0.24]) {
+      s.add(G.box(0.05, 0.05, 1.2), c, { pos: [x, 0.05, 0] });
+      s.add(G.torus(0.18, 0.025, 5, 10, Math.PI / 2), c, { pos: [x, 0.23, 0.6], rot: [0, Math.PI / 2, Math.PI / 2] });
+      for (const z of [-0.4, 0.3]) s.add(G.box(0.05, 0.25, 0.05), c, { pos: [x, 0.17, z] });
+    }
+    s.add(G.torus(0.2, 0.02, 4, 12, Math.PI), '#8a5a3a', { pos: [0, 0.35, 0.62], rot: [0, 0, 0] });
+    return s.build();
+  },
+});
+def('skis-deco', {
+  label: 'Skis anciens', emoji: '🎿', price: 220, w: 0.8, d: 0.1, color: '#e5484d', wall: true, mountY: 1.6, cat: 'deco', shop: 'atelier',
+  build(c) {
+    const s = new Shape();
+    for (const x of [-0.12, 0.12]) {
+      s.add(G.box(0.1, 1.6, 0.03), c, { pos: [x, 0, 0.02], rot: [0, 0, x * 0.4] });
+      s.add(G.box(0.1, 0.12, 0.08), '#2e2e3a', { pos: [x, 0.05, 0.06] });
+    }
+    for (const x of [-0.35, 0.35]) s.add(G.cyl(0.015, 0.015, 1.2, 4), '#b8c0cc', { pos: [x, -0.1, 0.04], rot: [0, 0, -x * 0.3] });
+    return s.build();
+  },
+});
+def('tete-elan', {
+  label: 'Tête d\'élan en peluche', emoji: '🫎', price: 340, w: 0.9, d: 0.3, color: '#b98457', wall: true, mountY: 2.0, cat: 'deco', shop: 'atelier',
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.28, 0.28, 0.06, 16), '#8a5a3a', { rot: [Math.PI / 2, 0, 0] });
+    s.add(G.sphere(0.2, 12, 10), c, { pos: [0, 0, 0.16], scale: [1, 1.1, 1] });
+    s.add(G.sphere(0.13, 10, 8), light(c, 0.2), { pos: [0, -0.12, 0.32], scale: [1, 0.8, 1.2] });
+    for (const x of [-0.07, 0.07]) s.add(G.sphere(0.03, 6, 5), '#2b1d1d', { pos: [x, 0.05, 0.33] });
+    for (const sd of [-1, 1]) {
+      s.add(G.box(0.3, 0.05, 0.05), '#f3e3c0', { pos: [sd * 0.25, 0.22, 0.12], rot: [0, 0, sd * 0.4] });
+      s.add(G.box(0.05, 0.16, 0.05), '#f3e3c0', { pos: [sd * 0.35, 0.34, 0.12] });
+      s.add(G.box(0.05, 0.12, 0.05), '#f3e3c0', { pos: [sd * 0.22, 0.32, 0.12] });
+      s.add(G.sphere(0.06, 6, 5), c, { pos: [sd * 0.2, 0.1, 0.12], scale: [1.4, 0.6, 0.5] });
+    }
+    return s.build();
+  },
+});
+def('lit-chalet', {
+  label: 'Lit de chalet', emoji: '🛏️', price: 900, w: 1.5, d: 2.2, color: '#c0584a', bed: true, cat: 'chambre', shop: 'atelier',
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(1.5, 0.35, 2.2), LOG, { pos: [0, 0.28, 0] });
+    s.add(G.box(1.4, 0.22, 2.1), '#fffaf2', { pos: [0, 0.5, 0] });
+    s.add(G.box(1.46, 0.14, 1.4), c, { pos: [0, 0.63, 0.33] });
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) if ((i + j) % 2) s.add(G.box(0.35, 0.02, 0.45), '#fff3d6', { pos: [-0.54 + i * 0.36, 0.71, -0.1 + j * 0.46] });
+    s.add(G.sphere(0.25, 10, 6), '#fffaf2', { pos: [0, 0.7, -0.72], scale: [1.8, 0.45, 0.9] });
+    for (const x of [-0.7, 0.7]) {
+      s.add(G.cyl(0.08, 0.08, 1.3, 8), LOG_L, { pos: [x, 0.65, -1.05] });
+      s.add(G.cyl(0.07, 0.07, 0.8, 8), LOG_L, { pos: [x, 0.4, 1.05] });
+    }
+    for (const y of [0.9, 1.15]) s.add(G.cyl(0.06, 0.06, 1.4, 8), LOG, { pos: [0, y, -1.05], rot: [0, 0, Math.PI / 2] });
+    return s.build();
+  },
+});
+def('fauteuil-plaid', {
+  label: 'Fauteuil et plaid', emoji: '💺', price: 380, w: 1.0, d: 0.9, color: '#e5484d', cat: 'salon', shop: 'atelier', seats: [[0, 0.1, 0.45]],
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(0.95, 0.35, 0.85), '#8a5a3a', { pos: [0, 0.28, 0] });
+    s.add(G.box(0.75, 0.14, 0.65), '#e9d5b7', { pos: [0, 0.5, 0.05] });
+    s.add(G.box(0.95, 0.65, 0.2), '#8a5a3a', { pos: [0, 0.75, -0.33] });
+    for (const x of [-0.44, 0.44]) s.add(G.box(0.12, 0.3, 0.8), '#8a5a3a', { pos: [x, 0.6, 0] });
+    s.add(G.box(0.7, 0.04, 0.9), c, { pos: [0.05, 0.6, 0.1], rot: [0.1, 0.1, 0.05] });
+    for (let i = 0; i < 4; i++) s.add(G.box(0.7, 0.045, 0.06), '#fff3d6', { pos: [0.05, 0.61, -0.25 + i * 0.22], rot: [0.1, 0.1, 0.05] });
+    return s.build();
+  },
+});
+def('lanterne-chalet', {
+  label: 'Lanterne de chalet', emoji: '🏮', price: 150, w: 0.4, d: 0.4, color: '#4e4c62', where: 'both', cat: 'deco', shop: 'atelier',
+  light: { y: 0.35, color: '#ffc27a', intensity: 3, dist: 5 },
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(0.3, 0.04, 0.3), c, { pos: [0, 0.02, 0] });
+    for (const x of [-0.13, 0.13]) for (const z of [-0.13, 0.13]) s.add(G.box(0.03, 0.4, 0.03), c, { pos: [x, 0.22, z] });
+    s.add(G.cone(0.24, 0.16, 4), c, { pos: [0, 0.5, 0], rot: [0, Math.PI / 4, 0] });
+    s.add(G.torus(0.06, 0.012, 4, 10), c, { pos: [0, 0.62, 0] });
+    return s.build();
+  },
+  glow() {
+    return new Shape().add(G.box(0.22, 0.34, 0.22), '#ffd89a', { pos: [0, 0.22, 0] }).build();
+  },
+});
+def('tapis-tresse', {
+  label: 'Tapis tressé', emoji: '🟤', price: 190, w: 1.8, d: 1.8, color: '#c0584a', rug: true, cat: 'salon', shop: 'atelier',
+  build(c) {
+    const s = new Shape();
+    const cols = [c, '#fff3d6', '#8a5a3a', light(c, 0.3)];
+    for (let i = 0; i < 6; i++) s.add(G.cyl(0.9 - i * 0.14, 0.9 - i * 0.14, 0.02, 28), cols[i % cols.length], { pos: [0, 0.011 + i * 0.002, 0] });
+    return s.build();
+  },
+});
+def('tronc-champignons', {
+  label: 'Tronc aux champignons', emoji: '🍄', price: 160, w: 1.4, d: 0.6, color: '#8a5a3a', where: 'out', cat: 'jardin', shop: 'atelier',
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.28, 0.3, 1.4, 10), c, { pos: [0, 0.28, 0], rot: [0, 0, Math.PI / 2] });
+    for (const x of [-0.7, 0.7]) s.add(G.cyl(0.24, 0.24, 0.02, 10), '#e8c9a0', { pos: [x, 0.28, 0], rot: [0, 0, Math.PI / 2] });
+    for (const [x, sc] of [[-0.3, 1], [0.1, 0.8], [0.4, 1.2]]) {
+      s.add(G.cyl(0.04, 0.05, 0.14 * sc, 6), '#fbf3e4', { pos: [x, 0.6, 0.05] });
+      s.add(new THREE.SphereGeometry(0.11 * sc, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), '#e8504f', { pos: [x, 0.6 + 0.07 * sc, 0.05] });
+    }
+    s.add(G.sphere(0.12, 8, 6), '#5fae55', { pos: [0.55, 0.52, -0.1], scale: [1.4, 0.5, 1] });
+    return s.build();
+  },
+});
+
+// --- Capitainerie de Nérée (Port-Corail) ------------------------------------------------
+def('maquette-bateau', {
+  label: 'Maquette de voilier', emoji: '⛵', price: 420, w: 0.8, d: 0.4, color: '#3d5a98', cat: 'deco', shop: 'capitainerie',
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(0.7, 0.06, 0.3), WOOD_D, { pos: [0, 0.03, 0] });
+    for (const x of [-0.2, 0.2]) s.add(G.box(0.04, 0.16, 0.04), WOOD_D, { pos: [x, 0.13, 0] });
+    s.add(G.sphere(0.2, 10, 6), c, { pos: [0, 0.27, 0], scale: [1.6, 0.4, 0.5] });
+    s.add(G.box(0.55, 0.03, 0.14), WOOD, { pos: [0, 0.34, 0] });
+    s.add(G.cyl(0.012, 0.012, 0.6, 4), WOOD_D, { pos: [0, 0.64, 0] });
+    s.add(G.box(0.02, 0.36, 0.3), '#fffaf2', { pos: [0.02, 0.66, 0], rot: [0, Math.PI / 2, 0] });
+    s.add(G.box(0.02, 0.06, 0.1), '#e5484d', { pos: [0, 0.97, 0.02], rot: [0, Math.PI / 2, 0] });
+    return s.build();
+  },
+});
+def('barre-gouvernail', {
+  label: 'Barre de gouvernail', emoji: '☸️', price: 380, w: 1.0, d: 0.12, color: WOOD, wall: true, mountY: 1.8, cat: 'deco', shop: 'capitainerie',
+  build(c) {
+    const s = new Shape();
+    s.add(G.torus(0.34, 0.05, 8, 24), c, {});
+    s.add(G.cyl(0.1, 0.1, 0.1, 12), dark(c, 0.2), { rot: [Math.PI / 2, 0, 0] });
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      s.add(G.box(0.04, 0.46, 0.04), c, { pos: [Math.cos(a) * 0.22, Math.sin(a) * 0.22, 0], rot: [0, 0, a - Math.PI / 2] });
+      s.add(G.cyl(0.035, 0.03, 0.14, 6), dark(c, 0.2), { pos: [Math.cos(a) * 0.46, Math.sin(a) * 0.46, 0], rot: [0, 0, a - Math.PI / 2] });
+    }
+    return s.build();
+  },
+});
+def('bouee', {
+  label: 'Bouée de sauvetage', emoji: '🛟', price: 150, w: 0.7, d: 0.12, color: '#e5484d', wall: true, mountY: 1.7, cat: 'deco', shop: 'capitainerie',
+  build(c) {
+    const s = new Shape();
+    for (let i = 0; i < 8; i++) s.add(G.torus(0.26, 0.09, 8, 6, Math.PI / 4), i % 2 ? '#ffffff' : c, { rot: [0, 0, (i / 8) * Math.PI * 2] });
+    s.add(G.torus(0.36, 0.012, 4, 20), '#e9d5b7', {});
+    return s.build();
+  },
+});
+def('ancre', {
+  label: 'Ancre de marine', emoji: '⚓', price: 300, w: 1.0, d: 0.5, color: '#4e4c62', where: 'out', cat: 'jardin', shop: 'capitainerie',
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(0.12, 1.3, 0.12), c, { pos: [0, 0.75, 0] });
+    s.add(G.torus(0.14, 0.04, 6, 12), c, { pos: [0, 1.48, 0] });
+    s.add(G.box(0.7, 0.1, 0.1), c, { pos: [0, 1.2, 0] });
+    s.add(G.torus(0.45, 0.07, 6, 18, Math.PI), c, { pos: [0, 0.55, 0], rot: [0, 0, Math.PI] });
+    for (const sd of [-1, 1]) s.add(G.cone(0.1, 0.22, 4), c, { pos: [sd * 0.47, 0.62, 0], rot: [0, 0, -sd * 0.6] });
+    s.add(G.torus(0.3, 0.03, 5, 14), '#e9d5b7', { pos: [0.1, 0.05, 0.2], rot: [Math.PI / 2, 0, 0] });
+    return s.build();
+  },
+});
+def('lanterne-marine', {
+  label: 'Lanterne marine', emoji: '🏮', price: 220, w: 0.4, d: 0.4, color: '#c9935f', where: 'both', cat: 'deco', shop: 'capitainerie',
+  light: { y: 0.4, color: '#ffd89a', intensity: 3.5, dist: 6 },
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.16, 0.18, 0.06, 10), c, { pos: [0, 0.03, 0] });
+    s.add(G.cyl(0.16, 0.16, 0.06, 10), c, { pos: [0, 0.62, 0] });
+    for (let i = 0; i < 4; i++) s.add(G.box(0.03, 0.56, 0.03), c, { pos: [Math.cos(i * 1.57) * 0.14, 0.33, Math.sin(i * 1.57) * 0.14] });
+    s.add(G.torus(0.08, 0.015, 4, 10), c, { pos: [0, 0.72, 0] });
+    return s.build();
+  },
+  glow() {
+    return new Shape().add(G.cyl(0.12, 0.12, 0.45, 10), '#fff1b8', { pos: [0, 0.33, 0] }).build();
+  },
+});
+def('coffre-pirate', {
+  label: 'Coffre au trésor', emoji: '💰', price: 480, w: 0.9, d: 0.6, color: '#8a5a3a', where: 'both', cat: 'deco', shop: 'capitainerie',
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(0.9, 0.45, 0.6), c, { pos: [0, 0.23, 0] });
+    s.add(G.cyl(0.3, 0.3, 0.9, 12, false), light(c, 0.1), { pos: [0, 0.45, 0], rot: [0, 0, Math.PI / 2], scale: [1, 1, 1] });
+    for (const x of [-0.3, 0.3]) s.add(G.box(0.06, 0.5, 0.62), '#ffd84d', { pos: [x, 0.3, 0] });
+    s.add(G.box(0.12, 0.14, 0.04), '#ffd84d', { pos: [0, 0.42, 0.31] });
+    for (let i = 0; i < 5; i++) s.add(G.cyl(0.06, 0.06, 0.02, 10), '#ffd84d', { pos: [-0.5 + i * 0.25, 0.01, 0.4 + (i % 2) * 0.05] });
+    return s.build();
+  },
+});
+
+// --- Paillote de Paco --------------------------------------------------------------------
+def('bouee-licorne', {
+  label: 'Bouée licorne', emoji: '🦄', price: 350, w: 1.2, d: 1.4, color: '#ffffff', where: 'both', cat: 'jardin', shop: 'paillote',
+  build(c) {
+    const s = new Shape();
+    s.add(G.torus(0.45, 0.2, 10, 20), c, { pos: [0, 0.2, 0], rot: [Math.PI / 2, 0, 0] });
+    s.add(G.cyl(0.14, 0.18, 0.7, 10), c, { pos: [0, 0.55, 0.5], rot: [-0.3, 0, 0] });
+    s.add(G.sphere(0.2, 10, 8), c, { pos: [0, 0.92, 0.62], scale: [0.9, 0.9, 1.3] });
+    s.add(G.cone(0.05, 0.3, 6), '#ffd84d', { pos: [0, 1.15, 0.66], rot: [-0.3, 0, 0] });
+    for (const x of [-0.08, 0.08]) s.add(G.sphere(0.025, 6, 5), '#2b1d1d', { pos: [x, 0.95, 0.83] });
+    const mane = ['#ff8fab', '#b69cf0', '#8fd6e8', '#ffd84d'];
+    for (let i = 0; i < 4; i++) s.add(G.sphere(0.08, 6, 5), mane[i], { pos: [0, 1.0 - i * 0.12, 0.48 - i * 0.03] });
+    return s.build();
+  },
+});
+def('bar-tiki', {
+  label: 'Bar tiki', emoji: '🍹', price: 900, w: 1.8, d: 0.8, color: '#e8c77e', where: 'both', cat: 'jardin', shop: 'paillote',
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(1.8, 1.0, 0.7), '#c98b58', { pos: [0, 0.5, 0] });
+    for (let i = 0; i < 9; i++) s.add(G.cyl(0.08, 0.08, 1.0, 6), i % 2 ? '#a47a52' : '#b98a5f', { pos: [-0.8 + i * 0.2, 0.5, 0.36] });
+    s.add(G.box(1.9, 0.08, 0.85), '#8a5a3a', { pos: [0, 1.04, 0] });
+    for (const x of [-0.85, 0.85]) s.add(G.cyl(0.06, 0.06, 1.3, 6), '#8a5a3a', { pos: [x, 1.7, -0.3] });
+    s.add(new THREE.ConeGeometry(1.3, 0.5, 4), c, { pos: [0, 2.5, -0.1], rot: [0, Math.PI / 4, 0], scale: [1.1, 1, 0.6] });
+    for (let i = 0; i < 3; i++) s.add(G.cyl(0.06, 0.05, 0.2, 8), ['#ff8fab', '#ffd84d', '#6fcf97'][i], { pos: [-0.4 + i * 0.4, 1.18, 0.1] });
+    s.add(G.sphere(0.2, 8, 6), '#6b4a2e', { pos: [0.7, 1.24, -0.1] });
+    return s.build();
+  },
+});
+def('torche-tiki', {
+  label: 'Torche tiki', emoji: '🔥', price: 180, w: 0.4, d: 0.4, color: '#a47a52', where: 'out', cat: 'jardin', shop: 'paillote', anim: 'fire',
+  light: { y: 1.7, color: '#ff9a4a', intensity: 4, dist: 7, flicker: true, night: true },
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.05, 0.07, 1.5, 6), c, { pos: [0, 0.75, 0] });
+    s.add(G.cyl(0.12, 0.08, 0.3, 8), '#8a5a3a', { pos: [0, 1.55, 0] });
+    for (let i = 0; i < 3; i++) s.add(G.torus(0.09, 0.02, 4, 8), '#e8c77e', { pos: [0, 0.6 + i * 0.3, 0], rot: [Math.PI / 2, 0, 0] });
+    return s.build();
+  },
+  glow() {
+    return new Shape().add(G.cone(0.1, 0.35, 6), '#ffb347', { pos: [0, 1.85, 0] }).build();
+  },
+});
+def('planche-surf', {
+  label: 'Planche de surf', emoji: '🏄', price: 260, w: 0.6, d: 0.4, color: '#8fd6e8', where: 'both', cat: 'deco', shop: 'paillote',
+  build(c) {
+    const s = new Shape();
+    s.add(G.sphere(0.3, 14, 10), c, { pos: [0, 1.0, 0], scale: [0.9, 3.4, 0.12], rot: [0.12, 0, 0] });
+    s.add(G.sphere(0.3, 14, 10), '#ffffff', { pos: [0, 1.0, 0.012], scale: [0.2, 3.3, 0.12], rot: [0.12, 0, 0] });
+    s.add(G.box(0.5, 0.06, 0.3), WOOD_D, { pos: [0, 0.03, 0.05] });
+    return s.build();
+  },
+});
+def('palmier-pot', {
+  label: 'Palmier en pot', emoji: '🌴', price: 240, w: 0.7, d: 0.7, color: '#d98a62', where: 'both', cat: 'deco', shop: 'paillote',
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.3, 0.24, 0.45, 12), c, { pos: [0, 0.23, 0] });
+    s.add(G.cyl(0.05, 0.07, 1.2, 6), '#a47a52', { pos: [0, 1.0, 0], rot: [0, 0, 0.1] });
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      s.add(G.sphere(0.22, 6, 4), '#4f9e4f', { pos: [0.06 + Math.cos(a) * 0.35, 1.55 - 0.08, Math.sin(a) * 0.35], rot: [0, -a, 0], scale: [1.6, 0.18, 0.5] });
+    }
+    return s.build();
+  },
+});
+
+// --- Galerie de Maëlys ---------------------------------------------------------------------
+function painting(label, frame, scene) {
+  return {
+    label, emoji: '🖼️', price: 400, w: 1.1, d: 0.1, color: frame, wall: true, mountY: 1.7, cat: 'deco', shop: 'galerie',
+    build(c) {
+      const s = new Shape();
+      s.add(G.box(1.1, 0.8, 0.06), c, {});
+      scene(s);
+      return s.build();
+    },
+  };
+}
+def('tableau-phare', painting('Tableau « Le phare »', '#ffd84d', (s) => {
+  s.add(G.box(0.95, 0.35, 0.02), '#ff9f7a', { pos: [0, 0.14, 0.03] });
+  s.add(G.box(0.95, 0.3, 0.02), '#3f7fb8', { pos: [0, -0.18, 0.03] });
+  s.add(G.box(0.12, 0.4, 0.02), '#fffaf2', { pos: [0.2, 0.05, 0.04] });
+  for (const y of [-0.05, 0.13]) s.add(G.box(0.12, 0.06, 0.02), '#e5484d', { pos: [0.2, y, 0.045] });
+  s.add(G.sphere(0.07, 8, 6), '#fff3a8', { pos: [-0.25, 0.2, 0.04], scale: [1, 1, 0.2] });
+}));
+def('tableau-montagne', painting('Tableau « Le Pic »', '#8a5a3a', (s) => {
+  s.add(G.box(0.95, 0.65, 0.02), '#9fd8ff', { pos: [0, 0, 0.03] });
+  s.add(G.cone(0.35, 0.45, 3), '#8f887e', { pos: [-0.1, -0.02, 0.04], scale: [1, 1, 0.05] });
+  s.add(G.cone(0.14, 0.18, 3), '#ffffff', { pos: [-0.1, 0.12, 0.045], scale: [1, 1, 0.05] });
+  s.add(G.box(0.95, 0.15, 0.02), '#5fae55', { pos: [0, -0.25, 0.045] });
+  for (const x of [0.25, 0.35]) s.add(G.cone(0.05, 0.16, 3), '#2f7650', { pos: [x, -0.14, 0.05], scale: [1, 1, 0.05] });
+}));
+def('tableau-lagon', painting('Tableau « Le lagon »', '#8fd6e8', (s) => {
+  s.add(G.box(0.95, 0.3, 0.02), '#ffe3a8', { pos: [0, 0.17, 0.03] });
+  s.add(G.box(0.95, 0.35, 0.02), '#5fd8d0', { pos: [0, -0.14, 0.03] });
+  s.add(G.sphere(0.1, 8, 6), '#ff8a5c', { pos: [0.25, 0.18, 0.04], scale: [1, 1, 0.2] });
+  s.add(G.cyl(0.015, 0.02, 0.3, 4), '#a47a52', { pos: [-0.3, 0.05, 0.045], rot: [0, 0, 0.2] });
+  s.add(G.sphere(0.1, 6, 4), '#4f9e4f', { pos: [-0.33, 0.2, 0.045], scale: [1.5, 0.3, 0.2] });
+}));
+def('tableau-chat', painting('Tableau « Minou »', '#ff8fab', (s) => {
+  s.add(G.box(0.95, 0.65, 0.02), '#fff3d6', { pos: [0, 0, 0.03] });
+  s.add(G.sphere(0.18, 10, 8), '#f2a65a', { pos: [0, -0.08, 0.04], scale: [1.3, 0.9, 0.2] });
+  s.add(G.sphere(0.12, 10, 8), '#f2a65a', { pos: [0.15, 0.08, 0.045], scale: [1, 1, 0.2] });
+  for (const x of [0.09, 0.21]) s.add(G.cone(0.04, 0.08, 3), '#f2a65a', { pos: [x, 0.2, 0.045], scale: [1, 1, 0.1] });
+}));
+def('portrait', { ...painting('Ton portrait par Maëlys', '#ffd84d', (s) => {
+  s.add(G.box(0.95, 0.65, 0.02), '#c9dcff', { pos: [0, 0, 0.03] });
+  s.add(G.sphere(0.16, 10, 8), '#fbd5bd', { pos: [0, 0.05, 0.04], scale: [1, 1.1, 0.2] });
+  s.add(G.sphere(0.18, 10, 8), '#6e4430', { pos: [0, 0.12, 0.035], scale: [1.1, 0.8, 0.2] });
+  s.add(G.box(0.4, 0.22, 0.02), '#f7a8b8', { pos: [0, -0.22, 0.04] });
+  s.add(G.box(0.05, 0.3, 0.02), '#fffaf2', { pos: [0.38, 0, 0.04] });
+}), price: 0, noShop: true });
+def('chevalet', {
+  label: 'Chevalet de peintre', emoji: '🎨', price: 450, w: 0.8, d: 0.7, color: WOOD, where: 'both', cat: 'deco', shop: 'galerie',
+  build(c) {
+    const s = new Shape();
+    for (const x of [-0.3, 0.3]) s.add(G.box(0.05, 1.7, 0.05), c, { pos: [x, 0.85, 0.1], rot: [0.08, 0, x > 0 ? -0.1 : 0.1] });
+    s.add(G.box(0.05, 1.6, 0.05), c, { pos: [0, 0.8, -0.3], rot: [0.3, 0, 0] });
+    s.add(G.box(0.8, 0.05, 0.1), c, { pos: [0, 0.7, 0.15] });
+    s.add(G.box(0.75, 0.6, 0.04), '#fffaf2', { pos: [0, 1.05, 0.16], rot: [0.08, 0, 0] });
+    s.add(G.box(0.6, 0.18, 0.02), '#8fd6e8', { pos: [0, 1.18, 0.19], rot: [0.08, 0, 0] });
+    s.add(G.box(0.6, 0.2, 0.02), '#b5e48c', { pos: [0, 0.94, 0.19], rot: [0.08, 0, 0] });
+    s.add(G.sphere(0.25, 10, 6), '#e9d5b7', { pos: [0.5, 0.75, 0.25], scale: [1, 0.12, 0.8] });
+    for (let i = 0; i < 4; i++) s.add(G.sphere(0.04, 6, 4), ['#e5484d', '#ffd84d', '#6fa8dc', '#6fcf97'][i], { pos: [0.4 + (i % 2) * 0.14, 0.79, 0.15 + Math.floor(i / 2) * 0.14] });
+    return s.build();
+  },
+});
+def('sculpture', {
+  label: 'Sculpture moderne', emoji: '🗿', price: 520, w: 0.6, d: 0.6, color: '#b69cf0', where: 'both', cat: 'deco', shop: 'galerie',
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(0.5, 0.5, 0.5), '#fffaf2', { pos: [0, 0.25, 0] });
+    s.add(G.torus(0.25, 0.08, 8, 16), c, { pos: [0, 0.85, 0], rot: [0.3, 0.4, 0] });
+    s.add(G.sphere(0.12, 10, 8), light(c, 0.4), { pos: [0, 0.85, 0] });
+    s.add(G.cone(0.12, 0.3, 8), dark(c, 0.2), { pos: [0.1, 1.25, 0], rot: [0, 0, -0.4] });
+    return s.build();
+  },
+});
+
+// --- Club de plongée de Coralie ---------------------------------------------------------
+def('bocal-poisson', {
+  label: 'Bocal à poisson rouge', emoji: '🐠', price: 160, w: 0.4, d: 0.4, color: '#8fd6e8', cat: 'deco', shop: 'plongee', anim: 'fish', transparentGlow: true,
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.16, 0.18, 0.05, 14), '#fffaf2', { pos: [0, 0.03, 0] });
+    s.add(G.torus(0.14, 0.015, 4, 14), '#dff4ff', { pos: [0, 0.52, 0], rot: [Math.PI / 2, 0, 0] });
+    s.add(G.cone(0.08, 0.12, 5), '#5fae55', { pos: [0.06, 0.12, 0.03] });
+    return s.build();
+  },
+  glow() {
+    return new Shape().add(G.sphere(0.24, 16, 12), '#9fe6f5', { pos: [0, 0.3, 0] }).build();
+  },
+});
+def('aquarium-geant', {
+  label: 'Aquarium géant', emoji: '🐟', price: 1400, w: 2.0, d: 0.6, color: '#3d5a98', cat: 'salon', shop: 'plongee', anim: 'fish', transparentGlow: true,
+  light: { y: 1.0, color: '#8fe3f0', intensity: 2.5, dist: 5 },
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(2.0, 0.7, 0.6), c, { pos: [0, 0.35, 0] });
+    s.add(G.box(2.0, 0.08, 0.6), dark(c, 0.2), { pos: [0, 1.74, 0] });
+    for (const x of [-0.98, 0.98]) s.add(G.box(0.04, 1.0, 0.6), dark(c, 0.2), { pos: [x, 1.22, 0] });
+    s.add(G.box(1.9, 0.08, 0.5), '#f3e3c8', { pos: [0, 0.76, 0] });
+    for (let i = 0; i < 5; i++) s.add(G.cyl(0.02, 0.03, 0.4 + (i % 2) * 0.2, 4), '#4f9e4f', { pos: [-0.8 + i * 0.4, 0.98, -0.1] });
+    s.add(G.sphere(0.12, 8, 6), '#ff7f91', { pos: [0.5, 0.84, 0.1], scale: [1.3, 0.8, 1] });
+    return s.build();
+  },
+  glow() {
+    return new Shape().add(G.box(1.9, 0.92, 0.52), '#9fe6f5', { pos: [0, 1.24, 0] }).build();
+  },
+});
+def('coquillage-geant', {
+  label: 'Coquillage géant', emoji: '🐚', price: 300, w: 0.8, d: 0.6, color: '#ffc9d6', where: 'both', cat: 'deco', shop: 'plongee',
+  build(c) {
+    const s = new Shape();
+    for (let i = 0; i < 7; i++) {
+      const a = -0.9 + i * 0.3;
+      s.add(G.sphere(0.2, 8, 6), i % 2 ? c : light(c, 0.3), { pos: [Math.sin(a) * 0.25, 0.22, Math.cos(a) * 0.05], rot: [0, 0, -a], scale: [0.35, 1.2, 0.8] });
+    }
+    s.add(G.sphere(0.1, 8, 6), '#fffaf2', { pos: [0, 0.08, 0.1], scale: [1.5, 0.5, 1] });
+    s.add(G.sphere(0.05, 8, 6), '#f3eefc', { pos: [0, 0.14, 0.15] });
+    return s.build();
+  },
+});
+
 // Catégories des meubles historiques (les nouveaux la précisent eux-mêmes).
 const CATS = {
   chambre: ['lit', 'lit-double', 'table-chevet', 'commode', 'miroir', 'coffre'],
@@ -1513,7 +1950,12 @@ export const FURNITURE_CATS = [
 export const FURNITURE = F;
 
 /** Meubles vendus par Bruno (hors récompenses). */
-export const SHOP_FURNITURE = Object.values(F).filter((f) => f.price > 0 && !f.noShop);
+export const SHOP_FURNITURE = Object.values(F).filter((f) => f.price > 0 && !f.noShop && (f.shop || 'menuiserie') === 'menuiserie');
+
+/** Meubles vendus dans une boutique donnée. */
+export function shopFurniture(shop) {
+  return Object.values(F).filter((f) => f.price > 0 && !f.noShop && (f.shop || 'menuiserie') === shop);
+}
 
 // --- Papiers peints et sols -------------------------------------------------------
 
