@@ -90,7 +90,7 @@ export class PhotoMode {
 
   shoot() {
     const g = this.game;
-    g.renderer.render(g.scene, g.camera);
+    g.postfx.render(0);
     const src = g.canvas;
     const w = 720;
     const h = Math.round((src.height / src.width) * w);

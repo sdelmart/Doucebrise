@@ -54,22 +54,24 @@
       <div class="hud-tr">
         <canvas id="minimap" class="minimap" width="172" height="172" title="Carte (M)"></canvas>
         <div class="hud-buttons">
-          <button class="icon-btn" data-open="creator" title="Personnaliser (C)">👗<span>C</span></button>
-          <button class="icon-btn" data-open="pets" title="Animaux (P)">🐾<span>P</span></button>
-          <button class="icon-btn" data-open="journal" title="Journal (J)">📜<span>J</span></button>
-          <button class="icon-btn" data-open="bag" title="Sac (I)">🎒<span>I</span></button>
-          <button id="btn-decor" class="icon-btn" title="Décorer (B)">🛋️<span>B</span></button>
-          <button class="icon-btn" data-open="map" title="Carte (M)">🗺️<span>M</span></button>
-          <button id="btn-photo" class="icon-btn" title="Mode photo (O)">📷<span>O</span></button>
-          <button id="btn-vehicle" class="icon-btn" title="Véhicules (V)">🚲<span>V</span></button>
+          <button class="icon-btn" data-open="creator" title="Personnaliser (C)">👗<span data-akey="creator">C</span></button>
+          <button class="icon-btn" data-open="pets" title="Animaux (P)">🐾<span data-akey="pets">P</span></button>
+          <button class="icon-btn" data-open="journal" title="Journal (J)">📜<span data-akey="journal">J</span></button>
+          <button class="icon-btn" data-open="bag" title="Sac (I)">🎒<span data-akey="bag">I</span></button>
+          <button id="btn-decor" class="icon-btn" title="Décorer (B)">🛋️<span data-akey="decor">B</span></button>
+          <button class="icon-btn" data-open="map" title="Carte (M)">🗺️<span data-akey="map">M</span></button>
+          <button id="btn-photo" class="icon-btn" title="Mode photo (O)">📷<span data-akey="photo">O</span></button>
+          <button id="btn-vehicle" class="icon-btn" title="Véhicules (V)">🚲<span data-akey="vehicle">V</span></button>
           <button id="btn-music" class="icon-btn off" title="Musique">🎵</button>
-          <button class="icon-btn" data-open="settings" title="Réglages">⚙️</button>
-          <button class="icon-btn" data-open="help" title="Aide (H)">❓<span>H</span></button>
+          <button class="icon-btn" data-open="pause" title="Menu (Échap)">☰<span>Échap</span></button>
+          <button class="icon-btn" data-open="help" title="Aide (H)">❓<span data-akey="help">H</span></button>
         </div>
       </div>
       <div id="followers" class="followers"></div>
       <div id="inventory" class="inventory"></div>
+      <div id="keyhints" class="keyhints"></div>
     </div>
+    <div id="wish" class="wish hidden">🌠 Une étoile filante ! <span class="key" data-akey="feed">F</span> Faire un vœu</div>
 
     <div id="bubbles" class="bubbles"></div>
     <div id="prompt" class="prompt hidden"></div>
@@ -83,7 +85,7 @@
     <aside id="creator" class="panel side hidden" aria-label="Personnalisation">
       <header class="panel-head">
         <h2>Ton personnage</h2>
-        <label class="name-field">Prénom <input id="cr-name" maxlength="16" autocomplete="off" /></label>
+        <label class="name-field">Pseudo <input id="cr-name" maxlength="16" autocomplete="off" placeholder="Ton pseudo…" /></label>
       </header>
       <nav id="cr-tabs" class="tabs"></nav>
       <div id="cr-body" class="panel-body"></div>
@@ -128,21 +130,8 @@
       <div class="modal-card">
         <button class="close" data-close>✕</button>
         <h2>Comment jouer</h2>
-        <div class="help-grid">
-          <div><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flèches</div><div>Se déplacer</div>
-          <div><kbd>Maj</kbd> · <kbd>Espace</kbd></div><div>Courir (ça effraie les animaux timides !) · sauter</div>
-          <div>Glisser la souris · molette</div><div>Tourner la caméra · zoomer</div>
-          <div><kbd>E</kbd></div><div>Parler · caresser · cueillir · planter/arroser · pêcher · entrer · s'asseoir</div>
-          <div><kbd>F</kbd></div><div>Donner à manger (plat préféré en priorité) · changer de semis</div>
-          <div><kbd>R</kbd></div><div>Adopter (cœurs pleins) · « suis-moi » / « attends au jardin »</div>
-          <div><kbd>1</kbd>…<kbd>5</kbd></div><div>Émotes : salut, danse, s'asseoir, bisou, applaudir</div>
-          <div><kbd>G</kbd></div><div>Jouer avec un animal (plumeau du Café des Chats)</div>
-          <div><kbd>V</kbd></div><div>Véhicules : monter / descendre (achetés au garage de Léo) · <kbd>Maj</kbd> pour accélérer</div>
-          <div><kbd>T</kbd> · 💡</div><div>« Que faire ? » : un indice pour la quête en cours (la flèche dorée montre où aller)</div>
-          <div><kbd>B</kbd></div><div>Décorer (chez toi ou dans ton jardin) · onglet Façade dans le jardin</div>
-          <div><kbd>C</kbd> <kbd>P</kbd> <kbd>J</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>O</kbd></div><div>Tenue · animaux · journal · sac · carte · photo</div>
-        </div>
-        <p class="help-tip">💡 Suis l'histoire « Le Cœur de Doucebrise » : la flèche dorée te guide, la bleue pour les petits boulots (tableau sur la place). Boutiques : graines (Mamie Rose), marché (Pomme), meubles et travaux (Bruno), vêtements (Lila), chats (Mimi), véhicules (Léo). Relève ton courrier chaque matin, attrape des insectes au filet, relève les défis du jour (🎯) et fais monter tes métiers ! Chaque saison dure 3 jours et a sa fête.</p>
+        <div id="help-grid" class="help-grid"></div>
+        <p class="help-tip">💡 Suis l'histoire « Le Cœur de Doucebrise » : la flèche dorée te guide, la bleue pour les petits boulots (tableau sur la place), la violette pour les quêtes des habitants (« ! » au-dessus de leur tête). Traverse les ponts pour découvrir Bourg-Sapin et Port-Corail, puis voyage d'un village à l'autre grâce aux panneaux 🧭. Relève ton courrier chaque matin, fais un vœu sous les étoiles filantes, et fais monter tes métiers ! Chaque saison dure 3 jours et a sa fête.</p>
       </div>
     </div>
 

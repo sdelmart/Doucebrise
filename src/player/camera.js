@@ -78,7 +78,7 @@ export class FollowCamera {
       // (uniquement quand il avance « dans » l'écran, sinon on tournerait en rond en reculant).
       const behind = player.rotY + Math.PI;
       const off = Math.abs(Math.atan2(Math.sin(behind - this.yaw), Math.cos(behind - this.yaw)));
-      if (!this.photo && !input.drag.active && player.speed > 1 && off < 1.3) {
+      if (this.autoFollow !== false && !this.photo && !input.drag.active && player.speed > 1 && off < 1.3) {
         this.yaw = lerpAngle(this.yaw, behind, 1 - Math.exp(-0.5 * dt * (player.speed / 4)));
       }
       look.copy(player.pos).add(new THREE.Vector3(0, this.photo ? 0.9 : 1.25, 0));
@@ -88,26 +88,34 @@ export class FollowCamera {
         const cp = Math.cos(pitch);
         desired.set(Math.sin(this.yaw) * cp * dist, Math.sin(pitch) * dist, Math.cos(this.yaw) * cp * dist).add(look);
       };
-      const blocked = () => {
+      const blocked = (terrain) => {
         for (let i = 2; i <= 12; i++) {
           const t = i / 12;
           const x = look.x + (desired.x - look.x) * t;
           const y = look.y + (desired.y - look.y) * t;
           const z = look.z + (desired.z - look.z) * t;
-          // Maisons, et relief (collines, montagne) entre la caméra et le joueur.
-          if (this.world.cameraBlocked(x, y, z) || y < this.world.heightAt(x, z) + 0.35) return t;
+          if (terrain ? y < this.world.heightAt(x, z) + 0.35 : this.world.cameraBlocked(x, y, z)) return t;
         }
         return 0;
       };
       let pitch = this.pitch;
       place(pitch, this.dist);
-      let hit = blocked();
+      let hit = blocked(false);
       while (hit && pitch < 1.3) {
         pitch += 0.08;
         place(pitch, this.dist);
-        hit = blocked();
+        hit = blocked(false);
       }
       if (hit) place(this.pitch, Math.max(this.dist * (hit - 0.1), 2.5));
+      // Colline ou montagne entre la caméra et le joueur : la caméra se rapproche.
+      const th = blocked(true);
+      if (th) {
+        const d = Math.hypot(desired.x - look.x, desired.y - look.y, desired.z - look.z);
+        place(pitch, Math.max(d * (th - 0.12), 2.2));
+        // Toujours bloquée de très près : on monte un peu.
+        let k = 0;
+        while (blocked(true) && k++ < 6) place(pitch + k * 0.1, Math.max(d * (th - 0.12), 2.2));
+      }
       this.autoPitch = pitch;
       const ground = Math.max(this.world.heightAt(desired.x, desired.z), 0) + 0.6;
       if (desired.y < ground) desired.y = ground;

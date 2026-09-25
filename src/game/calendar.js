@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { ITEMS } from './items.js';
 import { SEASONS, DAYS_PER_SEASON } from '../world/weather.js';
 import { BIRTHDAYS } from '../npc/villagers.js';
@@ -131,6 +130,13 @@ export class Calendar {
       const names = bs.map((id) => g.villagers.get(id).def.name).join(' et de ');
       this.addLetter({ from: 'rose', text: `Psst ! Demain, c'est l'anniversaire de ${names}. N'oublie pas, un petit cadeau fait toujours tant plaisir ! 🎂` });
     }
+    // Vœux faits sous les étoiles filantes : parfois, un fragment d'étoile tombe du ciel.
+    if (this.wishes > 0) {
+      if (rng() < 0.35 + Math.min(this.wishes, 4) * 0.15) {
+        this.addLetter({ signature: '🌠 Le ciel étoilé', title: 'Un cadeau tombé du ciel', text: 'Cette nuit, ton vœu a été entendu. Au matin, un petit éclat lumineux brillait au pied de ta boîte aux lettres…', gift: { items: { 'fragment-etoile': 1 } } });
+      }
+      this.wishes = 0;
+    }
     // Nuit des étoiles : tout le monde envoie un petit mot.
     if (this.festival?.id === 'etoiles') {
       this.addLetter({ from: 'lila', text: 'Joyeuse Nuit des Étoiles ! Ce soir, regarde le ciel au-dessus de la place… ✨', gift: { items: { friandise: 2 }, coins: 100 } });
@@ -231,21 +237,14 @@ export class Calendar {
 
   // --- Étoiles filantes -----------------------------------------------------------------
 
-  update(dt) {
-    const g = this.game;
-    if (this.festival?.id !== 'etoiles' || !g.world.sky.isNight || g.house.inside) return;
-    this.starT -= dt;
-    if (this.starT > 0) return;
-    this.starT = 0.6 + Math.random() * 1.2;
-    const p = g.player.pos;
-    const pos = new THREE.Vector3(p.x + (Math.random() - 0.5) * 50, 28 + Math.random() * 10, p.z + (Math.random() - 0.5) * 50);
-    g.particles.emit('sparkle', pos, { count: 3, spread: 2.5, size: 0.8, life: 1.6 });
+  update() {
+    // Les étoiles filantes (plus nombreuses pendant la Nuit des Étoiles) sont gérées par le ciel.
   }
 
   // --- Sauvegarde ----------------------------------------------------------------------
 
   serialize() {
-    return { letters: this.letters, mailDay: this.mailDay, contest: this.contest };
+    return { letters: this.letters, mailDay: this.mailDay, contest: this.contest, wishes: this.wishes || 0 };
   }
 
   restore(d) {
@@ -253,6 +252,7 @@ export class Calendar {
     this.letters = d.letters || [];
     this.mailDay = d.mailDay || 0;
     this.contest = d.contest || null;
+    this.wishes = d.wishes || 0;
     this.game.world.village.hasMail = this.letters.length > 0;
   }
 }

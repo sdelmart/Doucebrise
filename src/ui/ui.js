@@ -4,6 +4,15 @@ import { ITEMS, HOTBAR, countItem } from '../game/items.js';
 import { ZONES, MAP_RANGE } from '../world/layout.js';
 import { STORY, CHAPTERS } from '../game/quests.js';
 import { JOB_TYPES } from '../game/jobs.js';
+import { ACTIONS } from '../core/settings.js';
+import { actionKey, keyLabel } from '../core/input.js';
+
+// Libellés de touches des bulles d'action (« E », « Maj »…) → touche réelle du joueur.
+const PROMPT_KEYS = { Maj: 'run', Espace: 'jump' };
+for (const a of ACTIONS) if (/^Key[A-Z]$/.test(a.logical)) PROMPT_KEYS[a.logical.slice(3)] = a.id;
+export function promptKey(k) {
+  return PROMPT_KEYS[k] ? actionKey(PROMPT_KEYS[k]) : k;
+}
 
 // Interface HTML : HUD, bulle d'interaction, notifications, mini-carte, fenêtres.
 
@@ -75,9 +84,9 @@ export class UI {
     this.el.loading.classList.add('hidden');
   }
 
-  showTitle(hasSave) {
+  showTitle() {
     this.el.title.classList.remove('hidden');
-    $('#btn-continue').classList.toggle('hidden', !hasSave);
+    this.game.titleMenu?.render();
     this.el.hud.classList.add('hidden');
   }
 
@@ -302,11 +311,81 @@ export class UI {
     }, ms);
   }
 
+  // --- Touches affichées ------------------------------------------------------
+
+  /** Met à jour les touches affichées sur les boutons du HUD (après réassignation). */
+  refreshKeyHints() {
+    document.querySelectorAll('[data-akey]').forEach((el) => {
+      el.textContent = actionKey(el.dataset.akey);
+      const btn = el.closest('button');
+      if (btn?.title) btn.title = btn.title.replace(/\(([^)]*)\)$/, `(${el.textContent})`);
+    });
+    this.hintsKey = '';
+  }
+
+  /** Barre des touches utiles selon la situation. */
+  updateKeyHints() {
+    const g = this.game;
+    const el = $('#keyhints');
+    if (!el || !g.settings.keyHints) return;
+    const K = actionKey;
+    const move = ['forward', 'left', 'back', 'right'].map(K).join('');
+    let list;
+    const veh = g.player.vehicle;
+    if (g.sitting) list = [[K('interact'), 'Se lever']];
+    else if (g.fishing.active) list = [[K('interact'), 'Ferrer / remonter']];
+    else if (veh) list = [[move, 'Conduire'], [K('run'), 'Accélérer'], [K('interact'), veh.def.mode === 'air' ? 'Atterrir' : 'Descendre']];
+    else if (g.house.inside) list = [[move, 'Marcher'], [K('interact'), 'Interagir'], [K('decor'), 'Décorer'], [K('bag'), 'Sac'], [keyLabel('Escape'), 'Menu']];
+    else {
+      list = [[move, 'Marcher'], [K('run'), 'Courir'], [K('jump'), 'Sauter'], [K('interact'), 'Interagir'], [K('map'), 'Carte'], [K('journal'), 'Journal']];
+      if (Object.keys(g.vehicles.owned || {}).length) list.push([K('vehicle'), 'Véhicule']);
+      list.push(['1-5', 'Émotes'], [keyLabel('Escape'), 'Menu']);
+    }
+    const key = JSON.stringify(list);
+    if (key === this.hintsKey) return;
+    this.hintsKey = key;
+    el.innerHTML = list.map(([k, l]) => `<span class="kh"><span class="key">${escapeHtml(k)}</span>${escapeHtml(l)}</span>`).join('');
+  }
+
+  /** Aide : les commandes, avec les touches choisies par le joueur. */
+  renderHelp() {
+    const K = (id) => `<kbd>${escapeHtml(actionKey(id))}</kbd>`;
+    const rows = [
+      [`${K('forward')}${K('left')}${K('back')}${K('right')} / flèches`, 'Se déplacer'],
+      [`${K('run')} · ${K('jump')}`, 'Courir (ça effraie les animaux timides !) · sauter'],
+      ['Glisser la souris · molette', 'Tourner la caméra · zoomer'],
+      [K('interact'), 'Parler · caresser · cueillir · planter/arroser · pêcher · entrer · s\'asseoir · voyager'],
+      [K('feed'), 'Donner à manger · changer de semis · faire un vœu sous une étoile filante 🌠'],
+      [K('adopt'), 'Adopter (cœurs pleins) · « suis-moi » / « attends au jardin »'],
+      [K('play'), 'Jouer avec un animal (plumeau du Café des Chats)'],
+      ['<kbd>1</kbd>…<kbd>5</kbd>', 'Émotes : salut, danse, s\'asseoir, bisou, applaudir'],
+      [K('vehicle'), 'Véhicules : monter / descendre (achetés au garage de Léo)'],
+      [`${K('hint')} · 💡`, '« Que faire ? » : un indice pour la quête en cours'],
+      [K('decor'), 'Décorer (chez toi ou dans ton jardin)'],
+      [`${K('creator')} ${K('pets')} ${K('journal')} ${K('bag')} ${K('map')} ${K('photo')}`, 'Tenue · animaux · journal · sac · carte · photo'],
+      ['<kbd>Échap</kbd>', 'Menu pause : paramètres, sauvegarde, profils'],
+      [`<kbd>${escapeHtml(keyLabel('F3'))}</kbd> · <kbd>F11</kbd>`, 'Compteur FPS · plein écran'],
+      ['🎮 Manette', 'Stick gauche : bouger · stick droit : caméra · A : interagir · X : nourrir · Y : sauter · Start : menu'],
+    ];
+    $('#help-grid').innerHTML = rows.map(([k, l]) => `<div>${k}</div><div>${l}</div>`).join('');
+  }
+
+  wishPrompt(on) {
+    const el = $('#wish');
+    if (!el) return;
+    el.querySelector('[data-akey]').textContent = actionKey('feed');
+    el.classList.toggle('hidden', !on);
+  }
+
   setZoneLabel(zone) {
     this.el.zone.textContent = zone ? `${zone.emoji} ${zone.name}` : '🏝️ Île de Doucebrise';
   }
 
   zoneBanner(zone) {
+    if (this.game.settings.zoneBanner === false) {
+      this.el.zone.textContent = `${zone.emoji} ${zone.name}`;
+      return;
+    }
     const b = this.el.banner;
     b.textContent = `${zone.emoji} ${zone.name}`;
     b.classList.add('show');
@@ -335,7 +414,7 @@ export class UI {
       if (target.hearts !== undefined) html += `<div class="hearts">${heartsString(target.hearts)}</div>`;
       html += '<div class="actions">';
       for (const a of target.actions) {
-        html += `<div class="act${a.dim ? ' dim' : ''}"><span class="key">${a.key}</span>${escapeHtml(a.label)}</div>`;
+        html += `<div class="act${a.dim ? ' dim' : ''}"><span class="key">${escapeHtml(promptKey(a.key))}</span>${escapeHtml(a.label)}</div>`;
       }
       html += '</div>';
       el.innerHTML = html;
@@ -364,8 +443,13 @@ export class UI {
     let icon = night ? '🌙' : h < 7.5 ? '🌅' : h >= 18.5 ? '🌇' : '☀️';
     if (w.current !== 'clair') icon = night ? w.info.night : w.info.emoji;
     this.el.clockIcon.textContent = icon;
-    this.el.clockIcon.title = w.info.label;
+    this.el.clockIcon.title = `${w.info.label} · Demain : ${w.forecast?.() || ''}`;
     this.updateBubbles(dt);
+    this.hintT = (this.hintT || 0) - dt;
+    if (this.hintT <= 0) {
+      this.hintT = 0.25;
+      this.updateKeyHints();
+    }
     this.mapT -= dt;
     if (this.mapT <= 0) {
       this.mapT = 0.15;

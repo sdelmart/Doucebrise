@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World } from './world/world.js';
-import { zoneAt, LANDMARKS } from './world/layout.js';
+import { zoneAt, LANDMARKS, islandAt } from './world/layout.js';
 import { Character } from './player/character.js';
 import { Player } from './player/player.js';
 import { FollowCamera } from './player/camera.js';
@@ -24,10 +24,12 @@ import { House } from './house/house.js';
 import { DecorMode } from './house/decor.js';
 import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS, FURNITURE_CATS, shopFurniture } from './house/furniture.js';
 import { HOME_SIZES, ROOF_STYLES, FACADES, HOME_EXTRAS } from './world/home.js';
-import { Input } from './core/input.js';
+import { Input, initKeyboardLayout, logicalCode } from './core/input.js';
+import { loadSettings, saveSettings, SHADOW_SIZES, DAY_SPEEDS } from './core/settings.js';
+import { PostFX } from './core/postfx.js';
 import { Particles } from './core/particles.js';
 import { Audio } from './core/audio.js';
-import { loadSave, writeSave, clearSave } from './core/save.js';
+import { loadSave, writeSave, clearSave, getSlot } from './core/save.js';
 import { UI } from './ui/ui.js';
 import { Creator } from './ui/creator.js';
 import { PetsPanel } from './ui/pets.js';
@@ -35,7 +37,9 @@ import { Dialogue } from './ui/dialogue.js';
 import { Shop } from './ui/shop.js';
 import { Journal } from './ui/journal.js';
 import { PhotoMode } from './ui/photo.js';
-import { BagPanel, SettingsPanel, QUALITY, DAY_SPEEDS } from './ui/panels.js';
+import { BagPanel } from './ui/panels.js';
+import { TitleMenu, PauseMenu, SettingsPanel, Credits, toggleFullscreen } from './ui/menus.js';
+import { PerfOverlay } from './ui/perf.js';
 import { Guide } from './ui/guide.js';
 
 const PET_NAMES = ['Moka', 'Caramel', 'Noisette', 'Biscuit', 'Plume', 'Pépite', 'Brioche', 'Praline', 'Nougat', 'Mochi', 'Tofu', 'Pistache', 'Câlin', 'Filou', 'Guimauve', 'Cannelle', 'Pompon', 'Réglisse', 'Sésame', 'Myrtille'];
@@ -43,7 +47,7 @@ const EMOTES = { Digit1: ['wave', 1.6], Digit2: ['dance', 5], Digit3: ['sit', 0]
 const TOOLS = { 'tool:filet': '🥅 Filet à papillons', 'tool:plumeau': '🪶 Plumeau' };
 const UPGRADE_PRICES = [0, 4000, 10000];
 const RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
-const PANELS = ['#creator', '#pets', '#map', '#help', '#journal', '#bag', '#settings'];
+const PANELS = ['#creator', '#pets', '#map', '#help', '#journal', '#bag', '#settings', '#pause', '#credits'];
 
 // Chef d'orchestre : rendu, boucle, états (titre / création / jeu), interactions, sauvegarde.
 
@@ -51,11 +55,11 @@ export class Game {
   constructor(canvas) {
     this.canvas = canvas;
     this.listeners = {};
-    this.save = loadSave();
-    this.settings = { quality: 'haute', daySpeed: 'normale', volume: 0.5, ...(this.save?.settings || {}) };
-    if (!this.save?.settings && (window.innerWidth < 720 || /Mobi|Android/i.test(navigator.userAgent))) this.settings.quality = 'moyenne';
+    this.slot = getSlot();
+    this.save = loadSave(this.slot);
+    this.settings = loadSettings(this.save?.settings);
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -63,9 +67,15 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 900);
 
     this.input = new Input(canvas);
+    initKeyboardLayout().then(() => this.ui?.refreshKeyHints?.());
+    this.input.onRebuild = () => this.ui?.refreshKeyHints?.();
     this.audio = new Audio();
     this.world = new World(this.scene);
     this.particles = new Particles(this.scene);
+    this.postfx = new PostFX(this.renderer, this.scene, this.camera);
+    this.renderer.info.autoReset = false;
+    this.perf = new PerfOverlay(this);
+    this.wishT = 0;
     this.world.particles = this.particles;
 
     const appearance = this.save ? normalizeAppearance(this.save.appearance) : { ...DEFAULT_APPEARANCE };
@@ -107,6 +117,9 @@ export class Game {
     this.bag = new BagPanel(this);
     this.settingsPanel = new SettingsPanel(this);
     this.guide = new Guide(this);
+    this.titleMenu = new TitleMenu(this);
+    this.pauseMenu = new PauseMenu(this);
+    this.credits = new Credits(this);
 
     this.state = 'title';
     this.panel = null;
@@ -126,30 +139,42 @@ export class Game {
     if (this.save) this.restore(this.save);
     else this.house.restore(null);
     this.world.village.setPlayerName(this.character.appearance.name);
+    this.audio.musicOn = this.settings.musicOn;
+    document.querySelector('#btn-music')?.classList.toggle('off', !this.audio.musicOn);
     this.applySettings();
+    this.world.sky.onShootingStar = (st) => this.onShootingStar(st);
+    this.world.weather.onThunder = (delay) => this.audio.thunder(delay);
     this.cam.setMode('title');
     this.cam.snap = true;
 
     window.addEventListener('resize', () => this.resize());
+    // Avant les autres écouteurs : Échap qui ferme une fenêtre ne doit pas ouvrir la pause.
+    window.addEventListener('keydown', (e) => {
+      this.escWasBusy = this.busy || !!this.panel || this.state !== 'play';
+    }, true);
     window.addEventListener('keydown', (e) => this.onKey(e));
+    window.desktop?.onFullscreen?.((on) => {
+      this.fullscreen = on;
+    });
     window.addEventListener('beforeunload', () => {
       if (this.state !== 'title') this.saveNow();
     });
-    document.querySelector('#btn-new').addEventListener('click', () => this.newGame());
-    document.querySelector('#btn-continue').addEventListener('click', () => this.continueGame());
 
     this.timer = new THREE.Timer();
     this.renderer.setAnimationLoop((t) => this.frame(t));
     this.ui.hideLoading();
-    this.ui.showTitle(!!this.save);
-    let fresh = null;
+    this.ui.showTitle();
+    // Démarrage automatique après un changement de profil ou une nouvelle partie.
+    let auto = null;
     try {
-      fresh = sessionStorage.getItem('doucebrise-new');
+      auto = sessionStorage.getItem('doucebrise-autostart') || (sessionStorage.getItem('doucebrise-new') ? 'new' : null);
+      sessionStorage.removeItem('doucebrise-autostart');
       sessionStorage.removeItem('doucebrise-new');
     } catch {
-      fresh = null;
+      auto = null;
     }
-    if (fresh && !this.save) setTimeout(() => this.newGame(), 50);
+    if (auto === 'new' && !this.save) setTimeout(() => this.newGame(), 50);
+    if (auto === 'continue' && this.save) setTimeout(() => this.continueGame(), 50);
   }
 
   // --- Événements --------------------------------------------------------------
@@ -164,23 +189,53 @@ export class Game {
 
   // --- Réglages ------------------------------------------------------------------
 
-  applySettings() {
-    const q = QUALITY[this.settings.quality] || QUALITY.haute;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, q.ratio));
+  applySettings(save = true) {
+    const st = this.settings;
+    const gs = st.graphics;
+    const ratio = Math.min(window.devicePixelRatio || 1, gs.maxRatio) * gs.renderScale;
+    this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     const sun = this.world.sky.sun;
-    if (sun.castShadow !== q.shadows || (q.shadows && sun.shadow.mapSize.x !== q.shadowSize)) {
-      sun.castShadow = q.shadows;
-      if (q.shadows) {
-        sun.shadow.mapSize.set(q.shadowSize, q.shadowSize);
+    const size = SHADOW_SIZES[gs.shadows] || 0;
+    if (sun.castShadow !== size > 0 || (size && sun.shadow.mapSize.x !== size)) {
+      sun.castShadow = size > 0;
+      if (size) {
+        sun.shadow.mapSize.set(size, size);
         sun.shadow.map?.dispose();
         sun.shadow.map = null;
+        // Zone d'ombre plus large en ultra.
+        const cam = sun.shadow.camera;
+        const ext = size >= 4096 ? 60 : 42;
+        cam.left = -ext;
+        cam.right = ext;
+        cam.top = ext;
+        cam.bottom = -ext;
+        cam.updateProjectionMatrix();
       }
     }
-    this.grassRadius = q.grass;
-    this.world.sky.speed = (DAY_SPEEDS[this.settings.daySpeed] || DAY_SPEEDS.normale).k;
-    this.audio.setVolume(this.settings.volume);
-    this.requestSave();
+    this.grassRadius = gs.grass;
+    this.world.renderDistance = gs.renderDistance;
+    this.world.weather.fogScale = gs.renderDistance / 300;
+    this.world.sky.cloudQuality = { low: 0.35, medium: 0.6, high: 1 }[gs.clouds] ?? 0.6;
+    const wu = this.world.water.userData.uniforms;
+    if (wu) wu.uReflect.value = gs.water === 'reflets' ? 1 : 0;
+    this.postfx.configure({ aa: gs.aa, bloom: gs.bloom, grading: gs.grading });
+    this.postfx.setSize(window.innerWidth, window.innerHeight);
+    this.camera.fov = st.fov;
+    this.camera.updateProjectionMatrix();
+    this.world.sky.speed = (DAY_SPEEDS[st.daySpeed] || DAY_SPEEDS.normale).k;
+    this.input.sensitivity = st.camSensitivity;
+    this.input.invertY = st.invertY;
+    this.input.setBindings(st.keys);
+    this.cam.autoFollow = st.camAuto;
+    this.audio.setLevels(st.audio);
+    this.guide.enabled = st.guideArrow;
+    document.documentElement.style.setProperty('--ui-scale', st.uiScale);
+    document.body.classList.toggle('no-minimap', !st.minimap);
+    document.body.classList.toggle('no-keyhints', !st.keyHints);
+    this.perf.setMode(st.showFps);
+    this.ui.refreshKeyHints?.();
+    if (save) saveSettings(st);
   }
 
   // --- États -------------------------------------------------------------------
@@ -190,7 +245,7 @@ export class Game {
     if (this.save) {
       clearSave();
       try {
-        sessionStorage.setItem('doucebrise-new', this.character.appearance.name || '1');
+        sessionStorage.setItem('doucebrise-autostart', 'new');
       } catch {
         /* stockage indisponible */
       }
@@ -198,7 +253,7 @@ export class Game {
       return;
     }
     this.audio.ensure();
-    const a = { ...randomAppearance(), name: this.character.appearance.name || 'Lou' };
+    const a = { ...randomAppearance(), name: '' };
     this.setAppearance(a);
     this.inventory = createInventory();
     this.inventory.baie = 3;
@@ -217,6 +272,8 @@ export class Game {
 
   continueGame() {
     this.audio.ensure();
+    // Remet l'heure sauvegardée après l'animation de l'écran titre.
+    if (this.savedTime) this.world.sky.hour = this.savedTime.hour;
     this.ui.hideTitle();
     this.startPlaying();
   }
@@ -256,7 +313,7 @@ export class Game {
   }
 
   openPanel(name) {
-    if (this.state === 'title' && name !== 'creator') return;
+    if (this.state === 'title' && !['creator', 'settings', 'credits', 'help'].includes(name)) return;
     if (this.panel === name) {
       this.closePanels();
       return;
@@ -294,12 +351,20 @@ export class Game {
         this.bag.render();
         document.querySelector('#bag').classList.remove('hidden');
         break;
+      case 'pause':
+        this.pauseMenu.render();
+        document.querySelector('#pause').classList.remove('hidden');
+        break;
+      case 'credits':
+        document.querySelector('#credits').classList.remove('hidden');
+        break;
       case 'settings':
         this.settingsPanel.confirmReset = false;
         this.settingsPanel.render();
         document.querySelector('#settings').classList.remove('hidden');
         break;
       case 'help':
+        this.ui.renderHelp();
         document.querySelector('#help').classList.remove('hidden');
         break;
       default:
@@ -313,6 +378,7 @@ export class Game {
     this.panel = null;
     this.ui.openPanel = null;
     if (was === 'creator') {
+      if (!this.character.appearance.name?.trim()) this.setAppearance({ ...this.character.appearance, name: 'Voyageur·se' }, false);
       this.input.enabled = true;
       this.cam.setShift(0);
       this.world.village.setPlayerName(this.character.appearance.name);
@@ -336,13 +402,52 @@ export class Game {
     const on = this.audio.toggleMusic();
     document.querySelector('#btn-music')?.classList.toggle('off', !on);
     this.ui.toast(on ? '🎵 Musique activée' : '🔇 Musique coupée', 1500);
-    this.requestSave();
+    this.settings.musicOn = on;
+    saveSettings(this.settings);
     return on;
+  }
+
+  // --- Étoiles filantes et vœux -------------------------------------------------------
+
+  onShootingStar() {
+    if (this.state !== 'play' || this.house.inside) return;
+    this.audio.play('star');
+    this.wishT = 2.6;
+    this.ui.wishPrompt?.(true);
+  }
+
+  makeWish() {
+    this.wishT = 0;
+    this.ui.wishPrompt?.(false);
+    this.audio.play('wish');
+    this.particles.emit('sparkle', this.player.pos.clone().setY(this.player.pos.y + 2), { count: 8, spread: 1.2, size: 0.7 });
+    this.character.play('kiss', 1.4);
+    const lines = ['🌠 Tu fais un vœu en silence… ✨', '🌠 Vœu envoyé aux étoiles ! ✨', '🌠 Chut… un vœu, ça ne se raconte pas ! ✨'];
+    this.ui.toast(lines[Math.floor(Math.random() * lines.length)], 3200);
+    this.calendar.wishes = (this.calendar.wishes || 0) + 1;
+    this.emit('wish', {});
+    this.requestSave();
   }
 
   onKey(e) {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-    if (this.state === 'title') return;
+    const code = logicalCode(e);
+    if (e.code === 'F11') {
+      e.preventDefault();
+      toggleFullscreen(!(window.desktop?.isDesktop ? this.fullscreen : document.fullscreenElement));
+      return;
+    }
+    if (code === 'F3') {
+      const order = ['off', 'fps', 'detail'];
+      this.settings.showFps = order[(order.indexOf(this.settings.showFps) + 1) % order.length];
+      this.perf.setMode(this.settings.showFps);
+      saveSettings(this.settings);
+      return;
+    }
+    if (this.state === 'title') {
+      if (logicalCode(e) === 'Escape' && this.panel) this.closePanels();
+      return;
+    }
     if (this.state === 'creator') {
       if (e.code === 'Escape') this.closePanels();
       return;
@@ -353,9 +458,10 @@ export class Game {
       if (e.code === 'Escape' || e.code === 'KeyO') this.photo.exit();
       return;
     }
-    switch (e.code) {
+    switch (code) {
       case 'Escape':
-        this.closePanels();
+        if (this.panel) this.closePanels();
+        else if (!this.escWasBusy) this.openPanel('pause');
         break;
       case 'KeyC':
         this.openPanel('creator');
@@ -388,7 +494,7 @@ export class Game {
         this.showHint();
         break;
       default:
-        if (EMOTES[e.code] && !this.panel) this.emote(e.code);
+        if (EMOTES[code] && !this.panel) this.emote(code);
         break;
     }
   }
@@ -1046,36 +1152,55 @@ export class Game {
   // --- Boucle ------------------------------------------------------------------
 
   frame(time) {
+    // Limite d'images par seconde (réglages).
+    const limit = this.settings.fpsLimit;
+    if (limit && this.lastFrameAt !== undefined && time - this.lastFrameAt < 1000 / limit - 1) return;
+    this.lastFrameAt = time;
     this.timer.update(time);
-    const dt = Math.min(this.timer.getDelta(), 0.05);
+    const rawDt = this.timer.getDelta();
+    const dt = Math.min(rawDt, 0.05);
+    this.input.pollGamepad(dt);
     this.elapsed += dt;
     const playing = this.state === 'play';
     const free = playing && !this.busy;
+    if (playing && this.panel !== 'pause') this.playtime = (this.playtime || 0) + dt;
 
     if (free && this.input.hit('Space') && this.player.grounded && !this.player.frozen) this.audio.play('jump');
+    // Vœu sous une étoile filante (prioritaire sur les autres usages de F).
+    if (this.wishT > 0) {
+      this.wishT -= dt;
+      if (free && this.input.hit('KeyF')) {
+        this.makeWish();
+        this.input.pressed.delete('KeyF');
+      } else if (this.wishT <= 0) this.ui.wishPrompt?.(false);
+    }
     const frozen = this.player.frozen;
     if (!free) this.player.frozen = true;
     this.player.update(dt, this.input, this.cam.yaw);
     this.player.frozen = frozen;
     if (this.state === 'title') this.world.sky.hour = 10 + Math.sin(this.elapsed * 0.02) * 0.5;
 
-    const worldDt = this.state === 'title' ? 0 : dt;
+    // En pause (menu Échap, paramètres en cours de partie), le temps s'arrête.
+    const paused = playing && (this.panel === 'pause' || this.panel === 'settings');
+    const sdt = paused ? 0 : dt;
+    const worldDt = this.state === 'title' ? 0 : sdt;
     this.world.update(worldDt, this.elapsed, this.player.pos, this.grassRadius);
     this.audio.setRain(this.state === 'play' && !this.house.inside ? this.world.weather.rainAmt : 0);
-    this.animals.update(dt, this.world.sky.isNight);
-    this.villagers.update(dt);
-    this.resources.update(dt);
-    this.garden.update(dt);
-    this.fishing.update(dt, this.input);
-    this.insects.update(dt);
-    this.vehicles.update(dt);
-    this.jobs.update(dt);
-    this.calendar.update(dt);
-    this.house.update(dt, this.elapsed, this.camera);
+    this.animals.update(sdt, this.world.sky.isNight);
+    this.villagers.update(sdt);
+    this.resources.update(sdt);
+    this.garden.update(sdt);
+    this.fishing.update(sdt, this.input);
+    this.insects.update(sdt);
+    this.vehicles.update(sdt);
+    this.jobs.update(sdt);
+    this.calendar.update(sdt);
+    this.house.update(sdt, this.elapsed, this.camera);
     this.decor.update();
-    this.particles.update(dt);
+    this.particles.update(sdt);
     this.cam.update(dt, this.player, this.input, this.elapsed);
     this.guide.update(dt);
+    this.updateAtmosphere(dt);
 
     if (playing) {
       if (free) this.updateInteractions();
@@ -1107,14 +1232,47 @@ export class Game {
     }
     if (this.state === 'creator') this.ui.update(dt);
 
-    this.renderer.render(this.scene, this.camera);
+    this.renderer.info.reset();
+    this.postfx.render(dt);
+    this.perf.update(rawDt);
     this.input.endFrame();
+  }
+
+  /** Ambiance : lumière du post-traitement, sons, musique, étoiles filantes, aurores. */
+  updateAtmosphere(dt) {
+    const w = this.world;
+    const sky = w.sky;
+    const golden = sky.sunDir.y > 0 ? 1 - Math.min(1, sky.sunDir.y / 0.35) : 0;
+    this.postfx.setMood({ night: sky.nightFactor, golden, flash: w.weather.flash * 0.25, fog: w.weather.fogAmt });
+    const festival = this.calendar.festival?.id === 'etoiles';
+    sky.shootEvery = festival ? [2, 5] : [16, 38];
+    this.atmoT = (this.atmoT || 0) - dt;
+    if (this.atmoT <= 0) {
+      this.atmoT = 0.5;
+      const p = this.player.pos;
+      const island = islandAt(p.x, p.z);
+      w.weather.auroraBoost = island === 'pins' ? 1 : 0.7;
+      // Proximité de la mer : part des points alentour sous l'eau.
+      let wet = 0;
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        if (w.heightAt(p.x + Math.cos(a) * 14, p.z + Math.sin(a) * 14) < -0.3) wet++;
+      }
+      this.atmo = { sea: wet / 8, altitude: w.heightAt(p.x, p.z), island };
+      this.audio.setMood(sky.isNight ? 'nuit' : island === 'pins' ? 'pins' : island === 'corail' ? 'corail' : 'village');
+    }
+    const a = this.atmo || { sea: 0, altitude: 0 };
+    this.audio.updateAmbience(dt, {
+      night: sky.isNight, rain: w.weather.rainAmt, sea: a.sea, altitude: a.altitude,
+      storm: w.weather.isStorm, inside: this.house.inside, active: this.state === 'play',
+    });
   }
 
   resize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.postfx.setSize(window.innerWidth, window.innerHeight);
   }
 
   // --- Sauvegarde --------------------------------------------------------------
@@ -1156,7 +1314,7 @@ export class Game {
       calendar: this.calendar.serialize(),
       archipelago: this.archipelago.serialize(),
       sideQuests: this.sideQuests.serialize(),
-      settings: { ...this.settings, music: this.audio.musicOn, sfx: this.audio.sfxOn },
+      stats: { playtime: Math.round(this.playtime || 0) },
     });
   }
 
@@ -1188,14 +1346,6 @@ export class Game {
     this.calendar.restore(s.calendar);
     this.archipelago.restore(s.archipelago);
     this.sideQuests.restore(s.sideQuests);
-    if (s.settings) {
-      this.audio.musicOn = !!s.settings.music;
-      this.audio.sfxOn = s.settings.sfx !== false;
-      document.querySelector('#btn-music')?.classList.toggle('off', !this.audio.musicOn);
-    }
-    // Remet l'heure sauvegardée après l'animation de l'écran titre.
-    document.querySelector('#btn-continue').addEventListener('click', () => {
-      this.world.sky.hour = this.savedTime?.hour ?? 8.5;
-    }, { once: true });
+    this.playtime = s.stats?.playtime || 0;
   }
 }

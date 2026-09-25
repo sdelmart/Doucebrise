@@ -31,7 +31,18 @@ export class Creator {
       this.commit();
       this.render();
     });
-    $('#cr-done').addEventListener('click', () => this.game.closePanels());
+    $('#cr-done').addEventListener('click', () => {
+      // Un pseudo est obligatoire.
+      if (!this.nameInput.value.trim()) {
+        this.nameInput.classList.remove('shake');
+        void this.nameInput.offsetWidth;
+        this.nameInput.classList.add('shake');
+        this.nameInput.focus();
+        this.game.ui.toast('✏️ Choisis d\'abord ton pseudo !', 2500);
+        return;
+      }
+      this.game.closePanels();
+    });
     this.renderTabs();
   }
 
