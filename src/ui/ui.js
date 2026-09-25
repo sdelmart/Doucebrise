@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { SPECIES } from '../animals/species.js';
-import { ITEMS, HOTBAR } from '../game/items.js';
+import { ITEMS, HOTBAR, countItem } from '../game/items.js';
 import { ZONES } from '../world/layout.js';
-import { STORY } from '../game/quests.js';
+import { STORY, CHAPTERS } from '../game/quests.js';
+import { JOB_TYPES } from '../game/jobs.js';
 
 // Interface HTML : HUD, bulle d'interaction, notifications, mini-carte, fenêtres.
 
@@ -47,6 +48,13 @@ export class UI {
       b.addEventListener('click', () => this.game.closePanels());
     });
     this.el.minimap.addEventListener('click', () => this.game.openPanel('map'));
+    this.bubbles = [];
+    $('#btn-hint').addEventListener('click', () => this.game.showHint());
+    $('#btn-vehicle').addEventListener('click', () => this.game.vehicles.toggleMenu());
+    $('#challenge-tracker').addEventListener('click', () => {
+      this.game.journal.tab = 'defis';
+      this.game.openPanel('journal');
+    });
     $('#btn-music').addEventListener('click', () => this.game.toggleMusic());
     $('#btn-decor').addEventListener('click', () => this.game.startDecor());
     $('#btn-photo').addEventListener('click', () => this.game.startPhoto());
@@ -106,7 +114,7 @@ export class UI {
   refreshInventory() {
     const inv = this.game.inventory;
     for (const [id, d] of Object.entries(this.slots)) {
-      const n = inv[id] || 0;
+      const n = countItem(inv, id);
       const c = d.querySelector('.count');
       if (c.textContent !== String(n)) {
         c.textContent = n;
@@ -115,7 +123,7 @@ export class UI {
         d.classList.add('bump');
       }
       d.classList.toggle('empty', n === 0);
-      d.classList.toggle('hidden', id === 'friandise' && n === 0);
+      d.classList.toggle('hidden', (id === 'friandise' || id === 'patee') && n === 0);
     }
     if (this.openPanel === 'bag') this.game.bag.render();
   }
@@ -135,17 +143,120 @@ export class UI {
   }
 
   refreshQuest() {
-    const q = this.game.quests.current;
+    const g = this.game;
+    const q = g.quests.current;
     const el = this.el.quest;
+    let html = '';
     if (!q) {
-      el.innerHTML = '<b>🌟 Histoire terminée</b>';
+      html = '<div class="qt-title">🌟 Histoire terminée</div><div class="qt-goal">Profite de l\'île !</div>';
+    } else {
+      const qs = g.quests;
+      const i = q.goals.findIndex((goal, k) => qs.goalProgress(q, k) < goal.count);
+      const goal = q.goals[Math.max(i, 0)];
+      const p = qs.goalProgress(q, Math.max(i, 0));
+      const chap = CHAPTERS.find((c) => c.id === q.chapter);
+      const inChap = qs.chapterQuests(q.chapter);
+      html = `<div class="qt-chap">${chap.emoji} ${chap.n <= 8 ? `Chapitre ${chap.n}` : 'Épilogue'} · ${inChap.indexOf(q) + 1}/${inChap.length}</div>
+        <div class="qt-title">📜 ${escapeHtml(q.title)}</div><div class="qt-goal">${escapeHtml(goal.label)} — ${p}/${goal.count}</div>`;
+    }
+    const job = g.jobs?.active;
+    if (job) html += `<div class="qt-job">${JOB_TYPES[job.type].emoji} ${escapeHtml(g.jobs.progressText())}</div>`;
+    el.innerHTML = html;
+  }
+
+  refreshChallenges() {
+    const g = this.game;
+    const el = $('#challenge-tracker');
+    const list = g.progress.daily.list;
+    if (!list.length) {
+      el.classList.add('hidden');
       return;
     }
-    const qs = this.game.quests;
-    const i = q.goals.findIndex((g, k) => qs.goalProgress(q, k) < g.count);
-    const goal = q.goals[Math.max(i, 0)];
-    const p = qs.goalProgress(q, Math.max(i, 0));
-    el.innerHTML = `<div class="qt-title">📜 ${escapeHtml(q.title)} <span>${STORY.indexOf(q) + 1}/${STORY.length}</span></div><div class="qt-goal">${escapeHtml(goal.label)} — ${p}/${goal.count}</div>`;
+    el.classList.remove('hidden');
+    const done = list.filter((c) => c.done).length;
+    const next = list.find((c) => !c.done);
+    const def = next ? g.progress.challengeDef(next.id) : null;
+    el.innerHTML = `<span class="ct-count">🎯 ${done}/${list.length}</span>${def ? `<span class="ct-next">${def.emoji} ${escapeHtml(def.label)} ${next.progress}/${def.count}</span>` : '<span class="ct-next">Défis du jour réussis ! 🌟</span>'}`;
+  }
+
+  refreshName() {
+    const g = this.game;
+    const el = $('#player-tag');
+    el.innerHTML = `<b>${escapeHtml(g.character.appearance.name)}</b> <span class="title-chip">${escapeHtml(g.progress.title)}</span> <span class="stars-chip" title="Étoiles">⭐ ${g.progress.stars}</span>`;
+  }
+
+  xpPop(emoji, amount) {
+    const box = $('#xp-pops');
+    const d = document.createElement('div');
+    d.className = 'xp-pop';
+    d.textContent = `+${amount} ${emoji}`;
+    box.appendChild(d);
+    while (box.children.length > 4) box.firstChild.remove();
+    setTimeout(() => d.remove(), 1600);
+  }
+
+  levelBanner(text) {
+    const b = $('#level-banner');
+    b.textContent = text;
+    b.classList.remove('show');
+    void b.offsetWidth;
+    b.classList.add('show');
+    clearTimeout(this.levelTimer);
+    this.levelTimer = setTimeout(() => b.classList.remove('show'), 3200);
+  }
+
+  /** Bulle de texte au-dessus d'un personnage (position donnée par une fonction). */
+  bubble(posFn, text, ms = 2500) {
+    const el = document.createElement('div');
+    el.className = 'speech';
+    el.textContent = text;
+    $('#bubbles').appendChild(el);
+    const b = { el, posFn: typeof posFn === 'function' ? posFn : () => posFn, t: ms / 1000 };
+    this.bubbles.push(b);
+    while (this.bubbles.length > 6) this.removeBubble(this.bubbles[0]);
+  }
+
+  removeBubble(b) {
+    b.el.remove();
+    this.bubbles = this.bubbles.filter((x) => x !== b);
+  }
+
+  updateBubbles(dt) {
+    for (const b of [...this.bubbles]) {
+      b.t -= dt;
+      if (b.t <= 0) {
+        this.removeBubble(b);
+        continue;
+      }
+      _v.copy(b.posFn()).project(this.game.camera);
+      const hidden = _v.z > 1 || this.game.busy || this.game.panel;
+      b.el.style.display = hidden ? 'none' : '';
+      b.el.style.left = `${Math.round((_v.x * 0.5 + 0.5) * window.innerWidth)}px`;
+      b.el.style.top = `${Math.round((-_v.y * 0.5 + 0.5) * window.innerHeight)}px`;
+      b.el.style.opacity = Math.min(1, b.t * 3);
+    }
+  }
+
+  /** Grande carte d'introduction d'un chapitre. */
+  chapterCard(chap) {
+    const g = this.game;
+    const el = $('#chapter');
+    el.innerHTML = `<div class="chapter-card"><div class="chap-emoji">${chap.emoji}</div>
+      <div class="chap-num">${chap.n <= 8 ? `Chapitre ${chap.n}` : 'Épilogue'}</div><h2>${escapeHtml(chap.title)}</h2>
+      <p>${escapeHtml(chap.text)}</p><div class="chap-sparks">${'✨'.repeat(g.quests.sparks)}${'·'.repeat(Math.max(0, 7 - g.quests.sparks))}</div>
+      <button class="btn big primary" data-chap-ok>C'est parti !</button></div>`;
+    el.classList.remove('hidden');
+    g.audio.play('chapter');
+    g.input.enabled = false;
+    this.chapterOpen = true;
+    el.querySelector('[data-chap-ok]').onclick = () => {
+      el.classList.add('hidden');
+      g.input.enabled = true;
+      this.chapterOpen = false;
+      const q = g.quests.current;
+      if (q) setTimeout(() => this.toast(`📜 ${q.title} — ${q.desc}`, 6000), 300);
+      g.guide?.flash();
+    };
   }
 
   refreshAll() {
@@ -153,6 +264,8 @@ export class UI {
     this.refreshCoins();
     this.refreshQuest();
     this.refreshFollowers();
+    this.refreshChallenges();
+    this.refreshName();
   }
 
   refreshFollowers() {
@@ -239,6 +352,7 @@ export class UI {
     if (w.current !== 'clair') icon = night ? w.info.night : w.info.emoji;
     this.el.clockIcon.textContent = icon;
     this.el.clockIcon.title = w.info.label;
+    this.updateBubbles(dt);
     this.mapT -= dt;
     if (this.mapT <= 0) {
       this.mapT = 0.15;
@@ -295,13 +409,51 @@ export class UI {
 
   drawMarkers(ctx, toMap, k) {
     const g = this.game;
-    // Maison.
-    const home = g.world.village.houses[0];
+    const v = g.world.village;
+    // Maison et lieux utiles.
+    const home = v.houses[0];
     const [hx, hy] = toMap(home.x, home.z);
     ctx.font = `${Math.round(16 * k)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('🏠', hx, hy);
+    ctx.font = `${Math.round(12 * k)}px sans-serif`;
+    const places = [[v.shopSpots.cafe, '☕'], [v.shopSpots.garage, '🔧'], [v.jobBoard, '📋'], [v.shopSpots.marche, '🧺'], [v.shopSpots.menuiserie, '🪚'], [v.shopSpots.graines, '🌱'], [v.shopSpots.couture, '👗']];
+    for (const [pl, em] of places) {
+      if (!pl) continue;
+      const [px, py] = toMap(pl.x, pl.z);
+      ctx.fillText(em, px, py);
+    }
+    // Objectifs du guide.
+    for (const m of g.guide?.mapMarkers() || []) {
+      const [mx, my] = toMap(m.x, m.z);
+      const col = m.kind === 'job' ? '#5bb6ff' : '#ffcf3a';
+      if (m.area) {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.arc(mx, my, 14 * k, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.save();
+      ctx.translate(mx, my);
+      const r = (8 + Math.sin(g.elapsed * 5) * 1.2) * k;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const rr = i % 2 ? r * 0.45 : r;
+        const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+        ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      ctx.closePath();
+      ctx.fillStyle = col;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
     // Animaux adoptés.
     for (const a of g.animals.companions()) {
       const [ax, ay] = toMap(a.pos.x, a.pos.z);

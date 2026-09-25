@@ -154,6 +154,7 @@ export class Animal {
   update(dt, ctx) {
     this.t += dt;
     this.petCooldown = Math.max(0, this.petCooldown - dt);
+    this.playCooldown = Math.max(0, (this.playCooldown || 0) - dt);
     this.happyT = Math.max(0, this.happyT - dt);
     const p = ctx.player.pos;
     const dx = p.x - this.pos.x;
@@ -163,7 +164,7 @@ export class Animal {
     let goal = null;
 
     this.stateT -= dt;
-    const following = this.adopted && this.follow;
+    const following = this.adopted && this.follow && !ctx.hold;
 
     if (following) {
       this.sleeping = false;

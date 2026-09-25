@@ -45,8 +45,13 @@
           </div>
           <div class="coin-wrap"><div id="coins" class="coins">🪙 0</div></div>
         </div>
+        <div id="player-tag" class="player-tag"></div>
         <div id="zone-label" class="zone-label">Place du Village</div>
-        <button id="quest-tracker" class="quest-tracker" title="Journal (J)"></button>
+        <div class="quest-row">
+          <button id="quest-tracker" class="quest-tracker" title="Journal (J)"></button>
+          <button id="btn-hint" class="hint-btn" title="Que faire ? (T)">💡</button>
+        </div>
+        <button id="challenge-tracker" class="challenge-tracker hidden" title="Défis du jour"></button>
       </div>
       <div class="hud-tr">
         <canvas id="minimap" class="minimap" width="172" height="172" title="Carte (M)"></canvas>
@@ -58,6 +63,7 @@
           <button id="btn-decor" class="icon-btn" title="Décorer (B)">🛋️<span>B</span></button>
           <button class="icon-btn" data-open="map" title="Carte (M)">🗺️<span>M</span></button>
           <button id="btn-photo" class="icon-btn" title="Mode photo (O)">📷<span>O</span></button>
+          <button id="btn-vehicle" class="icon-btn" title="Véhicules (V)">🚲<span>V</span></button>
           <button id="btn-music" class="icon-btn off" title="Musique">🎵</button>
           <button class="icon-btn" data-open="settings" title="Réglages">⚙️</button>
           <button class="icon-btn" data-open="help" title="Aide (H)">❓<span>H</span></button>
@@ -67,7 +73,11 @@
       <div id="inventory" class="inventory"></div>
     </div>
 
+    <div id="bubbles" class="bubbles"></div>
     <div id="prompt" class="prompt hidden"></div>
+    <div id="xp-pops" class="xp-pops"></div>
+    <div id="level-banner" class="level-banner"></div>
+    <div id="chapter" class="chapter hidden"></div>
     <div id="zone-banner" class="zone-banner"></div>
     <div id="toasts" class="toasts"></div>
 
@@ -120,10 +130,13 @@
           <div><kbd>F</kbd></div><div>Donner à manger (plat préféré en priorité) · changer de semis</div>
           <div><kbd>R</kbd></div><div>Adopter (cœurs pleins) · « suis-moi » / « attends au jardin »</div>
           <div><kbd>1</kbd>…<kbd>5</kbd></div><div>Émotes : salut, danse, s'asseoir, bisou, applaudir</div>
-          <div><kbd>B</kbd></div><div>Décorer (chez toi ou dans ton jardin)</div>
+          <div><kbd>G</kbd></div><div>Jouer avec un animal (plumeau du Café des Chats)</div>
+          <div><kbd>V</kbd></div><div>Véhicules : monter / descendre (achetés au garage de Léo) · <kbd>Maj</kbd> pour accélérer</div>
+          <div><kbd>T</kbd> · 💡</div><div>« Que faire ? » : un indice pour la quête en cours (la flèche dorée montre où aller)</div>
+          <div><kbd>B</kbd></div><div>Décorer (chez toi ou dans ton jardin) · onglet Façade dans le jardin</div>
           <div><kbd>C</kbd> <kbd>P</kbd> <kbd>J</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>O</kbd></div><div>Tenue · animaux · journal · sac · carte · photo</div>
         </div>
-        <p class="help-tip">💡 Suis les quêtes du journal (J) : elles font découvrir toute l'île. Les habitants ont des boutiques : graines (Mamie Rose), marché (Pomme), meubles (Bruno), vêtements (Lila). Dors dans ton lit pour passer la nuit. Chaque saison dure 3 jours : l'automne rougit les arbres et l'hiver apporte la neige !</p>
+        <p class="help-tip">💡 Suis l'histoire « Le Cœur de Doucebrise » : la flèche dorée te guide, la bleue pour les petits boulots (tableau sur la place). Boutiques : graines (Mamie Rose), marché (Pomme), meubles et travaux (Bruno), vêtements (Lila), chats (Mimi), véhicules (Léo). Relève ton courrier chaque matin, attrape des insectes au filet, relève les défis du jour (🎯) et fais monter tes métiers ! Chaque saison dure 3 jours et a sa fête.</p>
       </div>
     </div>
 
@@ -145,6 +158,8 @@
     <div id="touch" class="touch hidden">
       <div id="joystick" class="joystick"><div class="stick"></div></div>
       <div class="touch-buttons">
+        <button data-key="KeyV" class="tbtn">🚲</button>
+        <button data-key="KeyG" class="tbtn">🪶</button>
         <button data-key="KeyR" class="tbtn">R</button>
         <button data-key="KeyF" class="tbtn">🍓</button>
         <button data-key="KeyE" class="tbtn main">E</button>

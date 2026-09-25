@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Animal } from './animal.js';
 import { SPECIES } from './species.js';
-import { ITEMS } from '../game/items.js';
+import { ITEMS, countItem, takeItem } from '../game/items.js';
 import { createRng } from '../core/math.js';
 
 // Peuplement de l'île et interactions joueur ↔ animaux.
@@ -47,7 +47,10 @@ export class AnimalManager {
     this.discovered = {};
     const rng = createRng(7171);
     let n = 0;
-    for (const [species, count, cx, cz, r] of SPAWNS) {
+    // Colonie de chats devant le Café des Chats (ajoutée après les autres : les identifiants restent stables).
+    const cafe = this.world.village.cafe;
+    const spawns = [...SPAWNS, ['chat', 5, cafe.x + cafe.fwd[0] * 6, cafe.z + cafe.fwd[1] * 6, 6]];
+    for (const [species, count, cx, cz, r] of spawns) {
       for (let i = 0; i < count; i++) {
         const pos = this.findSpot(rng, cx, cz, r, species);
         const variantCount = SPECIES[species].variants.length;
@@ -108,6 +111,7 @@ export class AnimalManager {
     const ctx = {
       player,
       night,
+      hold: !!player.vehicle && player.vehicle.def.mode !== 'ground',
       followIndex: 0,
       onStartle: (a) => this.game.particles.emit('alert', a.headPosition(), { count: 1, size: 0.4 }),
     };
@@ -195,20 +199,29 @@ export class AnimalManager {
     g.player.character.play('pet', 1.2);
     g.particles.emit('heart', a.headPosition(), { count: 3, spread: 0.4 });
     g.audio?.play('pet');
+    if (Math.random() < 0.5) g.ui.bubble?.(a.headPosition(), a.sp.sound);
+    const first = a.petToday === 0;
     const gain = a.petToday < TRUST_PET_DAILY ? TRUST_PET : 1;
     a.petToday += gain;
     this.addTrust(a, gain);
+    g.progress.addXp('soins', first ? 6 : 2);
     if (this.discover(a) === 'variant') g.ui.toast(`📖 Nouveau dans ton carnet : ${a.sp.label} ${a.variantName} !`);
     g.emit('pet', { animal: a });
     g.requestSave();
   }
 
-  /** Choisit ce qu'on donne : plat préféré, sinon friandise, sinon n'importe quelle nourriture. */
+  /** Nourriture préférée d'un animal (« poisson » = n'importe quel poisson, le moins cher). */
+  hasFav(a) {
+    return countItem(this.game.inventory, a.sp.fav) > 0;
+  }
+
+  /** Choisit ce qu'on donne : pâtée (chats), plat préféré, friandise, sinon n'importe quelle nourriture. */
   pickFood(a) {
     const inv = this.game.inventory;
-    if (inv[a.sp.fav] > 0) return a.sp.fav;
+    if (a.species === 'chat' && inv.patee > 0) return 'patee';
+    if (this.hasFav(a)) return a.sp.fav;
     if (inv.friandise > 0) return 'friandise';
-    return Object.keys(ITEMS).find((f) => ITEMS[f].feed && inv[f] > 0) || null;
+    return Object.keys(ITEMS).find((f) => ITEMS[f].feed && !ITEMS[f].catTreat && inv[f] > 0 && ITEMS[f].tag !== 'poisson') || (countItem(inv, 'poisson') > 0 ? 'poisson' : null);
   }
 
   feed(a) {
@@ -220,31 +233,61 @@ export class AnimalManager {
       g.ui.toast('Ton sac est vide ! Cueille des baies, des pommes ou des carottes… 🧺');
       return;
     }
-    inv[food] -= 1;
+    const eaten = takeItem(inv, food, 1)[0] || food;
     a.pet();
     a.petCooldown = 1.2;
     g.player.face(a.pos.x, a.pos.z);
     g.player.character.play('feed', 1.0);
     const isFav = food === fav;
-    const great = isFav || ITEMS[food].treat;
+    const great = isFav || ITEMS[food].treat || (ITEMS[food].catTreat && a.species === 'chat');
     g.particles.emit(great ? 'heart' : 'note', a.headPosition(), { count: great ? 5 : 2, spread: 0.5 });
     if (great) g.particles.emit('sparkle', a.headPosition(), { count: 2, spread: 0.6 });
     g.audio?.play(great ? 'fav' : 'eat');
     this.addTrust(a, great ? TRUST_FAV : TRUST_FOOD);
+    g.progress.addXp('soins', great ? 10 : 5);
     const res = this.discover(a, isFav);
     if (res === 'fav') {
       g.ui.toast(`✨ Le plat préféré du ${a.sp.label.toLowerCase()} : ${ITEMS[fav].emoji} ${ITEMS[fav].label} !`);
     } else {
-      g.ui.toast(`${a.sp.emoji} ${a.label} a mangé ${ITEMS[food].emoji} ${isFav ? '— son préféré !' : great ? '— un régal !' : ''}`);
+      g.ui.toast(`${a.sp.emoji} ${a.label} a mangé ${ITEMS[eaten].emoji} ${isFav ? '— son préféré !' : great ? '— un régal !' : ''}`);
     }
     g.emit('feed', { animal: a, food, fav: isFav });
     g.ui.refreshInventory();
     g.requestSave();
   }
 
+  /** Jouer avec le plumeau (touche G). */
+  play(a) {
+    const g = this.game;
+    if (!g.unlocks.has('tool:plumeau')) {
+      g.ui.toast('🪶 Il te faut un plumeau ! Mimi en vend au Café des Chats.');
+      return;
+    }
+    if (a.playCooldown > 0) return;
+    if (!a.adopted && a.sp.shy > 0.55 && a.trust < 15) {
+      a.startle();
+      g.ui.toast(`${a.sp.emoji} Il a pris peur… Donne-lui d'abord à manger.`);
+      return;
+    }
+    a.pet();
+    a.stateT = 2.2;
+    a.playCooldown = 3;
+    g.player.face(a.pos.x, a.pos.z);
+    g.player.character.play('wave', 1.8);
+    const loves = ['chat', 'chien', 'pandaRoux', 'renard'].includes(a.species);
+    g.particles.emit(loves ? 'heart' : 'note', a.headPosition(), { count: loves ? 4 : 2, spread: 0.6 });
+    g.ui.bubble?.(a.headPosition(), loves ? '✨ Encore ! ✨' : a.sp.sound);
+    g.audio?.play('pet');
+    this.addTrust(a, loves ? 12 : 6);
+    g.progress.addXp('soins', 6);
+    g.emit('play', { animal: a });
+    g.requestSave();
+  }
+
   addTrust(a, amount) {
     const before = a.trust;
-    a.trust = Math.min(100, a.trust + amount);
+    const bonus = 1 + this.game.progress.perk('soins') * 0.07;
+    a.trust = Math.min(100, a.trust + amount * bonus);
     if (!a.adopted && before < 100 && a.trust >= 100) {
       this.game.ui.toast(`💖 ${a.sp.label} ${a.variantName} t'adore ! Appuie sur R pour l'adopter.`);
     }
@@ -267,6 +310,7 @@ export class AnimalManager {
         : `🎉 ${a.name} est adopté ! Il t'attend dans ton jardin (3 compagnons max. à la fois).`,
     );
     g.emit('adopt', { animal: a });
+    g.progress.addXp('soins', 50);
     g.requestSave();
   }
 

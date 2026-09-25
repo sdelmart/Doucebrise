@@ -25,6 +25,12 @@ export class FollowCamera {
     if (mode === 'studio') this.studio.yaw = 0;
   }
 
+  /** Plan fixe (cinématique) : position et point visé. */
+  setCinematic(pos, look) {
+    this.mode = 'cine';
+    this.cine = { pos: pos.clone(), look: look.clone() };
+  }
+
   /** Vue plongeante sur une zone (décoration). */
   setOverview(target, dist = 12) {
     this.mode = 'overview';
@@ -53,6 +59,9 @@ export class FollowCamera {
       const ry = player.rotY + this.studio.yaw;
       look.copy(player.pos).add(new THREE.Vector3(0, this.studio.height * h, 0));
       desired.set(Math.sin(ry) * this.studio.dist, 0.25, Math.cos(ry) * this.studio.dist).add(look);
+    } else if (this.mode === 'cine') {
+      desired.copy(this.cine.pos);
+      look.copy(this.cine.look);
     } else if (this.mode === 'overview') {
       const o = this.over;
       o.yaw -= drag.dx * 0.006;
@@ -105,7 +114,7 @@ export class FollowCamera {
       this.target.copy(look);
       this.snap = false;
     } else {
-      const k = this.mode === 'title' ? 2 : this.mode === 'studio' || this.mode === 'overview' ? 6 : 10;
+      const k = this.mode === 'title' ? 2 : this.mode === 'cine' ? 1.2 : this.mode === 'studio' || this.mode === 'overview' ? 6 : 10;
       this.current.x = damp(this.current.x, desired.x, k, dt);
       this.current.y = damp(this.current.y, desired.y, k, dt);
       this.current.z = damp(this.current.z, desired.z, k, dt);

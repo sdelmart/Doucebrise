@@ -8,8 +8,10 @@ export const ITEMS = {
   pomme: { label: 'Pommes', emoji: '🍎', cat: 'food', price: 10, feed: true },
   carotte: { label: 'Carottes', emoji: '🥕', cat: 'food', price: 12, feed: true },
   graine: { label: 'Graines', emoji: '🌻', cat: 'food', price: 4, feed: true },
-  poisson: { label: 'Poissons', emoji: '🐟', cat: 'food', price: 18, feed: true },
+  poisson: { label: 'Poisson frais', emoji: '🐟', cat: 'food', price: 18, feed: true, tag: 'poisson' },
   friandise: { label: 'Friandises', emoji: '🍪', cat: 'food', price: 35, feed: true, treat: true, desc: 'Tous les animaux en raffolent.' },
+  patee: { label: 'Pâtée pour chat', emoji: '🥫', cat: 'food', price: 30, feed: true, catTreat: true, desc: 'Les chats ne résistent pas à la pâtée !' },
+  appat: { label: 'Appâts', emoji: '🪱', cat: 'tool', price: 4, desc: 'Utilisé automatiquement : ça mord plus vite et mieux.' },
 
   // Récoltes du potager
   fraise: { label: 'Fraises', emoji: '🍓', cat: 'crop', price: 24, feed: true },
@@ -42,14 +44,17 @@ export const ITEMS = {
 
 export const CATEGORIES = [
   { id: 'food', label: 'Nourriture' },
+  { id: 'fish', label: 'Poissons' },
+  { id: 'insect', label: 'Insectes' },
   { id: 'crop', label: 'Récoltes' },
   { id: 'forage', label: 'Trouvailles' },
   { id: 'seed', label: 'Graines' },
   { id: 'dish', label: 'Plats' },
+  { id: 'tool', label: 'Matériel' },
 ];
 
 /** Objets affichés en permanence dans la barre du bas. */
-export const HOTBAR = ['baie', 'pomme', 'carotte', 'graine', 'poisson', 'friandise'];
+export const HOTBAR = ['baie', 'pomme', 'carotte', 'graine', 'poisson', 'friandise', 'patee'];
 
 export const RECIPES = [
   { id: 'friandise', needs: { graine: 2, baie: 1 }, known: true },
@@ -67,6 +72,33 @@ export function itemLabel(id, n = 1) {
   const it = ITEMS[id];
   if (!it) return id;
   return `${it.emoji} ${n > 1 ? `${n} ` : ''}${it.label}`;
+}
+
+/** Quantité d'un objet ; « poisson » compte aussi tous les poissons pêchés. */
+export function countItem(inv, id) {
+  if (id !== 'poisson') return inv[id] || 0;
+  let n = 0;
+  for (const [k, it] of Object.entries(ITEMS)) if (it.tag === 'poisson' && k !== 'poisson') n += inv[k] || 0;
+  return n + (inv.poisson || 0);
+}
+
+/** Retire n objets (pour « poisson », les moins précieux d'abord). Renvoie les ids retirés. */
+export function takeItem(inv, id, n = 1) {
+  const taken = [];
+  if (id !== 'poisson') {
+    inv[id] = Math.max(0, (inv[id] || 0) - n);
+    for (let i = 0; i < n; i++) taken.push(id);
+    return taken;
+  }
+  const fish = ['poisson', ...Object.keys(ITEMS).filter((k) => ITEMS[k].tag === 'poisson' && k !== 'poisson').sort((a, b) => ITEMS[a].price - ITEMS[b].price)];
+  for (const k of fish) {
+    while (n > 0 && inv[k] > 0) {
+      inv[k]--;
+      n--;
+      taken.push(k);
+    }
+  }
+  return taken;
 }
 
 export function createInventory() {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { lerpAngle, damp } from '../core/math.js';
+import { lerpAngle, damp, clamp } from '../core/math.js';
 
 // Déplacement du joueur : relatif à la caméra, glisse le long des obstacles,
 // gravité et saut, petites marches (pontons) franchissables.
@@ -44,6 +44,10 @@ export class Player {
   }
 
   update(dt, input, camYaw) {
+    if (this.vehicle) {
+      this.updateVehicle(dt, input, camYaw);
+      return;
+    }
     if (this.seated) {
       this.speed = 0;
       this.sync();
@@ -120,6 +124,91 @@ export class Player {
     if (len > 0.05) this.rotY = lerpAngle(this.rotY, Math.atan2(dx, dz), 1 - Math.exp(-12 * dt));
     this.sync();
     this.character.update(dt, { speed: this.speed, running: this.running && this.speed > 5, grounded: this.grounded, vy: this.vy });
+  }
+
+  /** Conduite : on tourne progressivement vers la direction voulue, avec inertie. */
+  updateVehicle(dt, input, camYaw) {
+    const v = this.vehicle;
+    const def = v.def;
+    const mv = this.frozen || v.landing ? { x: 0, y: 0 } : input.moveVector();
+    const fx = -Math.sin(camYaw);
+    const fz = -Math.cos(camYaw);
+    const rx = Math.cos(camYaw);
+    const rz = -Math.sin(camYaw);
+    const dx = fx * mv.y + rx * mv.x;
+    const dz = fz * mv.y + rz * mv.x;
+    const len = Math.hypot(dx, dz);
+    let target = 0;
+    let turn = 0;
+    if (len > 0.1) {
+      const want = Math.atan2(dx, dz);
+      const diff = Math.atan2(Math.sin(want - this.rotY), Math.cos(want - this.rotY));
+      const rate = def.turn * (0.55 + 0.45 * clamp(1 - Math.abs(v.speed) / (def.speed * 1.4), 0, 1));
+      turn = clamp(diff, -rate * dt, rate * dt);
+      this.rotY += turn;
+      target = def.speed * Math.min(1, len) * (Math.abs(diff) > 2.0 ? 0.35 : Math.abs(diff) > 1.0 ? 0.7 : 1);
+    }
+    const boost = !this.frozen && input.down('ShiftLeft', 'ShiftRight') ? 1.25 : 1;
+    v.speed = damp(v.speed, target * boost, target > v.speed ? def.accel * 0.6 : 2.2, dt);
+    v.roll = damp(v.roll || 0, dt > 0 ? clamp((-turn / dt) * 0.12 * clamp(v.speed / def.speed, 0, 1), -0.3, 0.3) : 0, 6, dt);
+
+    const step = v.speed * dt;
+    const ok = (x, z) => {
+      if (def.mode === 'water') return this.world.terrain.heightAt(x, z) < -0.45 && !this.world.onPlatform(x, z);
+      if (def.mode === 'air') return Math.hypot(x, z) < 135;
+      return this.world.isWalkable(x, z) && this.world.groundAt(x, z) - this.pos.y <= 1.0;
+    };
+    let nx = this.pos.x + Math.sin(this.rotY) * step;
+    let nz = this.pos.z + Math.cos(this.rotY) * step;
+    if (def.mode !== 'air') {
+      const res = this.world.colliders.resolve(nx, nz, def.radius);
+      nx = res.x;
+      nz = res.z;
+      for (const o of this.obstacles ? this.obstacles() : []) {
+        const ddx = nx - o.x;
+        const ddz = nz - o.z;
+        const d = Math.hypot(ddx, ddz);
+        const min = def.radius + 0.4;
+        if (d < min && d > 1e-4) {
+          nx = o.x + (ddx / d) * min;
+          nz = o.z + (ddz / d) * min;
+        }
+      }
+    }
+    if (ok(nx, nz)) {
+      this.pos.x = nx;
+      this.pos.z = nz;
+    } else if (ok(nx, this.pos.z)) {
+      this.pos.x = nx;
+      v.speed *= 0.96;
+    } else if (ok(this.pos.x, nz)) {
+      this.pos.z = nz;
+      v.speed *= 0.96;
+    } else {
+      v.speed *= 0.4;
+    }
+
+    const ground = this.world.groundAt(this.pos.x, this.pos.z);
+    if (def.mode === 'water') {
+      this.pos.y = Math.sin(performance.now() / 700) * 0.04;
+    } else if (def.mode === 'air') {
+      const cruise = Math.max(def.altitude, Math.max(ground, 0) + 12);
+      const goal = v.landing ? Math.max(ground, 0) : cruise;
+      this.pos.y = damp(this.pos.y, goal, v.landing ? 0.9 : 0.35, dt);
+      if (!v.landing && this.pos.y < goal) this.pos.y = Math.min(goal, this.pos.y + dt * 1.2);
+      if (v.landing) this.pos.y = Math.max(Math.max(ground, 0), this.pos.y - dt * 1.5);
+    } else {
+      this.pos.y = damp(this.pos.y, ground, 20, dt);
+    }
+    this.vy = 0;
+    this.grounded = true;
+    this.running = false;
+    this.speed = Math.abs(v.speed);
+    this.vel.set(Math.sin(this.rotY) * v.speed, 0, Math.cos(this.rotY) * v.speed);
+    this.sync();
+    this.character.root.rotation.z = def.mode === 'ground' ? v.roll : 0;
+    this.character.setRideSpeed(v.speed);
+    this.character.update(dt, { speed: 0, running: false, grounded: true, vy: 0 });
   }
 
   /** Oriente doucement le joueur vers un point (pour caresser un animal…). */

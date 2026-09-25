@@ -18,6 +18,19 @@ export const SPECIES = {
       { name: 'Gris perle', main: '#a3abb8', belly: '#eef1f5', accent: '#7d8694', stripes: true },
       { name: 'Siamois', main: '#f3e6d3', belly: '#fff8ee', accent: '#5e4436', points: true, eye: '#5aa9e6' },
       { name: 'Calico', main: '#fffaf2', belly: '#ffffff', accent: '#f2a65a', patches: ['#f2a65a', '#3d3744'] },
+      { name: 'Maine Coon', main: '#8a6a52', belly: '#e8d8c4', accent: '#5a4032', stripes: true, fluffy: true, tufts: true, big: true, eye: '#8fb84a' },
+      { name: 'Persan crème', main: '#f3e3c8', belly: '#fffaf0', accent: '#e8cfa8', fluffy: true, flat: true, eye: '#e0a000' },
+      { name: 'Sphynx', main: '#f2c9b6', belly: '#f7dccf', accent: '#e8b4a0', hairless: true, eye: '#5aa9e6' },
+      { name: 'Smoking', main: '#2e2a33', belly: '#ffffff', accent: '#2e2a33', tuxedo: true, eye: '#8fd66a' },
+      { name: 'Écaille de tortue', main: '#3d2c24', belly: '#6b4326', accent: '#d9793a', patches: ['#d9793a', '#8a5a3a'], eye: '#e0a000' },
+      { name: 'Chartreux', main: '#8a93a8', belly: '#a3abbd', accent: '#737c90', eye: '#e0a000' },
+      { name: 'Bengal', main: '#e0a060', belly: '#fff0dc', accent: '#5a3a22', spots: true, eye: '#8fb84a' },
+      { name: 'Scottish Fold', main: '#c9c2b8', belly: '#f3efe8', accent: '#9a938a', fold: true, stripes: true, eye: '#e0a000' },
+      { name: 'Munchkin', main: '#f5a55a', belly: '#fff4e6', accent: '#e07b39', short: true, stripes: true },
+      { name: 'Ragdoll', main: '#f5efe6', belly: '#ffffff', accent: '#8a7a6a', points: true, fluffy: true, eye: '#5aa9e6' },
+      { name: 'Chaton roux', main: '#f5a55a', belly: '#fff4e6', accent: '#e07b39', stripes: true, baby: true },
+      { name: 'Chaton gris', main: '#a3abb8', belly: '#eef1f5', accent: '#7d8694', baby: true, eye: '#5aa9e6' },
+      { name: 'Chaton noir', main: '#3d3744', belly: '#56505e', accent: '#2a2530', baby: true, eye: '#8fd66a' },
     ],
   },
   chien: {
@@ -260,43 +273,74 @@ function buildCat(m, v) {
   const main = v.main;
   const acc = v.accent;
   const pts = v.points;
+  const legLen = v.short ? 0.14 : 0.26;
+  const by = legLen + 0.04;
   const b = new Shape();
-  b.add(G.sphere(1, 16, 12), main, { pos: [0, 0.3, 0], scale: [0.17, 0.16, 0.26] });
-  b.add(G.sphere(1, 12, 10), v.belly, { pos: [0, 0.26, 0.06], scale: [0.13, 0.12, 0.19] });
+  b.add(G.sphere(1, 16, 12), main, { pos: [0, by, 0], scale: [0.17, 0.16, 0.26] });
+  b.add(G.sphere(1, 12, 10), v.belly, { pos: [0, by - 0.04, 0.06], scale: [0.13, 0.12, 0.19] });
   if (v.stripes) {
-    for (let i = 0; i < 3; i++) b.add(G.sphere(1, 10, 6), acc, { pos: [0, 0.4, -0.12 + i * 0.1], scale: [0.12, 0.06, 0.03] });
+    for (let i = 0; i < 3; i++) b.add(G.sphere(1, 10, 6), acc, { pos: [0, by + 0.1, -0.12 + i * 0.1], scale: [0.12, 0.06, 0.03] });
+  }
+  if (v.spots) {
+    const sp = [[0.1, 0.1, -0.1], [-0.08, 0.12, 0.02], [0.05, 0.14, 0.1], [-0.12, 0.05, -0.12], [0.13, 0.04, 0.06], [-0.02, 0.15, -0.16]];
+    for (const [x, y, z] of sp) b.add(G.sphere(0.03, 8, 6), acc, { pos: [x, by + y, z], scale: [1, 0.6, 1.3] });
   }
   if (v.patches) {
-    b.add(G.sphere(0.09, 10, 8), v.patches[0], { pos: [0.08, 0.38, -0.08], scale: [1, 0.7, 1.3] });
-    b.add(G.sphere(0.08, 10, 8), v.patches[1], { pos: [-0.09, 0.36, 0.06], scale: [1, 0.7, 1.2] });
+    b.add(G.sphere(0.09, 10, 8), v.patches[0], { pos: [0.08, by + 0.08, -0.08], scale: [1, 0.7, 1.3] });
+    b.add(G.sphere(0.08, 10, 8), v.patches[1], { pos: [-0.09, by + 0.06, 0.06], scale: [1, 0.7, 1.2] });
+  }
+  if (v.tuxedo) b.add(G.sphere(1, 12, 10), '#ffffff', { pos: [0, by - 0.01, 0.16], scale: [0.1, 0.12, 0.1] });
+  if (v.fluffy) {
+    b.add(G.ico(0.13, 1), v.belly, { pos: [0, by + 0.08, 0.2], scale: [1.35, 1, 0.9] });
+    for (const side of [-1, 1]) b.add(G.ico(0.1, 1), main, { pos: [side * 0.13, by + 0.02, -0.02], scale: [0.6, 0.9, 1.6] });
   }
   mesh(b.build(), m.body);
-  m.head.position.set(0, 0.52, 0.26);
+  m.head.position.set(0, by + 0.22, 0.26);
   const h = new Shape();
   h.add(G.sphere(0.2, 18, 14), main, { scale: [1.12, 0.95, 1] });
-  h.add(G.sphere(0.06, 10, 8), pts ? acc : v.belly, { pos: [-0.045, -0.07, 0.16], scale: [1, 0.8, 0.8] });
-  h.add(G.sphere(0.06, 10, 8), pts ? acc : v.belly, { pos: [0.045, -0.07, 0.16], scale: [1, 0.8, 0.8] });
-  h.add(G.sphere(0.025, 8, 6), '#ff9fb2', { pos: [0, -0.035, 0.2], scale: [1.2, 0.8, 0.8] });
+  const muz = v.flat ? 0.14 : 0.16;
+  const muzCol = pts ? acc : v.tuxedo ? '#ffffff' : v.belly;
+  h.add(G.sphere(0.06, 10, 8), muzCol, { pos: [-0.045, -0.07, muz], scale: [1, 0.8, 0.8] });
+  h.add(G.sphere(0.06, 10, 8), muzCol, { pos: [0.045, -0.07, muz], scale: [1, 0.8, 0.8] });
+  h.add(G.sphere(0.025, 8, 6), '#ff9fb2', { pos: [0, -0.035, muz + 0.04], scale: [1.2, 0.8, 0.8] });
+  if (v.fluffy) for (const side of [-1, 1]) h.add(G.ico(0.07, 1), v.belly, { pos: [side * 0.2, -0.07, 0.06], scale: [0.8, 1, 1] });
   for (const side of [-1, 1]) {
-    const e = earGeo('pointy', 0.1, pts ? acc : main, '#ffb3c2', side);
-    const g = e.build();
-    g.rotateZ(-side * 0.3);
-    g.translate(side * 0.12, 0.13, -0.01);
+    const earCol = pts ? acc : main;
+    let g;
+    if (v.fold) {
+      const e = new Shape();
+      e.add(G.cone(0.06, 0.08, 8), earCol, { pos: [0, 0.03, 0.02], rot: [0.9, 0, 0], scale: [1, 1, 0.6] });
+      g = e.build();
+      g.translate(side * 0.1, 0.15, 0);
+    } else {
+      const size = v.hairless ? 0.13 : 0.1;
+      const e = earGeo('pointy', size, earCol, '#ffb3c2', side);
+      if (v.tufts) e.add(G.cone(0.015, 0.08, 4), acc, { pos: [0, size * 1.65, 0] });
+      g = e.build();
+      g.rotateZ(-side * (v.hairless ? 0.45 : 0.3));
+      g.translate(side * 0.12, 0.13, -0.01);
+    }
     h.addRaw(g);
   }
   if (v.patches) h.add(G.sphere(0.09, 10, 8), v.patches[0], { pos: [0.1, 0.1, 0.05], scale: [1, 0.8, 0.9] });
   mesh(h.build(), m.head);
-  addEyes(m, 0.2, { az: 0.48, el: 0.05, size: 0.045, color: v.eye || '#2b1d1d', scale: [1.12, 0.95, 1] });
-  addLegs(m, [[0.09, 0.26, 0.14, 0], [-0.09, 0.26, 0.14, 1], [0.09, 0.26, -0.15, 1], [-0.09, 0.26, -0.15, 0]], 0.26, pts ? acc : main, pts ? acc : v.belly, 0.052);
-  // Queue en point d'interrogation : trois segments qui s'enroulent vers l'avant.
+  addEyes(m, 0.2, { az: 0.48, el: 0.05, size: v.baby ? 0.055 : 0.045, color: v.eye || '#2b1d1d', scale: [1.12, 0.95, 1] });
+  const paw = pts ? acc : v.belly;
+  const legCol = pts ? acc : main;
+  addLegs(m, [[0.09, legLen, 0.14, 0], [-0.09, legLen, 0.14, 1], [0.09, legLen, -0.15, 1], [-0.09, legLen, -0.15, 0]], legLen, legCol, v.tuxedo ? '#ffffff' : paw, 0.052);
+  // Queue en point d'interrogation (touffue pour les poils longs).
   const t = new Shape();
-  t.add(G.capsule(0.042, 0.14, 4, 8), main, { pos: [0, 0.05, -0.08], rot: [-1.1, 0, 0] });
-  t.add(G.capsule(0.04, 0.12, 4, 8), main, { pos: [0, 0.16, -0.15], rot: [-0.25, 0, 0] });
-  t.add(G.capsule(0.038, 0.1, 4, 8), v.stripes || pts ? acc : main, { pos: [0, 0.27, -0.12], rot: [0.7, 0, 0] });
-  addTail(m, [0, 0.36, -0.24], t);
-  m.anchors = { neck: { pos: [0, 0.43, 0.2], r: 0.12 }, top: { pos: [0, 0.2, 0] } };
-  m.height = 0.8;
+  const tr = v.fluffy ? 1.7 : v.hairless ? 0.75 : 1;
+  const tipCol = v.stripes || pts ? acc : v.tuxedo ? '#ffffff' : main;
+  t.add(G.capsule(0.042 * tr, 0.14, 4, 8), main, { pos: [0, 0.05, -0.08], rot: [-1.1, 0, 0] });
+  t.add(G.capsule(0.04 * tr, 0.12, 4, 8), main, { pos: [0, 0.16, -0.15], rot: [-0.25, 0, 0] });
+  t.add(G.capsule(0.038 * tr, 0.1, 4, 8), tipCol, { pos: [0, 0.27, -0.12], rot: [0.7, 0, 0] });
+  addTail(m, [0, by + 0.06, -0.24], t);
+  m.anchors = { neck: { pos: [0, by + 0.13, 0.2], r: 0.12 }, top: { pos: [0, 0.2, 0] } };
+  m.height = by + 0.5;
   m.radius = 0.35;
+  if (v.big) m.scale = 1.25;
+  if (v.baby) m.scale = 0.62;
 }
 
 function buildDog(m, v) {

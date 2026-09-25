@@ -628,6 +628,50 @@ export class Character {
         s.add(G.sphere(0.2, 10, 6), darken(c, 0.12), { pos: [0, 0.93, -0.05], scale: [1.2, 0.3, 1] });
         s.add(G.cyl(0.285, 0.285, 0.06, 16), darken(c, 0.4), { pos: [0, 0.67, -0.03], rot: [-0.1, 0, 0] });
         break;
+      case 'casque':
+        s.add(new THREE.SphereGeometry(R * 1.14, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), c, { pos: HC, rot: [-0.18, 0, 0], scale: HEAD_SCALE });
+        for (const x of [-0.12, 0, 0.12]) s.add(G.box(0.05, 0.03, 0.62), '#ffffff', { pos: [x, 0.7 - Math.abs(x) * 0.5, -0.05], rot: [-0.18, 0, x * 1.4] });
+        s.add(new THREE.CylinderGeometry(0.28, 0.28, 0.02, 20, 1, false, -Math.PI / 2, Math.PI), darken(c, 0.2), { pos: [0, 0.42, 0.22], rot: [-0.35, 0, 0], scale: [1, 1, 0.8] });
+        for (const side of [-1, 1]) s.add(G.box(0.02, 0.3, 0.03), '#3d3744', { pos: [side * 0.36, 0.2, 0.05], rot: [0, 0, side * 0.1] });
+        break;
+      case 'bandeau': {
+        s.add(G.torus(R * 1.08, 0.035, 6, 28), c, { pos: [0, 0.5, -0.02], rot: [Math.PI / 2 - 0.35, 0, 0], scale: [HEAD_SCALE[0], 1, 1] });
+        const p = onHead(0.8, 0.6, 1.1);
+        const bow = new Shape();
+        bow.add(G.sphere(0.07, 10, 8), c, { pos: [0.08, 0, 0], scale: [1.4, 1, 0.5], rot: [0, 0, -0.3] });
+        bow.add(G.sphere(0.07, 10, 8), c, { pos: [-0.08, 0, 0], scale: [1.4, 1, 0.5], rot: [0, 0, 0.3] });
+        bow.add(G.sphere(0.035, 8, 6), darken(c, 0.15), {});
+        const g = bow.build();
+        g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...p.dir).normalize()));
+        g.translate(...p.pos);
+        s.addRaw(g);
+        break;
+      }
+      case 'aureole':
+        s.add(G.torus(0.2, 0.035, 8, 28), '#ffe27a', { pos: [0, 0.98, -0.02], rot: [Math.PI / 2 - 0.1, 0, 0] });
+        s.add(G.torus(0.2, 0.015, 6, 28), '#fff6c9', { pos: [0, 1.0, -0.02], rot: [Math.PI / 2 - 0.1, 0, 0] });
+        break;
+      case 'chatBonnet':
+        s.add(new THREE.SphereGeometry(R * 1.13, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.52), c, { pos: HC, rot: [-0.22, 0, 0], scale: HEAD_SCALE });
+        s.add(G.torus(R * 1.1, 0.045, 8, 28), lighten(c, 0.4), { pos: [0, 0.37, -0.03], rot: [Math.PI / 2 - 0.22, 0, 0], scale: [HEAD_SCALE[0], 1, 1] });
+        for (const side of [-1, 1]) {
+          s.add(G.cone(0.11, 0.2, 8), c, { pos: [side * 0.2, 0.72, -0.02], rot: [0, 0, -side * 0.35], scale: [1, 1, 0.55] });
+          s.add(G.cone(0.065, 0.12, 8), '#ffb3c2', { pos: [side * 0.195, 0.7, 0.02], rot: [0, 0, -side * 0.35], scale: [1, 1, 0.4] });
+        }
+        break;
+      case 'capitaine':
+        s.add(G.cyl(0.3, 0.26, 0.16, 20), '#ffffff', { pos: [0, 0.66, -0.03], rot: [-0.12, 0, 0], scale: [1.05, 1, 1.05] });
+        s.add(G.cyl(0.27, 0.27, 0.07, 20), '#2e2e3a', { pos: [0, 0.6, -0.02], rot: [-0.12, 0, 0] });
+        s.add(new THREE.CylinderGeometry(0.24, 0.24, 0.025, 20, 1, false, -Math.PI / 2, Math.PI), '#2e2e3a', { pos: [0, 0.56, 0.2], rot: [-0.25, 0, 0], scale: [1, 1, 1.1] });
+        s.add(G.torus(0.27, 0.015, 4, 20), '#ffd84d', { pos: [0, 0.64, -0.02], rot: [Math.PI / 2 - 0.12, 0, 0] });
+        s.add(G.sphere(0.045, 8, 6), '#ffd84d', { pos: [0, 0.68, 0.27], scale: [1, 1, 0.4] });
+        break;
+      case 'tasse':
+        s.add(G.cyl(0.26, 0.26, 0.025, 20), '#ffffff', { pos: [0.04, 0.64, -0.02], rot: [-0.1, 0, -0.15] });
+        s.add(G.cyl(0.16, 0.12, 0.2, 18), c, { pos: [0.06, 0.76, -0.02], rot: [-0.1, 0, -0.15] });
+        s.add(G.cyl(0.15, 0.15, 0.02, 16), '#b8704a', { pos: [0.07, 0.86, -0.03], rot: [-0.1, 0, -0.15] });
+        s.add(G.torus(0.06, 0.018, 5, 10), c, { pos: [0.23, 0.77, -0.02], rot: [0, 0, -0.15] });
+        break;
       case 'sorciere':
         s.add(G.cyl(0.52, 0.52, 0.025, 28), c, { pos: [0, 0.6, -0.02], rot: [-0.1, 0, 0] });
         s.add(G.cone(0.29, 0.5, 20), c, { pos: [0, 0.86, -0.05], rot: [-0.18, 0, 0] });
@@ -672,6 +716,18 @@ export class Character {
           s.add(new THREE.ExtrudeGeometry(st, { depth: 0.015, bevelEnabled: false }), c, { pos: [x, ey, ez - 0.01], rot: [0, side * 0.2, 0] });
           break;
         }
+        case 'aviateur': {
+          s.add(G.sphere(0.085, 14, 10), '#3d3744', { pos: [x, ey - 0.01, ez - 0.02], scale: [1, 0.85, 0.2], rot: [0, side * 0.2, 0] });
+          s.add(G.torus(0.082, 0.01, 5, 18), c, { pos: [x, ey - 0.01, ez], rot: [0, side * 0.2, 0], scale: [1, 0.85, 1] });
+          break;
+        }
+        case 'lune': {
+          const ms = new THREE.Shape();
+          ms.absarc(0, 0, 0.085, 0.5, Math.PI * 2 - 0.5, false);
+          ms.absarc(0.05, 0, 0.065, Math.PI * 2 - 0.9, 0.9, true);
+          s.add(new THREE.ExtrudeGeometry(ms, { depth: 0.015, bevelEnabled: false, curveSegments: 10 }), '#ffd84d', { pos: [x, ey, ez - 0.01], rot: [0, side * 0.2, side < 0 ? Math.PI : 0] });
+          break;
+        }
         case 'monocle':
           if (side === -1) {
             s.add(G.torus(0.075, 0.012, 6, 20), '#ffd166', { pos: [x, ey, ez], rot: [0, side * 0.2, 0] });
@@ -692,7 +748,7 @@ export class Character {
           break;
       }
       // Branches jusqu'aux oreilles.
-      if (a.glasses !== 'monocle') s.add(G.box(0.012, 0.012, 0.3), a.glasses === 'coeur' ? '#4e4c62' : c, { pos: [side * 0.345, ey + 0.01, 0.2], rot: [0, side * 0.2, 0] });
+      if (a.glasses !== 'monocle') s.add(G.box(0.012, 0.012, 0.3), a.glasses === 'coeur' || a.glasses === 'lune' ? '#4e4c62' : c, { pos: [side * 0.345, ey + 0.01, 0.2], rot: [0, side * 0.2, 0] });
     }
     if (a.glasses !== 'monocle') s.add(G.cyl(0.008, 0.008, 0.08, 4), a.glasses === 'coeur' ? '#4e4c62' : c, { pos: [0, ey + 0.015, ez + 0.01], rot: [0, 0, Math.PI / 2] });
     this.addPart(this.head, s.build(), vertexColorToon(), { outline: false, shadow: false });
@@ -821,6 +877,50 @@ export class Character {
         }
         break;
       }
+      case 'sacChat': {
+        const s = new Shape();
+        s.add(G.box(0.3, 0.3, 0.14), c, { pos: [0, 0.23, -0.26 * b] });
+        for (const x of [-0.1, 0.1]) {
+          s.add(G.cone(0.06, 0.1, 4), c, { pos: [x, 0.42, -0.26 * b], rot: [0, Math.PI / 4, 0] });
+          s.add(G.sphere(0.025, 6, 5), '#2b1d1d', { pos: [x * 0.7, 0.27, -0.34 * b] });
+        }
+        s.add(G.sphere(0.02, 6, 5), '#ff8fab', { pos: [0, 0.22, -0.34 * b] });
+        for (const x of [-0.1, 0.1]) s.add(G.box(0.035, 0.3, 0.02), darken(c, 0.25), { pos: [x, 0.24, 0.175 * b], rot: [-0.1, 0, 0] });
+        this.addPart(this.torso, s.build());
+        break;
+      }
+      case 'filet': {
+        const s = new Shape();
+        s.add(G.cyl(0.018, 0.018, 1.0, 6), '#b98457', { pos: [0.02, 0.35, -0.24 * b], rot: [0, 0, 0.5] });
+        s.add(G.torus(0.13, 0.015, 5, 14), '#fffaf2', { pos: [0.3, 0.8, -0.24 * b], rot: [0, 0, 0.5] });
+        s.add(G.cone(0.12, 0.25, 10), '#e8f3ff', { pos: [0.24, 0.72, -0.28 * b], rot: [0.3, 0, 0.5 + Math.PI] });
+        for (const x of [-0.1, 0.1]) s.add(G.box(0.03, 0.3, 0.02), '#8f6243', { pos: [x, 0.24, 0.175 * b], rot: [-0.1, 0, 0] });
+        this.addPart(this.torso, s.build());
+        break;
+      }
+      case 'ailesAnge':
+      case 'ailesArcEnCiel': {
+        const rainbow = ['#ff6f91', '#ffb27a', '#ffd84d', '#b5e48c', '#8fd6e8', '#b69cf0'];
+        for (const side of [1, -1]) {
+          const pivot = new THREE.Group();
+          pivot.position.set(side * 0.04, 0.3, -0.17 * b);
+          this.torso.add(pivot);
+          this.parts.push(pivot);
+          const s = new Shape();
+          if (a.back === 'ailesAnge') {
+            for (let i = 0; i < 5; i++) s.add(G.sphere(1, 12, 8), i % 2 ? '#ffffff' : '#f4f1ea', { pos: [side * (0.12 + i * 0.06), 0.18 - i * 0.07, -0.02 - i * 0.005], scale: [0.2 - i * 0.02, 0.07, 0.02], rot: [0, 0, side * (0.5 - i * 0.18)] });
+          } else {
+            rainbow.forEach((col, i) => s.add(G.sphere(1, 14, 8), col, { pos: [side * 0.2, 0.1 - i * 0.012, -0.02 - i * 0.004], scale: [0.26 - i * 0.03, 0.15 - i * 0.017, 0.015], rot: [0, 0, side * 0.45] }));
+            rainbow.forEach((col, i) => i % 2 === 0 && s.add(G.sphere(1, 12, 8), col, { pos: [side * 0.14, -0.1, -0.02 - i * 0.004], scale: [0.14 - i * 0.02, 0.09 - i * 0.012, 0.015], rot: [0, 0, -side * 0.45] }));
+          }
+          const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide, emissive: '#ffffff', emissiveIntensity: a.back === 'ailesAnge' ? 0.15 : 0.08 });
+          this.materials.push(mat);
+          const m = this.addPart(pivot, s.build(), mat, { outline: false });
+          m.castShadow = false;
+          this.wings.push({ pivot, side });
+        }
+        break;
+      }
       case 'queueRenard': {
         const pivot = new THREE.Group();
         pivot.position.set(0, 0.03, -0.17 * b);
@@ -851,6 +951,32 @@ export class Character {
     this.rodTip = new THREE.Object3D();
     this.rodTip.position.set(0, 1.5, 0);
     this.rod.add(this.rodTip);
+  }
+
+  createNet() {
+    const s = new Shape();
+    s.add(G.cyl(0.018, 0.022, 1.2, 6), '#b98457', { pos: [0, 0.6, 0] });
+    s.add(G.torus(0.2, 0.018, 5, 16), '#fffaf2', { pos: [0, 1.38, 0], rot: [Math.PI / 2, 0, 0] });
+    s.add(G.cone(0.19, 0.35, 12), '#e8f3ff', { pos: [0, 1.22, 0], rot: [Math.PI, 0, 0] });
+    this.net = new THREE.Mesh(s.build(), vertexColorToon());
+    this.net.position.set(0, -0.32, 0.03);
+    this.net.rotation.set(Math.PI / 2 - 0.35, 0, 0);
+    this.net.visible = false;
+    this.armR.add(this.net);
+  }
+
+  setNet(on) {
+    if (!this.net) this.createNet();
+    this.net.visible = on;
+  }
+
+  /** Posture sur un véhicule : 'bike', 'sit', 'stand', 'boat', 'balloon' (ou null). */
+  setRide(pose, seat = 0) {
+    this.anim.ride = pose ? { pose, seat } : null;
+  }
+
+  setRideSpeed(v) {
+    this.anim.rideSpeed = v;
   }
 
   // --------------------------------------------------------------------------
@@ -985,6 +1111,12 @@ export class Character {
           armRx = -1.6;
           armRz = 0.55;
           break;
+        case 'swing': {
+          const t = 1 - an.actionT / 0.6;
+          armRx = -2.4 + Math.min(1, t * 1.6) * 2.2;
+          armRz = -0.2;
+          break;
+        }
         default:
           break;
       }
@@ -1009,6 +1141,31 @@ export class Character {
         armRx = -0.35;
       }
       bob = (an.sitHeight ?? 0.12) - 0.46 * this.appearance.height;
+    }
+
+    // Sur un véhicule.
+    if (an.ride) {
+      const r = an.ride;
+      const standing = r.pose === 'stand' || r.pose === 'balloon';
+      bob = standing ? r.seat : r.seat - 0.46 * this.appearance.height;
+      an.ridePhase = (an.ridePhase || 0) + dt * (an.rideSpeed || 0) * 1.6;
+      if (r.pose === 'bike') {
+        legL = -1.15 + Math.sin(an.ridePhase) * 0.45;
+        legR = -1.15 - Math.sin(an.ridePhase) * 0.45;
+      } else if (!standing) {
+        legL = -1.45;
+        legR = -1.45;
+      } else {
+        legL = r.pose === 'stand' ? -0.15 : 0;
+        legR = r.pose === 'stand' ? 0.1 : 0;
+      }
+      if (!an.action) {
+        armLx = r.pose === 'boat' ? -0.5 : r.pose === 'balloon' ? -0.6 : -1.15;
+        armRx = armLx;
+        armLz = r.pose === 'balloon' ? 0.45 : 0.08;
+        armRz = -armLz;
+      }
+      an.lean = damp(an.lean, r.pose === 'bike' || r.pose === 'stand' ? 0.12 : 0, 8, dt);
     }
 
     const k = 1 - Math.exp(-18 * dt);

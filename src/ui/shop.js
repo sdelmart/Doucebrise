@@ -33,11 +33,11 @@ export class Shop {
     this.villager = villager;
     this.isOpen = true;
     g.input.enabled = false;
-    const names = { graines: 'Graines de Mamie Rose', marche: 'Marché de Pomme', menuiserie: 'Menuiserie de Bruno', couture: 'Couture de Lila' };
+    const names = { graines: 'Graines de Mamie Rose', marche: 'Marché de Pomme', menuiserie: 'Menuiserie de Bruno', couture: 'Couture de Lila', cafe: 'Café des Chats de Mimi', garage: 'Garage de Léo' };
     this.el.querySelector('#shop-title').textContent = names[shopId] || 'Boutique';
     this.el.querySelector('#shop-greet').textContent = villager ? `${villager.def.emoji} « ${villager.def.lines.shop} »` : '';
     this.tabs = g.shopTabs(shopId);
-    this.tab = this.tabs[0].id;
+    if (!this.tabs.some((t) => t.id === this.tab)) this.tab = this.tabs[0].id;
     this.el.classList.remove('hidden');
     this.render();
   }
@@ -80,6 +80,15 @@ export class Shop {
         <div class="si-name">${escapeHtml(e.label)}</div>
         ${e.desc ? `<div class="si-desc">${escapeHtml(e.desc)}</div>` : ''}
         <div class="si-price">${e.owned ? e.ownedLabel || 'Acquis ✓' : `🪙 ${e.price}`}</div>`;
+      if (e.locked) {
+        card.classList.add('owned');
+        const note = document.createElement('div');
+        note.className = 'si-desc';
+        note.textContent = e.locked;
+        card.appendChild(note);
+        body.appendChild(card);
+        continue;
+      }
       const btn = document.createElement('button');
       btn.className = 'btn small primary';
       btn.textContent = e.owned && !e.repeatable ? 'Acquis' : 'Acheter';
@@ -117,16 +126,17 @@ export class Shop {
       for (const id of ids) {
         const it = ITEMS[id];
         const n = g.inventory[id];
+        const price = g.calendar.sellPrice(id);
         const card = document.createElement('div');
         card.className = 'shop-item';
-        card.innerHTML = `<div class="si-icon">${it.emoji}</div><div class="si-name">${escapeHtml(it.label)} ×${n}</div><div class="si-price">🪙 ${it.price} / pièce</div>`;
+        card.innerHTML = `<div class="si-icon">${it.emoji}</div><div class="si-name">${escapeHtml(it.label)} ×${n}</div><div class="si-price">🪙 ${price} / pièce${price > it.price ? ' 🎉' : ''}</div>`;
         const row = document.createElement('div');
         row.className = 'si-row';
         const sell = (count) => {
           g.inventory[id] -= count;
-          g.addCoins(it.price * count);
+          g.addCoins(price * count);
           g.audio.play('pick');
-          g.emit('sell', { id, count, total: it.price * count });
+          g.emit('sell', { id, count, total: price * count });
           g.ui.refreshInventory();
           this.render();
         };
@@ -136,7 +146,7 @@ export class Shop {
         one.onclick = () => sell(1);
         const all = document.createElement('button');
         all.className = 'btn small primary';
-        all.textContent = `Tout (${it.price * n})`;
+        all.textContent = `Tout (${price * n})`;
         all.onclick = () => sell(n);
         row.append(one, all);
         card.appendChild(row);

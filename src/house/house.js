@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { toon, vertexColorToon, withOutline, getGradientMap } from '../core/materials.js';
 import { FURNITURE, WALLPAPERS, FLOORS, surfaceTexture } from './furniture.js';
+import { DEFAULT_HOME, HOME_SIZES } from '../world/home.js';
 
 // Maison du joueur : pièce intérieure (murs en coupe côté caméra), meubles posés
 // dedans ou dans le jardin, papier peint et sol, et interactions (lit, cuisinière…).
@@ -18,6 +19,8 @@ export class House {
     this.floorId = 'parquet';
     this.ownedWalls = new Set(['creme']);
     this.ownedFloors = new Set(['parquet']);
+    this.exterior = { ...DEFAULT_HOME, extras: [...DEFAULT_HOME.extras] };
+    this.ownedStyles = new Set(['roof:classique', 'facade:enduit', 'extra:cheminee', 'extra:jardinieres', 'extra:volets']);
     this.group = new THREE.Group();
     this.group.name = 'house';
     game.scene.add(this.group);
@@ -39,13 +42,60 @@ export class House {
       yard: { id: 'yard', cx: yard.x, cz: yard.z, r: yard.r - 0.55 },
     };
     game.world.addPlatform(ROOM.x, ROOM.z, ROOM.w / 2 + 0.2, ROOM.d / 2 + 0.2, 0, 0);
+    this.platform = game.world.platforms[game.world.platforms.length - 1];
     this.lightT = 0;
+  }
+
+  // --- Extérieur & agrandissements ---------------------------------------------
+
+  get size() {
+    return this.exterior.size || 0;
+  }
+
+  /** Applique le style extérieur (maison du village) et la taille de la pièce. */
+  applyExterior() {
+    this.game.world.village.setHomeStyle(this.exterior);
+    const r = (HOME_SIZES[this.size] || HOME_SIZES[0]).room;
+    if (r.w !== ROOM.w || r.d !== ROOM.d) {
+      ROOM.w = r.w;
+      ROOM.d = r.d;
+      this.buildShell();
+      // Les objets accrochés aux murs suivent les murs.
+      for (const p of this.placed) {
+        const f = FURNITURE[p.id];
+        if (!f.wall) continue;
+        const inset = 0.1 + f.d / 2;
+        if (p.wallName === 'back') p.z = -ROOM.d / 2 + inset;
+        else if (p.wallName === 'left') p.x = -ROOM.w / 2 + inset;
+        else if (p.wallName === 'right') p.x = ROOM.w / 2 - inset;
+        p.obj.position.copy(this.worldPos(p));
+      }
+    }
+  }
+
+  setExterior(patch) {
+    Object.assign(this.exterior, patch);
+    this.applyExterior();
+    this.game.requestSave();
+  }
+
+  toggleExtra(id) {
+    const ex = new Set(this.exterior.extras);
+    if (ex.has(id)) ex.delete(id);
+    else ex.add(id);
+    this.setExterior({ extras: [...ex] });
+  }
+
+  upgrade() {
+    if (this.size >= HOME_SIZES.length - 1) return false;
+    this.setExterior({ size: this.size + 1 });
+    return true;
   }
 
   // --- Pièce ------------------------------------------------------------------
 
   buildRoom() {
-    const { x, z, w, d, h } = ROOM;
+    const { x, z } = ROOM;
     const g = new THREE.Group();
     this.room = g;
     this.group.add(g);
@@ -56,15 +106,52 @@ export class House {
     lawn.receiveShadow = true;
     g.add(lawn);
     this.floorMat = new THREE.MeshToonMaterial({ gradientMap: getGradientMap() });
+    this.wallMat = new THREE.MeshToonMaterial({ gradientMap: getGradientMap() });
+    this.trimMat = toon('#fffaf2');
+    this.baseMat = toon('#c9a27a');
+    this.doorMat = toon('#9c6b4f');
+    this.knobMat = toon('#ffd166');
+    const skyTex = (() => {
+      const c = document.createElement('canvas');
+      c.width = 32;
+      c.height = 64;
+      const ctx = c.getContext('2d');
+      const grd = ctx.createLinearGradient(0, 0, 0, 64);
+      grd.addColorStop(0, '#8fd0f0');
+      grd.addColorStop(0.7, '#dff4ff');
+      grd.addColorStop(1, '#9ad472');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, 32, 64);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    })();
+    this.windowMat = new THREE.MeshBasicMaterial({ map: skyTex });
+    this.buildShell();
+  }
+
+  /** Sol, murs et fenêtres de la pièce (reconstruits quand la maison s'agrandit). */
+  buildShell() {
+    const col = this.game.world.colliders;
+    if (this.shell) {
+      this.shell.removeFromParent();
+      this.shell.traverse((o) => {
+        if (o.isMesh) o.geometry.dispose();
+      });
+      for (const c of this.shellColliders) col.remove(c);
+    }
+    const { x, z, w, d, h } = ROOM;
+    const g = new THREE.Group();
+    this.shell = g;
+    this.room.add(g);
     const floor = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.3, d + 0.4), [
-      toon('#c9a27a'), toon('#c9a27a'), this.floorMat, toon('#c9a27a'), toon('#c9a27a'), toon('#c9a27a'),
+      this.baseMat, this.baseMat, this.floorMat, this.baseMat, this.baseMat, this.baseMat,
     ]);
     floor.position.set(x, -0.15, z);
     floor.receiveShadow = true;
     g.add(floor);
 
-    this.wallMat = new THREE.MeshToonMaterial({ gradientMap: getGradientMap() });
-    const trim = toon('#fffaf2');
+    const trim = this.trimMat;
     const T = 0.2;
     const makeWall = (len, cx, cz, rotY, withDoor = false) => {
       const wall = new THREE.Group();
@@ -77,18 +164,18 @@ export class House {
       };
       if (withDoor) {
         const side = (len - 1.4) / 2;
-        for (const s of [-1, 1]) {
+        for (const sd of [-1, 1]) {
           const m = new THREE.Mesh(new THREE.BoxGeometry(side, h, T), this.wallMat);
-          m.position.set(s * (0.7 + side / 2), h / 2, 0);
+          m.position.set(sd * (0.7 + side / 2), h / 2, 0);
           add(m);
         }
         const top = new THREE.Mesh(new THREE.BoxGeometry(1.4, h - 2.2, T), this.wallMat);
         top.position.set(0, 2.2 + (h - 2.2) / 2, 0);
         add(top);
-        const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.1, 0.08), toon('#9c6b4f'));
+        const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.1, 0.08), this.doorMat);
         door.position.set(0, 1.05, 0);
         add(door);
-        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), toon('#ffd166'));
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), this.knobMat);
         knob.position.set(0.4, 1.0, -0.08);
         add(knob);
         const frame = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.3, 0.12), trim);
@@ -121,23 +208,8 @@ export class House {
       right: { ...makeWall(d, x + w / 2, z, -Math.PI / 2), n: [1, 0], plane: x + w / 2 },
     };
     // Fenêtres (vue sur le ciel) sur le mur du fond.
-    const skyTex = (() => {
-      const c = document.createElement('canvas');
-      c.width = 32;
-      c.height = 64;
-      const ctx = c.getContext('2d');
-      const grd = ctx.createLinearGradient(0, 0, 0, 64);
-      grd.addColorStop(0, '#8fd0f0');
-      grd.addColorStop(0.7, '#dff4ff');
-      grd.addColorStop(1, '#9ad472');
-      ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, 32, 64);
-      const t = new THREE.CanvasTexture(c);
-      t.colorSpace = THREE.SRGBColorSpace;
-      return t;
-    })();
-    this.windowMat = new THREE.MeshBasicMaterial({ map: skyTex });
-    for (const wx of [-2.6, 2.6]) {
+    this.windowXs = w <= 10 ? [-2.6, 2.6] : w <= 13 ? [-4.2, 0, 4.2] : [-5.6, -1.9, 1.9, 5.6];
+    for (const wx of this.windowXs) {
       const frame = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.4, 0.1), trim);
       frame.position.set(wx, 1.7, 0.12);
       const glass = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.2, 0.1), this.windowMat);
@@ -151,11 +223,16 @@ export class House {
       this.walls.back.full.add(frame, glass, bar1, bar2, sill);
     }
     // Murs : collisions.
-    const col = this.game.world.colliders;
-    col.addBox(x, z - d / 2 - 0.05, w / 2 + 0.2, 0.2, 0);
-    col.addBox(x, z + d / 2 + 0.05, w / 2 + 0.2, 0.2, 0);
-    col.addBox(x - w / 2 - 0.05, z, 0.2, d / 2 + 0.2, 0);
-    col.addBox(x + w / 2 + 0.05, z, 0.2, d / 2 + 0.2, 0);
+    this.shellColliders = [
+      col.addBox(x, z - d / 2 - 0.05, w / 2 + 0.2, 0.2, 0),
+      col.addBox(x, z + d / 2 + 0.05, w / 2 + 0.2, 0.2, 0),
+      col.addBox(x - w / 2 - 0.05, z, 0.2, d / 2 + 0.2, 0),
+      col.addBox(x + w / 2 + 0.05, z, 0.2, d / 2 + 0.2, 0),
+    ];
+    if (this.platform) {
+      this.platform.hw = w / 2 + 0.2;
+      this.platform.hd = d / 2 + 0.2;
+    }
     this.applySurfaces();
   }
 
@@ -164,8 +241,8 @@ export class House {
     const fl = FLOORS.find((p) => p.id === this.floorId) || FLOORS[0];
     this.wallMat.map?.dispose();
     this.floorMat.map?.dispose();
-    this.wallMat.map = surfaceTexture(wp.draw, [5, 1.6]);
-    this.floorMat.map = surfaceTexture(fl.draw, [5, 4]);
+    this.wallMat.map = surfaceTexture(wp.draw, [ROOM.w / 2, 1.6]);
+    this.floorMat.map = surfaceTexture(fl.draw, [ROOM.w / 2, ROOM.d / 2]);
     this.wallMat.needsUpdate = true;
     this.floorMat.needsUpdate = true;
   }
@@ -304,7 +381,8 @@ export class House {
         if (p === ignore || !FURNITURE[p.id].wall || p.wallName !== wallInfo.name) continue;
         if (Math.abs(p.along - wallInfo.along) < half + FURNITURE[p.id].w / 2) return false;
       }
-      return Math.abs(wallInfo.along) + half <= wallInfo.len / 2 - 0.1 && !(wallInfo.name === 'back' && Math.abs(Math.abs(wallInfo.along) - 2.6) < 0.75 + half && FURNITURE[id].mountY < 2.5);
+      const onWindow = wallInfo.name === 'back' && FURNITURE[id].mountY < 2.5 && this.windowXs.some((wx) => Math.abs(wallInfo.along - wx) < 0.75 + half);
+      return Math.abs(wallInfo.along) + half <= wallInfo.len / 2 - 0.1 && !onWindow;
     }
     const [fw, fd] = this.footprint(id, rot);
     if (area === 'interior') {
@@ -482,11 +560,16 @@ export class House {
       floor: this.floorId,
       ownedWalls: [...this.ownedWalls],
       ownedFloors: [...this.ownedFloors],
+      exterior: this.exterior,
+      ownedStyles: [...this.ownedStyles],
     };
   }
 
   restore(d) {
     for (const p of [...this.placed]) this.unplace(p);
+    if (d?.exterior) this.exterior = { ...DEFAULT_HOME, ...d.exterior };
+    if (d?.ownedStyles) for (const k of d.ownedStyles) this.ownedStyles.add(k);
+    this.applyExterior();
     if (!d) {
       this.defaultLayout();
       return;

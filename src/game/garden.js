@@ -216,17 +216,21 @@ export class Garden {
       g.audio.play('pick');
       g.ui.toast(`🌱 Tu as planté : ${ITEMS[pl.crop].label}. N'oublie pas d'arroser !`);
       g.emit('plant', { crop: pl.crop });
+      g.progress.addXp('jardin', 4);
       this.refresh(pl);
     } else if (this.ripe(pl)) {
       const [a, b] = CROPS[pl.crop].yield;
-      const n = a + Math.floor(Math.random() * (b - a + 1));
+      let n = a + Math.floor(Math.random() * (b - a + 1));
+      const bonus = Math.random() < g.progress.perk('jardin') * 0.06;
+      if (bonus) n *= 2;
       g.inventory[pl.crop] += n;
       g.player.face(pl.x, pl.z);
       g.player.character.play('pick', 0.8);
       g.particles.emit('sparkle', new THREE.Vector3(pl.x, pl.y + 0.6, pl.z), { count: 3, spread: 0.6 });
       g.audio.play('pick');
-      g.ui.toast(`+${n} ${ITEMS[pl.crop].emoji} ${ITEMS[pl.crop].label}`);
+      g.ui.toast(`+${n} ${ITEMS[pl.crop].emoji} ${ITEMS[pl.crop].label}${bonus ? ' — récolte double ! 🌟' : ''}`);
       g.emit('harvest', { crop: pl.crop, count: n });
+      g.progress.addXp('jardin', 8 + Math.round(ITEMS[pl.crop].price / 6));
       pl.crop = null;
       pl.growth = 0;
       this.refresh(pl);
@@ -237,6 +241,7 @@ export class Garden {
       g.particles.emit('drop', new THREE.Vector3(pl.x, pl.y + 0.8, pl.z), { count: 6, spread: 0.7, rise: -0.4, size: 0.18, life: 0.8 });
       g.audio.play('splash');
       g.emit('water', {});
+      g.progress.addXp('jardin', 2);
     }
     g.ui.refreshInventory();
     g.requestSave();

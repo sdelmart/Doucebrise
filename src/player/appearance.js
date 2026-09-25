@@ -39,11 +39,17 @@ export const OPTIONS = {
   hat: [o('aucun', 'Aucun'), o('beret', 'Béret'), o('casquette', 'Casquette'), o('paille', 'Chapeau de paille'), o('bonnet', 'Bonnet'), o('chat', 'Oreilles de chat'), o('lapin', 'Oreilles de lapin'), o('fleurs', 'Couronne de fleurs'), o('noeud', 'Gros nœud'), o('grenouille', 'Chapeau grenouille'), o('sorciere', 'Chapeau de sorcière'),
     buy('ours', "Oreilles d'ours", '🐻', 300), buy('melon', 'Chapeau melon', '🎩', 350), buy('cowboy', 'Chapeau de cowboy', '🤠', 450),
     gift('fleur', 'Grande fleur', '🌺', 'Mamie Rose'), gift('couronne', 'Couronne', '👑', 'Lila'), gift('chef', 'Toque de chef', '👨‍🍳', 'Bruno'),
-    gift('marin', 'Bob de marin', '⚓', 'Marin'), gift('etoile', 'Serre-tête étoile', '⭐', 'la quête « Grande famille »')],
-  glasses: [o('aucune', 'Aucunes'), o('rondes', 'Rondes'), o('carrees', 'Carrées'), o('soleil', 'Soleil'), o('coeur', 'Cœur'), buy('etoiles', 'Étoiles', '🤩', 250), buy('monocle', 'Monocle', '🧐', 200)],
+    gift('marin', 'Bob de marin', '⚓', 'Marin'), gift('etoile', 'Serre-tête étoile', '⭐', 'la quête « Grande famille »'),
+    buy('casque', 'Casque de vélo', '⛑️', 250), buy('bandeau', 'Bandeau à nœud', '🎀', 180),
+    gift('aureole', 'Auréole', '😇', 'le carnet d\'étoiles'), gift('chatBonnet', 'Bonnet chat', '🐱', 'le carnet d\'étoiles'),
+    gift('capitaine', 'Casquette de capitaine', '🧑‍✈️', 'Léo'), gift('tasse', 'Chapeau tasse de thé', '☕', 'Mimi')],
+  glasses: [o('aucune', 'Aucunes'), o('rondes', 'Rondes'), o('carrees', 'Carrées'), o('soleil', 'Soleil'), o('coeur', 'Cœur'), buy('etoiles', 'Étoiles', '🤩', 250), buy('monocle', 'Monocle', '🧐', 200),
+    buy('aviateur', 'Aviateur', '🕶️', 300), gift('lune', 'Lunettes lune', '🌙', 'le carnet d\'étoiles')],
   back: [o('aucun', 'Rien'), o('sac', 'Sac à dos'), o('ailes', 'Ailes de fée'), o('cape', 'Cape'), o('echarpe', 'Écharpe'), o('queueRenard', 'Queue de renard'),
     buy('guitare', 'Guitare', '🎸', 600), buy('papillon', 'Ailes de papillon', '🦋', 800),
-    gift('panier', 'Panier à dos', '🧺', 'Pomme'), gift('nounours', 'Sac nounours', '🧸', 'Noé')],
+    gift('panier', 'Panier à dos', '🧺', 'Pomme'), gift('nounours', 'Sac nounours', '🧸', 'Noé'),
+    buy('sacChat', 'Sac chat', '🐈', 450), gift('ailesAnge', "Ailes d'ange", '🪽', 'le carnet d\'étoiles'),
+    gift('ailesArcEnCiel', 'Ailes arc-en-ciel', '🌈', 'le carnet d\'étoiles'), gift('filet', 'Filet en bandoulière', '🎒', 'Noé')],
 };
 
 export const DEFAULT_APPEARANCE = {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { FURNITURE, WALLPAPERS, FLOORS, PALETTE } from './furniture.js';
+import { FURNITURE, WALLPAPERS, FLOORS, PALETTE, FURNITURE_CATS } from './furniture.js';
+import { HOME_COLORS, ROOF_STYLES, FACADES, HOME_EXTRAS } from '../world/home.js';
 import { ROOM } from './house.js';
 import { escapeHtml } from '../ui/ui.js';
 
@@ -72,11 +73,24 @@ export class DecorMode {
     this.area = area;
     const g = this.game;
     g.player.frozen = true;
-    const a = g.house.areas[area];
-    g.cam.setOverview(new THREE.Vector3(a.cx, area === 'interior' ? 0 : g.world.heightAt(a.cx, a.cz), a.cz), area === 'interior' ? 13 : 12);
+    this.tab = 'meubles';
+    this.focusArea();
     this.render();
     this.el.classList.remove('hidden');
     return true;
+  }
+
+  focusArea() {
+    const g = this.game;
+    const a = g.house.areas[this.area];
+    if (this.tab === 'facade') {
+      const h = g.world.village.houses[0];
+      // Vue de trois quarts sur la façade.
+      g.cam.setOverview(new THREE.Vector3(h.x, g.world.heightAt(h.x, h.z) + 2, h.z), 17);
+      g.cam.over.yaw = h.rot + 0.5;
+      return;
+    }
+    g.cam.setOverview(new THREE.Vector3(a.cx, this.area === 'interior' ? 0 : g.world.heightAt(a.cx, a.cz), a.cz), this.area === 'interior' ? 12 + (ROOM.w - 10) * 0.7 : 12);
   }
 
   exit() {
@@ -97,32 +111,39 @@ export class DecorMode {
     const h = g.house;
     const tabs = [['meubles', '🛋️ Meubles']];
     if (this.area === 'interior') tabs.push(['murs', '🧱 Papier peint'], ['sols', '🟫 Sol']);
+    else tabs.push(['facade', '🏠 Façade']);
     let html = `<div class="decor-head"><div class="tabs">${tabs.map(([id, l]) => `<button class="tab${this.tab === id ? ' active' : ''}" data-dtab="${id}">${l}</button>`).join('')}</div>
-      <button class="btn primary" data-dexit>✓ Terminer</button></div><div class="decor-items">`;
-    if (this.tab === 'meubles' || this.area !== 'interior') {
-      const ids = Object.keys(h.storage).filter((id) => h.storage[id] > 0);
+      <button class="btn primary" data-dexit>✓ Terminer</button></div><div class="decor-items${this.tab === 'facade' ? ' facade' : ''}">`;
+    if (this.tab === 'meubles') {
+      const ids = Object.keys(h.storage).filter((id) => h.storage[id] > 0 && FURNITURE[id]);
       if (!ids.length) html += '<div class="note">Aucun meuble rangé. Achète-en chez Bruno (Menuiserie) ou clique un meuble posé pour le déplacer.</div>';
+      const order = FURNITURE_CATS.map((c) => c.id);
+      ids.sort((a, b) => order.indexOf(FURNITURE[a].cat) - order.indexOf(FURNITURE[b].cat));
       for (const id of ids) {
         const f = FURNITURE[id];
         const ok = this.area === 'interior' ? f.where !== 'out' : f.where !== 'in';
         html += `<button class="decor-item${ok ? '' : ' off'}" data-fid="${id}" ${ok ? '' : 'disabled'} title="${escapeHtml(f.label)}${ok ? '' : ' (pas ici)'}"><span>${f.emoji}</span><small>${escapeHtml(f.label)}</small><b>${h.storage[id]}</b></button>`;
       }
+    } else if (this.tab === 'facade') {
+      html += this.facadeHtml();
     } else {
       const list = this.tab === 'murs' ? WALLPAPERS : FLOORS;
       const owned = this.tab === 'murs' ? h.ownedWalls : h.ownedFloors;
       const cur = this.tab === 'murs' ? h.wallId : h.floorId;
-      for (const s of list) {
-        const has = owned.has(s.id);
-        html += `<button class="decor-item surface${cur === s.id ? ' active' : ''}${has ? '' : ' off'}" data-sid="${s.id}" ${has ? '' : 'disabled'}>
-          <span class="swatch-big" style="background:linear-gradient(135deg, ${s.draw.base} 50%, ${s.draw.accent} 50%)"></span><small>${escapeHtml(s.label)}</small>${has ? '' : '<b>🔒</b>'}</button>`;
+      for (const sf of list) {
+        const has = owned.has(sf.id);
+        html += `<button class="decor-item surface${cur === sf.id ? ' active' : ''}${has ? '' : ' off'}" data-sid="${sf.id}" ${has ? '' : 'disabled'}>
+          <span class="swatch-big" style="background:linear-gradient(135deg, ${sf.draw.base} 50%, ${sf.draw.accent} 50%)"></span><small>${escapeHtml(sf.label)}</small>${has ? '' : '<b>🔒</b>'}</button>`;
       }
     }
-    const shopTip = this.tab !== 'meubles' && this.area === 'interior' ? ' · 🔒 motifs en vente à la Menuiserie de Bruno' : '';
+    const shopTip = (this.tab === 'murs' || this.tab === 'sols') ? ' · 🔒 motifs en vente à la Menuiserie de Bruno' : this.tab === 'facade' ? ' · 🔒 styles et extras en vente chez Bruno (onglet Travaux)' : '';
     html += `</div><div class="decor-tips">${this.holding ? '<b>Clic</b> : poser · <b>R</b> : tourner · <b>C</b> : couleur · <b>Échap</b> : ranger' : `<b>Clic</b> sur un meuble posé : le déplacer · glisser : tourner la vue · molette : zoom${shopTip}`}</div>`;
     this.el.innerHTML = html;
     this.el.querySelectorAll('[data-dtab]').forEach((b) => {
       b.onclick = () => {
+        if (this.holding) this.cancel();
         this.tab = b.dataset.dtab;
+        this.focusArea();
         this.render();
       };
     });
@@ -138,6 +159,56 @@ export class DecorMode {
         this.render();
       };
     });
+    this.el.querySelectorAll('[data-hcol]').forEach((b) => {
+      b.onclick = () => {
+        const [key, col] = b.dataset.hcol.split('|');
+        h.setExterior({ [key]: col });
+        this.facadeChanged();
+      };
+    });
+    this.el.querySelectorAll('[data-hstyle]').forEach((b) => {
+      b.onclick = () => {
+        const [key, id] = b.dataset.hstyle.split('|');
+        h.setExterior({ [key]: id });
+        this.facadeChanged();
+      };
+    });
+    this.el.querySelectorAll('[data-hextra]').forEach((b) => {
+      b.onclick = () => {
+        h.toggleExtra(b.dataset.hextra);
+        this.facadeChanged();
+      };
+    });
+  }
+
+  facadeChanged() {
+    const g = this.game;
+    g.audio.play('pick');
+    g.emit('facade', {});
+    const hs = g.world.village.houses[0];
+    g.particles.emit('sparkle', new THREE.Vector3(hs.x, g.world.heightAt(hs.x, hs.z) + 3, hs.z), { count: 3, spread: 3 });
+    this.render();
+  }
+
+  facadeHtml() {
+    const h = this.game.house;
+    const ex = h.exterior;
+    const colorRow = (key, label) => `<div class="fac-row"><span class="fac-label">${label}</span><div class="swatches small">${HOME_COLORS[key].map((c) => `<button class="swatch${ex[key] === c ? ' active' : ''}" style="background:${c}" data-hcol="${key}|${c}"></button>`).join('')}</div></div>`;
+    let html = '<div class="fac-cols"><div class="fac-col">';
+    html += colorRow('wall', '🧱 Murs') + colorRow('roof', '🏠 Toit') + colorRow('trim', '🪵 Boiseries') + colorRow('door', '🚪 Porte') + colorRow('shutter', '🪟 Volets & auvent') + colorRow('fence', '🌿 Clôture');
+    html += '</div><div class="fac-col">';
+    const styleRow = (list, key, prefix, label) => `<div class="fac-row"><span class="fac-label">${label}</span><div class="chips">${list.map((o) => {
+      const own = h.ownedStyles.has(`${prefix}:${o.id}`);
+      return `<button class="chip${ex[key] === o.id ? ' active' : ''}${own ? '' : ' locked'}" ${own ? `data-hstyle="${key}|${o.id}"` : 'disabled'}>${own ? '' : '🔒 '}${o.label}</button>`;
+    }).join('')}</div></div>`;
+    html += styleRow(ROOF_STYLES, 'roofStyle', 'roof', '🏠 Style de toit') + styleRow(FACADES, 'facade', 'facade', '🧱 Façade');
+    html += `<div class="fac-row"><span class="fac-label">✨ Extras</span><div class="chips">${HOME_EXTRAS.map((o) => {
+      const own = h.ownedStyles.has(`extra:${o.id}`);
+      const on = ex.extras.includes(o.id);
+      return `<button class="chip${on ? ' active' : ''}${own ? '' : ' locked'}" ${own ? `data-hextra="${o.id}"` : 'disabled'}>${own ? (on ? '✓ ' : '') : '🔒 '}${o.emoji} ${o.label}</button>`;
+    }).join('')}</div></div>`;
+    html += '</div></div>';
+    return html;
   }
 
   // --- Manipulation ---------------------------------------------------------------
@@ -235,7 +306,7 @@ export class DecorMode {
   }
 
   update() {
-    if (!this.active || !this.holding) return;
+    if (!this.active || !this.holding || this.tab === 'facade') return;
     const g = this.game;
     const h = g.house;
     const hd = this.holding;

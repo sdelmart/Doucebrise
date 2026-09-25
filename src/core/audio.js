@@ -95,6 +95,23 @@ export class Audio {
       case 'jump':
         this.tone(NOTES.C5, { dur: 0.12, type: 'sine', vol: 0.06, slide: 1.6 });
         break;
+      case 'honk':
+        this.tone(330, { dur: 0.16, type: 'square', vol: 0.06 });
+        this.tone(262, { t: 0.2, dur: 0.22, type: 'square', vol: 0.06 });
+        break;
+      case 'bell':
+        this.tone(NOTES.C6, { dur: 0.3, type: 'sine', vol: 0.1 });
+        this.tone(NOTES.C6, { t: 0.18, dur: 0.4, type: 'sine', vol: 0.08 });
+        break;
+      case 'swoosh':
+        this.noise({ dur: 0.2, vol: 0.07, freq: 3200 });
+        break;
+      case 'mail':
+        [NOTES.G5, NOTES.C6].forEach((f, i) => this.tone(f, { t: i * 0.1, dur: 0.18, type: 'triangle', vol: 0.1 }));
+        break;
+      case 'chapter':
+        [NOTES.C5, NOTES.G5, NOTES.E5, NOTES.C6, NOTES.G5, NOTES.E6 || NOTES.C6].forEach((f, i) => this.tone(f, { t: i * 0.14, dur: 0.45, type: 'triangle', vol: 0.12 }));
+        break;
       default:
         break;
     }

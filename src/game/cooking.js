@@ -1,4 +1,4 @@
-import { ITEMS, RECIPES } from './items.js';
+import { ITEMS, RECIPES, countItem, takeItem } from './items.js';
 import { escapeHtml } from '../ui/ui.js';
 
 // Cuisine : recettes connues, ingrédients du sac, préparation à la cuisinière.
@@ -31,7 +31,7 @@ export class Cooking {
   }
 
   canCook(r) {
-    return Object.entries(r.needs).every(([id, n]) => (this.game.inventory[id] || 0) >= n);
+    return Object.entries(r.needs).every(([id, n]) => countItem(this.game.inventory, id) >= n);
   }
 
   open() {
@@ -59,7 +59,7 @@ export class Cooking {
       row.className = `cook-row${known ? '' : ' unknown'}`;
       const needs = Object.entries(r.needs)
         .map(([id, n]) => {
-          const have = g.inventory[id] || 0;
+          const have = countItem(g.inventory, id);
           return `<span class="${have >= n ? 'ok' : 'missing'}">${ITEMS[id].emoji} ${have}/${n}</span>`;
         })
         .join(' ');
@@ -82,12 +82,14 @@ export class Cooking {
   cook(r) {
     const g = this.game;
     if (!this.canCook(r)) return;
-    for (const [id, n] of Object.entries(r.needs)) g.inventory[id] -= n;
-    g.inventory[r.id] = (g.inventory[r.id] || 0) + 1;
+    for (const [id, n] of Object.entries(r.needs)) takeItem(g.inventory, id, n);
+    const extra = Math.random() < g.progress.perk('cuisine') * 0.06 ? 1 : 0;
+    g.inventory[r.id] = (g.inventory[r.id] || 0) + 1 + extra;
     g.audio.play('fav');
     g.player.character.play('celebrate', 0.9);
-    g.ui.toast(`🍳 Tu as préparé : ${ITEMS[r.id].emoji} ${ITEMS[r.id].label} !`);
+    g.ui.toast(`🍳 Tu as préparé : ${ITEMS[r.id].emoji} ${ITEMS[r.id].label} !${extra ? ' Et un de plus en bonus ! 🌟' : ''}`);
     g.emit('cook', { id: r.id });
+    g.progress.addXp('cuisine', 12 + Math.round(ITEMS[r.id].price / 8));
     g.ui.refreshInventory();
     g.requestSave();
     this.render();

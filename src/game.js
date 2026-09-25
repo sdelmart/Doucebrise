@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World } from './world/world.js';
-import { zoneAt } from './world/layout.js';
+import { zoneAt, LANDMARKS } from './world/layout.js';
 import { Character } from './player/character.js';
 import { Player } from './player/player.js';
 import { FollowCamera } from './player/camera.js';
@@ -8,13 +8,20 @@ import { DEFAULT_APPEARANCE, normalizeAppearance, randomAppearance, isLocked, sh
 import { AnimalManager } from './animals/manager.js';
 import { VillagerManager } from './npc/villagers.js';
 import { ITEMS, createInventory } from './game/items.js';
-import { Resources, Fishing } from './game/activities.js';
+import { Fishing } from './game/fish.js';
+import { Insects } from './game/insects.js';
+import { Resources } from './game/activities.js';
+import { Progress } from './game/progress.js';
+import { Vehicles, VEHICLES } from './game/vehicles.js';
+import { Jobs } from './game/jobs.js';
+import { Calendar } from './game/calendar.js';
 import { Garden } from './game/garden.js';
 import { Quests } from './game/quests.js';
 import { Cooking } from './game/cooking.js';
 import { House } from './house/house.js';
 import { DecorMode } from './house/decor.js';
-import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS } from './house/furniture.js';
+import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS, FURNITURE_CATS } from './house/furniture.js';
+import { HOME_SIZES, ROOF_STYLES, FACADES, HOME_EXTRAS } from './world/home.js';
 import { Input } from './core/input.js';
 import { Particles } from './core/particles.js';
 import { Audio } from './core/audio.js';
@@ -27,9 +34,12 @@ import { Shop } from './ui/shop.js';
 import { Journal } from './ui/journal.js';
 import { PhotoMode } from './ui/photo.js';
 import { BagPanel, SettingsPanel, QUALITY, DAY_SPEEDS } from './ui/panels.js';
+import { Guide } from './ui/guide.js';
 
 const PET_NAMES = ['Moka', 'Caramel', 'Noisette', 'Biscuit', 'Plume', 'Pépite', 'Brioche', 'Praline', 'Nougat', 'Mochi', 'Tofu', 'Pistache', 'Câlin', 'Filou', 'Guimauve', 'Cannelle', 'Pompon', 'Réglisse', 'Sésame', 'Myrtille'];
 const EMOTES = { Digit1: ['wave', 1.6], Digit2: ['dance', 5], Digit3: ['sit', 0], Digit4: ['kiss', 1.6], Digit5: ['clap', 1.8] };
+const TOOLS = { 'tool:filet': '🥅 Filet à papillons', 'tool:plumeau': '🪶 Plumeau' };
+const UPGRADE_PRICES = [0, 4000, 10000];
 const PANELS = ['#creator', '#pets', '#map', '#help', '#journal', '#bag', '#settings'];
 
 // Chef d'orchestre : rendu, boucle, états (titre / création / jeu), interactions, sauvegarde.
@@ -67,8 +77,13 @@ export class Game {
     this.coins = 0;
     this.unlocks = new Set();
     this.knownLoves = new Set();
+    this.progress = new Progress(this);
     this.resources = new Resources(this);
     this.fishing = new Fishing(this);
+    this.insects = new Insects(this);
+    this.vehicles = new Vehicles(this);
+    this.jobs = new Jobs(this);
+    this.calendar = new Calendar(this);
     this.garden = new Garden(this);
     this.house = new House(this);
     this.cooking = new Cooking(this);
@@ -85,6 +100,7 @@ export class Game {
     this.photo = new PhotoMode(this);
     this.bag = new BagPanel(this);
     this.settingsPanel = new SettingsPanel(this);
+    this.guide = new Guide(this);
 
     this.state = 'title';
     this.panel = null;
@@ -95,6 +111,10 @@ export class Game {
     this.sitting = null;
     this.on('gift', (d) => {
       if (d.reaction === 'love') this.knownLoves.add(`${d.villager.def.id}:${d.item}`);
+    });
+    this.on('catch', (d) => this.calendar.onCatch(d));
+    this.on('buy', (d) => {
+      if (d.shop === 'garage') setTimeout(() => this.ui.toast('🚲 Appuie sur V pour appeler ton véhicule !', 3500), 700);
     });
 
     if (this.save) this.restore(this.save);
@@ -116,6 +136,14 @@ export class Game {
     this.renderer.setAnimationLoop((t) => this.frame(t));
     this.ui.hideLoading();
     this.ui.showTitle(!!this.save);
+    let fresh = null;
+    try {
+      fresh = sessionStorage.getItem('doucebrise-new');
+      sessionStorage.removeItem('doucebrise-new');
+    } catch {
+      fresh = null;
+    }
+    if (fresh && !this.save) setTimeout(() => this.newGame(), 50);
   }
 
   // --- Événements --------------------------------------------------------------
@@ -152,6 +180,17 @@ export class Game {
   // --- États -------------------------------------------------------------------
 
   newGame() {
+    // Une partie existe déjà : on repart vraiment de zéro (rechargement propre).
+    if (this.save) {
+      clearSave();
+      try {
+        sessionStorage.setItem('doucebrise-new', this.character.appearance.name || '1');
+      } catch {
+        /* stockage indisponible */
+      }
+      window.location.reload();
+      return;
+    }
     this.audio.ensure();
     const a = { ...randomAppearance(), name: this.character.appearance.name || 'Lou' };
     this.setAppearance(a);
@@ -163,6 +202,8 @@ export class Game {
     // Départ : près de la fontaine, face à la maison de Mamie Rose (première quête).
     const rose = this.world.village.houses[2];
     this.player.teleport(1.5, 13, Math.atan2(rose.x - 1.5, rose.z - 13));
+    this.calendar.mailDay = 1;
+    this.calendar.addLetter({ from: 'rose', title: `Bienvenue, ${a.name} !`, text: 'Ma petite maison au toit vert est juste au sud de la fontaine. Viens me voir dès que tu es installé·e : j\'ai tant de choses à te montrer ! Tu verras, Doucebrise est une île pleine de douceur… même si son vieux phare a un peu perdu son éclat.', gift: { coins: 50 } });
     this.isNewGame = true;
     this.ui.hideTitle();
     this.openPanel('creator');
@@ -180,14 +221,21 @@ export class Game {
     this.cam.yaw = this.player.rotY + Math.PI;
     this.ui.showHUD(true);
     this.quests.refreshRequests();
+    this.progress.refreshDaily();
+    this.jobs.refresh();
+    this.calendar.onNewDay(false);
+    this.lastDay = this.world.sky.day;
     this.ui.refreshAll();
     if (this.audio.musicOn) this.audio.startMusic();
     if (this.isNewGame) {
       this.isNewGame = false;
       this.ui.toast(`Bienvenue à Doucebrise, ${this.character.appearance.name} ! 🌸`, 4200);
-      setTimeout(() => this.ui.toast('📜 Ta première quête t\'attend (J pour le journal). H pour l\'aide.', 5200), 1500);
+      setTimeout(() => this.quests.showChapter(), 900);
+      setTimeout(() => this.ui.toast('💡 Suis la flèche dorée ! Bouton 💡 (ou T) si tu ne sais pas quoi faire. H pour l\'aide.', 6500), 2500);
       this.quests.refreshRequests();
       this.requestSave();
+    } else {
+      setTimeout(() => this.quests.showChapter(), 900);
     }
   }
 
@@ -198,7 +246,7 @@ export class Game {
   }
 
   get busy() {
-    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.decor.active || this.photo.active || !document.querySelector('#dialog').classList.contains('hidden');
+    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || !document.querySelector('#dialog').classList.contains('hidden');
   }
 
   openPanel(name) {
@@ -292,7 +340,7 @@ export class Game {
       if (e.code === 'Escape') this.closePanels();
       return;
     }
-    if (this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || !document.querySelector('#dialog').classList.contains('hidden')) return;
+    if (this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || !document.querySelector('#dialog').classList.contains('hidden')) return;
     if (this.decor.active) return;
     if (this.photo.active) {
       if (e.code === 'Escape' || e.code === 'KeyO') this.photo.exit();
@@ -326,10 +374,25 @@ export class Game {
       case 'KeyO':
         this.startPhoto();
         break;
+      case 'KeyV':
+        if (!this.panel) this.vehicles.toggleMenu();
+        break;
+      case 'KeyT':
+        this.showHint();
+        break;
       default:
         if (EMOTES[e.code] && !this.panel) this.emote(e.code);
         break;
     }
+  }
+
+  showHint() {
+    const q = this.quests.current;
+    const job = this.jobs.active;
+    this.ui.toast(`💡 ${this.quests.hint()}`, 7000);
+    if (job) setTimeout(() => this.ui.toast(`📋 Petit boulot : ${this.jobs.progressText()}`, 4000), 400);
+    else if (!q) this.ui.toast('📋 Envie d\'action ? Le tableau des petits boulots, sur la place, a toujours du travail !', 5000);
+    this.guide.flash();
   }
 
   startPhoto() {
@@ -340,6 +403,7 @@ export class Game {
   }
 
   emote(code) {
+    if (this.vehicles.riding) return;
     const [name, dur] = EMOTES[code];
     const c = this.character;
     if (name === 'sit') {
@@ -360,6 +424,10 @@ export class Game {
 
   startDecor() {
     if (this.state !== 'play' || this.busy) return;
+    if (this.vehicles.riding) {
+      this.ui.toast('Descends de ton véhicule pour décorer (V).');
+      return;
+    }
     this.closePanels();
     this.standUp();
     if (this.decor.enter()) this.ui.showHUD(false);
@@ -380,15 +448,22 @@ export class Game {
   /** Donne une récompense (quête, amitié). */
   grantReward(r, villager = null, title = null) {
     const parts = [];
+    if (typeof r.furniture === 'string') r = { ...r, furniture: { [r.furniture]: 1 } };
     if (r.coins) {
       this.coins += r.coins;
       parts.push(`🪙 ${r.coins}`);
     }
+    if (r.stars) {
+      this.progress.addStars(r.stars);
+      parts.push(`⭐ ${r.stars}`);
+    }
+    if (r.title && this.progress.addTitle(r.title)) parts.push(`🏷️ titre « ${r.title} »`);
     for (const [id, n] of Object.entries(r.items || {})) {
       this.inventory[id] = (this.inventory[id] || 0) + n;
       parts.push(`${ITEMS[id].emoji} ×${n}`);
     }
     for (const [id, n] of Object.entries(r.furniture || {})) {
+      if (!FURNITURE[id]) continue;
       this.house.addToStorage(id, n);
       parts.push(`${FURNITURE[id].emoji} ${FURNITURE[id].label}`);
     }
@@ -396,12 +471,21 @@ export class Game {
     for (const u of [r.clothing, r.unlock].filter(Boolean)) {
       this.unlocks.add(u);
       const [key, id] = u.split(':');
+      if (key === 'rod') {
+        this.fishing.rod = id;
+        parts.push('🎣 nouvelle canne à pêche');
+        continue;
+      }
+      if (TOOLS[u]) {
+        parts.push(TOOLS[u]);
+        continue;
+      }
       const opt = OPTIONS[key]?.find((o) => o.id === id);
-      parts.push(`👒 ${opt ? opt.label : 'tenue spéciale'}`);
+      parts.push(`${opt?.icon || '👒'} ${opt ? opt.label : 'tenue spéciale'}`);
     }
     if (r.furniture) setTimeout(() => this.ui.toast('🛋️ Nouveau meuble rangé ! Chez toi, appuie sur B pour décorer.', 3500), 900);
     const who = villager ? `${villager.def.emoji} ${villager.def.name} t'offre : ` : '🎁 ';
-    this.ui.toast(title ? `${title} ${parts.join(' · ')}` : `${who}${parts.join(' · ')}`, 4500);
+    if (parts.length) this.ui.toast(title ? `${title} ${parts.join(' · ')}` : `${who}${parts.join(' · ')}`, 4500);
     if (villager) this.particles.emit('sparkle', villager.pos.clone().setY(villager.pos.y + 2), { count: 4 });
     this.ui.refreshAll();
     this.requestSave();
@@ -414,29 +498,39 @@ export class Game {
       buy: () => (this.inventory[id] = (this.inventory[id] || 0) + 1),
       ...extra,
     });
+    const unlock = (key, label, emoji, price, desc) => ({
+      id: key, label, emoji, price, desc, owned: this.unlocks.has(key),
+      buy: () => this.unlocks.add(key),
+    });
     const count = (id) => (this.house.storage[id] || 0) + this.house.placed.filter((p) => p.id === id).length;
+    const furn = (filter) => () => SHOP_FURNITURE.filter(filter).map((f) => ({
+      id: f.id, label: f.label, emoji: f.emoji, price: f.price, repeatable: true,
+      desc: `${f.where === 'out' ? 'Jardin' : f.where === 'both' ? 'Maison ou jardin' : f.wall ? 'Au mur' : 'Maison'}${count(f.id) ? ` · tu en as ${count(f.id)}` : ''}`,
+      buy: () => this.house.addToStorage(f.id),
+    }));
     switch (shopId) {
       case 'graines':
         return [{ id: 'semis', label: '🌱 Semis', items: () => Object.keys(ITEMS).filter((id) => ITEMS[id].cat === 'seed').map((id) => item(id, ITEMS[id].buy, { desc: `Donne : ${ITEMS[ITEMS[id].crop].emoji} ${ITEMS[ITEMS[id].crop].label}` })) }];
       case 'marche':
         return [
           { id: 'vendre', label: '💰 Vendre' },
-          { id: 'acheter', label: '🧺 Acheter', items: () => [item('friandise', 60), item('baie', 14), item('pomme', 22), item('carotte', 26), item('graine', 10), item('poisson', 40)] },
+          { id: 'acheter', label: '🧺 Acheter', items: () => [item('friandise', 60), item('baie', 14), item('pomme', 22), item('carotte', 26), item('graine', 10), item('poisson', 40), item('appat', 12)] },
+          { id: 'outils', label: '🧰 Outils', items: () => [
+            unlock('tool:filet', 'Filet à papillons', '🥅', 200, 'Pour attraper les insectes (E).'),
+            { id: 'rod:fibre', label: 'Canne en fibre', emoji: '🎣', price: 800, desc: 'Ça mord plus vite, zone plus large.', owned: ['fibre', 'doree'].includes(this.fishing.rod), buy: () => this.setRod('fibre') },
+            { id: 'rod:doree', label: 'Canne dorée', emoji: '✨', price: 3000, desc: 'La meilleure : poissons rares plus fréquents.', owned: this.fishing.rod === 'doree', buy: () => this.setRod('doree') },
+          ] },
         ];
       case 'menuiserie': {
-        const furn = () => SHOP_FURNITURE.map((f) => ({
-          id: f.id, label: f.label, emoji: f.emoji, price: f.price, repeatable: true,
-          desc: `${f.where === 'out' ? 'Jardin' : f.where === 'both' ? 'Maison ou jardin' : 'Maison'}${count(f.id) ? ` · tu en as ${count(f.id)}` : ''}`,
-          buy: () => this.house.addToStorage(f.id),
-        }));
-        const surf = (list, owned, kind) => () => list.filter((s) => s.price > 0).map((s) => ({
-          id: `${kind}:${s.id}`, label: s.label, emoji: '', color: `linear-gradient(135deg, ${s.draw.base} 50%, ${s.draw.accent} 50%)`, price: s.price,
-          owned: owned.has(s.id), buy: () => owned.add(s.id),
+        const surf = (list, owned, kind) => () => list.filter((sf) => sf.price > 0).map((sf) => ({
+          id: `${kind}:${sf.id}`, label: sf.label, emoji: '', color: `linear-gradient(135deg, ${sf.draw.base} 50%, ${sf.draw.accent} 50%)`, price: sf.price,
+          owned: owned.has(sf.id), buy: () => owned.add(sf.id),
         }));
         return [
-          { id: 'meubles', label: '🛋️ Meubles', items: furn },
+          ...FURNITURE_CATS.map((c) => ({ id: `f-${c.id}`, label: c.label, items: furn((f) => f.cat === c.id) })),
           { id: 'murs', label: '🧱 Papiers peints', items: surf(WALLPAPERS, this.house.ownedWalls, 'mur') },
           { id: 'sols', label: '🟫 Sols', items: surf(FLOORS, this.house.ownedFloors, 'sol') },
+          { id: 'travaux', label: '🔨 Travaux', items: () => this.worksItems() },
         ];
       }
       case 'couture':
@@ -452,14 +546,69 @@ export class Game {
             },
           })),
         }];
+      case 'cafe':
+        return [
+          { id: 'chats', label: '🐱 Pour les chats', items: () => [
+            item('patee', 45), item('friandise', 60),
+            unlock('tool:plumeau', 'Plumeau', '🪶', 250, 'Touche G près d\'un animal pour jouer avec lui !'),
+          ] },
+          { id: 'f-animaux', label: '🧺 Coin des minous', items: furn((f) => f.cat === 'animaux') },
+          { id: 'douceurs', label: '🍰 Douceurs', items: () => ['tarte', 'jus', 'confiture', 'maki'].map((id) => item(id, Math.round(ITEMS[id].price * 1.4), { desc: 'Parfait comme cadeau !' })) },
+        ];
+      case 'garage':
+        return [{
+          id: 'vehicules', label: '🚗 Véhicules',
+          items: () => Object.entries(VEHICLES).map(([id, v]) => ({
+            id: `veh:${id}`, label: v.label, emoji: v.emoji, price: v.price, desc: `${v.desc} · vitesse ${'▰'.repeat(Math.round(v.speed / 3.5))}`,
+            owned: this.vehicles.has(id), buy: () => this.vehicles.buy(id),
+          })),
+        }];
       default:
         return [{ id: 'rien', label: 'Boutique', items: () => [] }];
     }
   }
 
+  setRod(id) {
+    const order = ['bambou', 'fibre', 'doree'];
+    if (order.indexOf(id) > order.indexOf(this.fishing.rod)) this.fishing.rod = id;
+  }
+
+  /** Travaux chez Bruno : agrandissements, styles de toit et de façade, extras. */
+  worksItems() {
+    const h = this.house;
+    const out = [];
+    const next = h.size + 1;
+    if (next < HOME_SIZES.length) {
+      out.push({
+        id: `size:${next}`, label: `Agrandir : ${HOME_SIZES[next].label}`, emoji: '🏗️', price: UPGRADE_PRICES[next], repeatable: true,
+        desc: `Pièce de ${HOME_SIZES[next].room.w} × ${HOME_SIZES[next].room.d} m et maison plus grande. ${next === 2 ? 'Avec une lucarne !' : ''}`,
+        buy: () => {
+          h.upgrade();
+          this.particles.emit('sparkle', this.player.pos.clone().setY(this.player.pos.y + 2), { count: 6, spread: 1.5 });
+          setTimeout(() => this.ui.toast('🏗️ Travaux terminés ! Va voir ta maison agrandie !', 4000), 500);
+          this.emit('upgrade', { size: h.size });
+        },
+      });
+    } else {
+      out.push({ id: 'size:max', label: 'Maison au maximum !', emoji: '🏰', price: 0, owned: true, ownedLabel: 'Terminé ✓', buy: () => {} });
+    }
+    const style = (list, prefix, emoji) => list.filter((o) => o.price > 0).map((o) => ({
+      id: `${prefix}:${o.id}`, label: o.label, emoji: o.emoji || emoji, price: o.price, owned: h.ownedStyles.has(`${prefix}:${o.id}`),
+      desc: 'À choisir ensuite dans ton jardin : B → Façade',
+      buy: () => {
+        h.ownedStyles.add(`${prefix}:${o.id}`);
+        if (prefix === 'extra') h.toggleExtra(o.id);
+        else h.setExterior({ [prefix === 'roof' ? 'roofStyle' : 'facade']: o.id });
+        this.emit('facade', {});
+      },
+    }));
+    return [...out, ...style(ROOF_STYLES, 'roof', '🏠'), ...style(FACADES, 'facade', '🧱'), ...style(HOME_EXTRAS, 'extra', '✨')];
+  }
+
   // --- Maison, sommeil, sièges ----------------------------------------------------
 
   enterHouse() {
+    if (this.vehicles.riding) return;
     const e = this.house.entryPoint;
     this.fade(() => {
       this.player.teleport(e.x, e.z, Math.PI);
@@ -496,6 +645,7 @@ export class Game {
   sleep() {
     const sky = this.world.sky;
     const night = sky.hour >= 18 || sky.hour < 5;
+    this.emit('sleep', {});
     this.audio.lullaby();
     this.fade(() => {
       if (night) {
@@ -552,18 +702,37 @@ export class Game {
 
     if (this.fishing.active) {
       const bite = this.fishing.state === 'bite';
-      this.ui.setPrompt({ pos: this.player.pos.clone().add(up), title: bite ? '🎣 Ça mord !' : '🎣 Patience…', actions: [{ key: 'E', label: bite ? 'Ferrer !' : 'Remonter la ligne' }] });
+      const reel = this.fishing.state === 'reel';
+      this.ui.setPrompt({ pos: this.player.pos.clone().add(up), title: reel ? '🎣 Dans la zone verte !' : bite ? '🎣 Ça mord !' : '🎣 Patience…', actions: [{ key: 'E', label: reel ? 'Ferrer' : bite ? 'Ferrer !' : 'Remonter la ligne' }] });
       if (input.hit('KeyE')) this.fishing.action();
+      return;
+    }
+
+    // En véhicule : seule action possible, descendre.
+    const veh = this.player.vehicle;
+    if (veh) {
+      const def = veh.def;
+      this.ui.setPrompt({ pos: this.player.pos.clone().add(new THREE.Vector3(0, def.mode === 'air' ? 3 : 2.6, 0)), title: `${def.emoji} ${def.label}`, actions: [{ key: 'E', label: def.mode === 'air' ? (veh.landing ? 'Atterrissage…' : 'Atterrir') : 'Descendre' }, { key: 'Maj', label: 'Accélérer', dim: def.mode !== 'ground' }] });
+      if (input.hit('KeyE')) this.vehicles.dismount();
+      return;
+    }
+
+    const jobAct = this.jobs.interaction();
+    if (jobAct) {
+      this.ui.setPrompt(jobAct.prompt);
+      if (input.hit('KeyE')) jobAct.act();
       return;
     }
 
     const v = this.villagers.nearest();
     if (v) {
       const req = this.quests.requestFor(v.def.id);
+      const story = this.quests.current?.story?.villager === v.def.id;
+      const bday = this.calendar.isBirthday(v.def.id);
       this.ui.setPrompt({
         pos: v.pos.clone().add(new THREE.Vector3(0, 2.4, 0)),
-        title: `${v.def.emoji} ${v.met ? v.def.name : '???'}`,
-        sub: `${v.def.job}${req && !req.done ? ' · a une demande !' : ''}`,
+        title: `${v.def.emoji} ${v.met ? v.def.name : '???'}${bday ? ' 🎂' : ''}`,
+        sub: `${v.def.job}${story ? ' · ✨ histoire' : ''}${req && !req.done ? ' · a une demande !' : ''}`,
         hearts: v.friendship,
         actions: [{ key: 'E', label: 'Parler' }],
       });
@@ -582,6 +751,7 @@ export class Game {
         { key: 'E', label: a.state === 'sleep' ? 'Caresser (il dort…)' : 'Caresser' },
         { key: 'F', label: feedLabel, dim: !food },
       ];
+      if (this.unlocks.has('tool:plumeau')) actions.push({ key: 'G', label: 'Jouer 🪶' });
       if (!a.adopted && a.trust >= 100) actions.push({ key: 'R', label: 'Adopter 💖' });
       if (a.adopted) actions.push({ key: 'R', label: a.follow ? 'Attends-moi au jardin' : 'Suis-moi !' });
       this.ui.setPrompt({
@@ -593,6 +763,7 @@ export class Game {
       });
       if (input.hit('KeyE')) this.animals.pet(a);
       if (input.hit('KeyF')) this.animals.feed(a);
+      if (input.hit('KeyG')) this.animals.play(a);
       if (input.hit('KeyR')) {
         if (a.adopted) {
           this.animals.toggleFollow(a);
@@ -603,6 +774,13 @@ export class Game {
           this.ui.toast(`Il faut 5 cœurs pleins pour adopter ce ${a.sp.label.toLowerCase()}.`);
         }
       }
+      return;
+    }
+
+    const bug = this.insects.nearest();
+    if (bug) {
+      this.ui.setPrompt(this.insects.prompt(bug));
+      if (input.hit('KeyE')) this.insects.catch(bug);
       return;
     }
 
@@ -617,6 +795,21 @@ export class Game {
       const e = this.house.entryPoint;
       this.ui.setPrompt({ pos: new THREE.Vector3(e.x, 2.6, e.z + 0.8), title: '🚪 Porte', actions: [{ key: 'E', label: 'Sortir' }, { key: 'B', label: 'Décorer' }] });
       if (input.hit('KeyE')) this.exitHouse();
+      return;
+    }
+
+    // Boîte aux lettres et tableau des petits boulots.
+    const vil = this.world.village;
+    if (!this.house.inside && Math.hypot(vil.mailbox.x - this.player.pos.x, vil.mailbox.z - this.player.pos.z) < 1.6) {
+      const n = this.calendar.letters.length;
+      this.ui.setPrompt({ pos: new THREE.Vector3(vil.mailbox.x, this.player.pos.y + 2.2, vil.mailbox.z), title: '📬 Boîte aux lettres', sub: n ? `${n} lettre${n > 1 ? 's' : ''} !` : 'Vide', actions: [{ key: 'E', label: 'Relever le courrier', dim: !n }] });
+      if (input.hit('KeyE')) this.calendar.openMail();
+      return;
+    }
+    const jb = vil.jobBoard;
+    if (Math.hypot(jb.x - this.player.pos.x, jb.z - this.player.pos.z) < 1.8) {
+      this.ui.setPrompt({ pos: new THREE.Vector3(jb.bx, 2.3 + 3.2, jb.bz), title: '📋 Petits boulots', sub: this.jobs.active ? 'Mission en cours' : 'Des missions payées chaque jour', actions: [{ key: 'E', label: 'Consulter' }] });
+      if (input.hit('KeyE')) this.jobs.open();
       return;
     }
 
@@ -661,7 +854,8 @@ export class Game {
 
     const spot = this.fishing.nearestSpot();
     if (spot) {
-      this.ui.setPrompt({ pos: new THREE.Vector3(spot.x, spot.y + 2.4, spot.z), title: '🎣 Coin de pêche', sub: spot.name, actions: [{ key: 'E', label: 'Pêcher' }] });
+      const contest = this.calendar.contestActive ? ' · 🏆 concours !' : '';
+      this.ui.setPrompt({ pos: new THREE.Vector3(spot.x, spot.y + 2.4, spot.z), title: '🎣 Coin de pêche', sub: `${spot.name}${contest}`, actions: [{ key: 'E', label: 'Pêcher' }] });
       if (input.hit('KeyE')) this.fishing.start(spot);
       return;
     }
@@ -673,6 +867,86 @@ export class Game {
       return;
     }
     this.ui.setPrompt(null);
+  }
+
+  // --- Grande finale ---------------------------------------------------------------
+
+  /** Le village rassemblé au pied du phare, qui se rallume. */
+  finale(done) {
+    const L = LANDMARKS.lighthouse;
+    this.inFinale = true;
+    if (this.vehicles.riding) this.vehicles.dismount(true);
+    this.standUp();
+    if (this.fishing.active) this.fishing.stop();
+    this.ui.setPrompt(null);
+    const toCenter = Math.atan2(-L.x, -L.z);
+    const fx = Math.sin(toCenter);
+    const fz = Math.cos(toCenter);
+    const px = L.x + fx * 7;
+    const pz = L.z + fz * 7;
+    this.fade(() => {
+      this.player.teleport(px, pz, Math.atan2(L.x - px, L.z - pz));
+      this.villagers.list.forEach((v, i) => {
+        const a = toCenter + (i - (this.villagers.list.length - 1) / 2) * 0.28;
+        const r = 10 + (i % 2) * 1.4;
+        const x = L.x + Math.sin(a) * r;
+        const z = L.z + Math.cos(a) * r;
+        v.character.setSit(false);
+        v.character.setFishing(false);
+        v.override = { x, z, rot: Math.atan2(L.x - x, L.z - z) };
+      });
+      for (const a of this.animals.followers()) a.teleport(px + (Math.random() - 0.5) * 3, pz + fz * 1.5);
+      const gy = this.world.heightAt(L.x, L.z);
+      this.cam.setCinematic(new THREE.Vector3(L.x + fx * 21 + fz * 5, gy + 4, L.z + fz * 21 - fx * 5), new THREE.Vector3(L.x, gy + 7, L.z));
+      this.cam.snap = true;
+    }, 500);
+    const say = (i, text, t) => setTimeout(() => this.villagers.list[i % this.villagers.list.length].say(text, 3200), t);
+    say(0, 'Tout le monde est là !', 1600);
+    say(4, 'Vas-y, c\'est ton moment !', 2600);
+    setTimeout(() => {
+      this.character.play('celebrate', 2.5);
+      this.world.village.setLighthouseLevel(1, true);
+      this.audio.play('chapter');
+      this.ui.levelBanner('🗼 Le Cœur de Doucebrise brille à nouveau !');
+      for (const v of this.villagers.list) v.character.play('celebrate', 2);
+    }, 4200);
+    for (let k = 0; k < 14; k++) {
+      setTimeout(() => {
+        const a = Math.random() * Math.PI * 2;
+        const pos = new THREE.Vector3(L.x + Math.cos(a) * 6, this.world.heightAt(L.x, L.z) + 14 + Math.random() * 8, L.z + Math.sin(a) * 6);
+        this.particles.emit(k % 3 === 0 ? 'heart' : 'sparkle', pos, { count: 10, spread: 5, size: 1.1, rise: 0.4, life: 2.2, delay: 0.03 });
+        this.audio.play('pick');
+      }, 4600 + k * 520);
+    }
+    const lines = ['Il brille !', 'Magnifique…', `Merci, ${this.character.appearance.name} !`, 'Comme avant !', 'Hourra !', 'Snif… c\'est beau.', 'Miaou ♥', 'Trop cool !'];
+    this.villagers.list.forEach((v, i) => say(i, lines[i % lines.length], 6000 + i * 700));
+    setTimeout(() => {
+      const el = document.querySelector('#chapter');
+      el.innerHTML = `<div class="chapter-card finale"><div class="chap-emoji">🗼💛</div><div class="chap-num">Fin du chapitre 8</div>
+        <h2>Le Cœur de Doucebrise</h2><p>Le phare brille à nouveau, plus fort que jamais. Ce soir, tout le village s'est retrouvé grâce à toi, ${this.character.appearance.name}. Doucebrise est ta maison, maintenant. ♥</p>
+        <p class="note">L'aventure continue : agrandis ta maison, complète tes collections, deviens le meilleur ami de chacun… et n'oublie pas les fêtes !</p>
+        <button class="btn big primary" data-fin>Continuer l'aventure</button></div>`;
+      el.classList.remove('hidden');
+      el.querySelector('[data-fin]').onclick = () => {
+        el.classList.add('hidden');
+        this.fade(() => {
+          for (const v of this.villagers.list) {
+            v.override = null;
+            v.placeAt(v.scheduled(this.world.sky.hour));
+          }
+          this.inFinale = false;
+          this.cam.setMode('follow');
+          this.cam.yaw = this.player.rotY + Math.PI;
+          this.cam.pitch = 0.36;
+          this.cam.dist = 9;
+          this.cam.snap = true;
+          done();
+          this.progress.addTitle('Cœur de Doucebrise');
+          this.progress.setTitle('Cœur de Doucebrise');
+          setTimeout(() => this.quests.showChapter(), 3000);
+        }, 400);
+      };
+    }, 13500);
   }
 
   async adoptDialog(a) {
@@ -714,25 +988,37 @@ export class Game {
     this.resources.update(dt);
     this.garden.update(dt);
     this.fishing.update(dt, this.input);
+    this.insects.update(dt);
+    this.vehicles.update(dt);
+    this.jobs.update(dt);
+    this.calendar.update(dt);
     this.house.update(dt, this.elapsed, this.camera);
     this.decor.update();
     this.particles.update(dt);
     this.cam.update(dt, this.player, this.input, this.elapsed);
+    this.guide.update(dt);
 
     if (playing) {
       if (free) this.updateInteractions();
       else if (!this.fishing.active) this.ui.setPrompt(null);
+      this.quests.update();
       const z = this.house.inside ? null : zoneAt(this.player.pos.x, this.player.pos.z);
       if (z !== this.zone) {
-        if (z) this.ui.zoneBanner(z);
-        else this.ui.setZoneLabel(this.house.inside ? { emoji: '🏡', name: 'Ta maison' } : null);
+        if (z) {
+          this.ui.zoneBanner(z);
+          this.emit('zone', { zone: z.id });
+        } else this.ui.setZoneLabel(this.house.inside ? { emoji: '🏡', name: 'Ta maison' } : null);
         this.zone = z;
       }
       if (this.lastDay !== this.world.sky.day) {
         if (this.lastDay !== undefined) {
           this.quests.refreshRequests();
+          this.progress.refreshDaily();
+          this.jobs.refresh();
+          this.calendar.onNewDay(true);
           const w = this.world.weather;
           if (w.dayInSeason === 1) this.ui.toast(`${w.season.emoji} C'est le début de : ${w.season.label} !`, 4000);
+          if (this.calendar.letters.length) setTimeout(() => this.ui.toast('📬 Tu as du courrier ! Va voir ta boîte aux lettres.', 3500), 4000);
         }
         this.lastDay = this.world.sky.day;
       }
@@ -763,8 +1049,10 @@ export class Game {
     this.dirty = false;
     if (this.state === 'title') return;
     const sky = this.world.sky;
-    // Dans la maison, on sauvegarde la position devant la porte (plus simple au rechargement).
-    const pos = this.house.inside ? this.world.village.doorFront(0, 1.6) : { x: this.player.pos.x, z: this.player.pos.z };
+    // Dans la maison, on sauvegarde la position devant la porte (plus simple au rechargement) ;
+    // en bateau ou en montgolfière, sur la terre ferme la plus proche.
+    let pos = this.house.inside ? this.world.village.doorFront(0, 1.6) : { x: this.player.pos.x, z: this.player.pos.z };
+    if (this.player.vehicle && this.player.vehicle.def.mode !== 'ground') pos = this.vehicles.findLand(this.player.pos, 40, 0.2) || this.world.village.doorFront(0, 1.6);
     writeSave({
       appearance: this.character.appearance,
       player: { x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), rotY: +this.player.rotY.toFixed(2) },
@@ -781,7 +1069,12 @@ export class Game {
       cooking: this.cooking.serialize(),
       quests: this.quests.serialize(),
       weather: this.world.weather.serialize(),
-      fishing: this.fishing.best,
+      fishing: this.fishing.serialize(),
+      progress: this.progress.serialize(),
+      insects: this.insects.serialize(),
+      vehicles: this.vehicles.serialize(),
+      jobs: this.jobs.serialize(),
+      calendar: this.calendar.serialize(),
       settings: { ...this.settings, music: this.audio.musicOn, sfx: this.audio.sfxOn },
     });
   }
@@ -805,7 +1098,13 @@ export class Game {
     this.cooking.restore(s.cooking);
     this.quests.restore(s.quests);
     this.world.weather.restore(s.weather);
-    if (s.fishing) this.fishing.best = s.fishing;
+    // Ancien format de la pêche : records par nom de poisson (ignorés).
+    if (s.fishing?.best || s.fishing?.rod) this.fishing.restore(s.fishing);
+    this.progress.restore(s.progress);
+    this.insects.restore(s.insects);
+    this.vehicles.restore(s.vehicles);
+    this.jobs.restore(s.jobs);
+    this.calendar.restore(s.calendar);
     if (s.settings) {
       this.audio.musicOn = !!s.settings.music;
       this.audio.sfxOn = s.settings.sfx !== false;
