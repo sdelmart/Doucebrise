@@ -1,18 +1,91 @@
 {
   "name": "doucebrise",
   "private": true,
-  "version": "0.3.0",
-  "description": "Doucebrise — un jeu 3D cosy : île à explorer, animaux à apprivoiser, personnage à personnaliser.",
+  "version": "0.4.0",
+  "description": "Doucebrise — un jeu 3D cosy : un archipel à explorer, des animaux à apprivoiser, une maison à construire, des villages et une histoire.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "app": "vite build && electron .",
+    "dist:win": "vite build && electron-builder --win --x64",
+    "dist:mac": "vite build && electron-builder --mac --universal"
   },
-  "dependencies": {
-    "three": "^0.186.1"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@fontsource/nunito": "^5.3.0",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "three": "^0.186.1",
     "vite": "^8.3.1"
+  },
+  "author": {
+    "name": "Doucebrise"
+  },
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "fr.doucebrise.jeu",
+    "productName": "Doucebrise",
+    "copyright": "Doucebrise",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "Doucebrise-${version}-${arch}-${target}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Doucebrise",
+      "artifactName": "Doucebrise-${version}-installation.${ext}"
+    },
+    "portable": {
+      "artifactName": "Doucebrise-${version}-portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "category": "public.app-category.games",
+      "icon": "build/icon.png",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "artifactName": "Doucebrise-${version}-mac.${ext}"
+    },
+    "dmg": {
+      "title": "Doucebrise"
+    }
   }
 }
