@@ -25,6 +25,12 @@ export class FollowCamera {
     if (mode === 'studio') this.studio.yaw = 0;
   }
 
+  /** Vue plongeante sur une zone (décoration). */
+  setOverview(target, dist = 12) {
+    this.mode = 'overview';
+    this.over = { target: target.clone(), dist, yaw: this.yaw };
+  }
+
   /** Décalage horizontal de l'image (fraction de largeur) pour laisser place à un panneau. */
   setShift(f) {
     this.shiftTarget = f;
@@ -47,33 +53,49 @@ export class FollowCamera {
       const ry = player.rotY + this.studio.yaw;
       look.copy(player.pos).add(new THREE.Vector3(0, this.studio.height * h, 0));
       desired.set(Math.sin(ry) * this.studio.dist, 0.25, Math.cos(ry) * this.studio.dist).add(look);
+    } else if (this.mode === 'overview') {
+      const o = this.over;
+      o.yaw -= drag.dx * 0.006;
+      o.dist = clamp(o.dist * (1 + wheel * 0.1), 6, 22);
+      this.yaw = o.yaw;
+      look.copy(o.target);
+      const pitch = 0.95;
+      desired.set(Math.sin(o.yaw) * Math.cos(pitch) * o.dist, Math.sin(pitch) * o.dist, Math.cos(o.yaw) * Math.cos(pitch) * o.dist).add(look);
     } else {
       this.yaw -= drag.dx * 0.0055;
-      this.pitch = clamp(this.pitch + drag.dy * 0.004, -0.05, 1.25);
-      this.dist = clamp(this.dist * (1 + wheel * 0.1), 3.5, 18);
+      this.pitch = clamp(this.pitch + drag.dy * 0.004, this.photo ? -0.3 : -0.05, 1.3);
+      this.dist = clamp(this.dist * (1 + wheel * 0.1), this.photo ? 1.6 : 3.5, this.photo ? 30 : 18);
       // La caméra suit doucement la direction du joueur quand il avance sans qu'on touche la souris.
       // (uniquement quand il avance « dans » l'écran, sinon on tournerait en rond en reculant).
       const behind = player.rotY + Math.PI;
       const off = Math.abs(Math.atan2(Math.sin(behind - this.yaw), Math.cos(behind - this.yaw)));
-      if (!input.drag.active && player.speed > 1 && off < 1.3) {
+      if (!this.photo && !input.drag.active && player.speed > 1 && off < 1.3) {
         this.yaw = lerpAngle(this.yaw, behind, 1 - Math.exp(-0.5 * dt * (player.speed / 4)));
       }
-      look.copy(player.pos).add(new THREE.Vector3(0, 1.25, 0));
-      const cp = Math.cos(this.pitch);
-      desired.set(Math.sin(this.yaw) * cp * this.dist, Math.sin(this.pitch) * this.dist, Math.cos(this.yaw) * cp * this.dist).add(look);
-      // Si une maison se trouve entre le joueur et la caméra, on rapproche la caméra.
-      const steps = 14;
-      for (let i = 2; i <= steps; i++) {
-        const t = i / steps;
-        const x = look.x + (desired.x - look.x) * t;
-        const y = look.y + (desired.y - look.y) * t;
-        const z = look.z + (desired.z - look.z) * t;
-        if (this.world.cameraBlocked(x, y, z)) {
-          const k = Math.max((i - 1.5) / steps, 0.12);
-          desired.set(look.x + (desired.x - look.x) * k, look.y + (desired.y - look.y) * k, look.z + (desired.z - look.z) * k);
-          break;
+      look.copy(player.pos).add(new THREE.Vector3(0, this.photo ? 0.9 : 1.25, 0));
+      // Si une maison cache le joueur, la caméra monte au-dessus du toit (et, en dernier
+      // recours, se rapproche).
+      const place = (pitch, dist) => {
+        const cp = Math.cos(pitch);
+        desired.set(Math.sin(this.yaw) * cp * dist, Math.sin(pitch) * dist, Math.cos(this.yaw) * cp * dist).add(look);
+      };
+      const blocked = () => {
+        for (let i = 2; i <= 12; i++) {
+          const t = i / 12;
+          if (this.world.cameraBlocked(look.x + (desired.x - look.x) * t, look.y + (desired.y - look.y) * t, look.z + (desired.z - look.z) * t)) return t;
         }
+        return 0;
+      };
+      let pitch = this.pitch;
+      place(pitch, this.dist);
+      let hit = blocked();
+      while (hit && pitch < 1.3) {
+        pitch += 0.08;
+        place(pitch, this.dist);
+        hit = blocked();
       }
+      if (hit) place(this.pitch, Math.max(this.dist * (hit - 0.1), 2.5));
+      this.autoPitch = pitch;
       const ground = Math.max(this.world.heightAt(desired.x, desired.z), 0) + 0.6;
       if (desired.y < ground) desired.y = ground;
     }
@@ -83,7 +105,7 @@ export class FollowCamera {
       this.target.copy(look);
       this.snap = false;
     } else {
-      const k = this.mode === 'title' ? 2 : this.mode === 'studio' ? 6 : 10;
+      const k = this.mode === 'title' ? 2 : this.mode === 'studio' || this.mode === 'overview' ? 6 : 10;
       this.current.x = damp(this.current.x, desired.x, k, dt);
       this.current.y = damp(this.current.y, desired.y, k, dt);
       this.current.z = damp(this.current.z, desired.z, k, dt);

@@ -44,6 +44,12 @@ export class Player {
   }
 
   update(dt, input, camYaw) {
+    if (this.seated) {
+      this.speed = 0;
+      this.sync();
+      this.character.update(dt, { speed: 0, running: false, grounded: true, vy: 0 });
+      return;
+    }
     const mv = this.frozen ? { x: 0, y: 0 } : input.moveVector();
     this.running = !this.frozen && (input.down('ShiftLeft', 'ShiftRight') || Math.hypot(mv.x, mv.y) > 0.92 && input.joystick.active);
     const fx = -Math.sin(camYaw);
@@ -67,6 +73,16 @@ export class Player {
     const res = this.world.colliders.resolve(nx, nz, RADIUS);
     nx = res.x;
     nz = res.z;
+    // On ne traverse pas les habitants.
+    for (const o of this.obstacles ? this.obstacles() : []) {
+      const dx = nx - o.x;
+      const dz = nz - o.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.7 && d > 1e-4) {
+        nx = o.x + (dx / d) * 0.7;
+        nz = o.z + (dz / d) * 0.7;
+      }
+    }
     if (this.canStand(nx, nz, y0)) {
       this.pos.x = nx;
       this.pos.z = nz;

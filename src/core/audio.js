@@ -15,7 +15,7 @@ export class Audio {
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.5;
+      this.master.gain.value = this.volume ?? 0.5;
       this.master.connect(this.ctx.destination);
     } catch {
       this.ctx = null;
@@ -98,6 +98,48 @@ export class Audio {
       default:
         break;
     }
+  }
+
+  setVolume(v) {
+    this.volume = v;
+    if (this.master) this.master.gain.value = v;
+  }
+
+  /** Bruit de pluie en boucle (0 = coupé). */
+  setRain(level) {
+    if (!this.ctx) return;
+    if (!this.rainGain && level > 0.02) {
+      const ctx = this.ctx;
+      const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1800;
+      filter.Q.value = 0.6;
+      this.rainGain = ctx.createGain();
+      this.rainGain.gain.value = 0;
+      src.connect(filter).connect(this.rainGain).connect(this.master);
+      src.start();
+    }
+    if (this.rainGain) this.rainGain.gain.value = this.sfxOn ? level * 0.09 : 0;
+  }
+
+  /** Petite mélodie au piano (touches pentatoniques). */
+  piano() {
+    const notes = [NOTES.C5, NOTES.D5, NOTES.E5, NOTES.G5, NOTES.A5, NOTES.C6];
+    let t = 0;
+    for (let i = 0; i < 8; i++) {
+      this.tone(notes[Math.floor(Math.random() * notes.length)], { t, dur: 0.5, type: 'triangle', vol: 0.12 });
+      t += Math.random() < 0.3 ? 0.36 : 0.18;
+    }
+  }
+
+  lullaby() {
+    [NOTES.G5, NOTES.E5, NOTES.C5, NOTES.E5, NOTES.D5, NOTES.C5].forEach((f, i) => this.tone(f, { t: i * 0.28, dur: 0.6, type: 'sine', vol: 0.1 }));
   }
 
   toggleMusic() {

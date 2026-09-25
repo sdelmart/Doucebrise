@@ -122,8 +122,9 @@ export class Ambient {
     return { x: 40, y: 3, z: 8 };
   }
 
-  update(dt, elapsed, night, focus) {
-    const day = 1 - night;
+  update(dt, elapsed, night, focus, weather) {
+    const calm = weather ? !weather.isRaining && !weather.isSnowing && weather.seasonIndex !== 3 : true;
+    const day = calm ? 1 - night : 0;
     const { m, q, e, s, p, dir, flip } = TMP;
     this.butterflies.forEach((b, i) => {
       b.phase += dt * 16;
@@ -157,8 +158,8 @@ export class Ambient {
 
     // Lucioles : elles tournent doucement autour de leur point de départ.
     this.fireflyUniforms.uTime.value = elapsed;
-    this.fireflyUniforms.uAlpha.value = Math.max(0, night - 0.3) / 0.7;
-    if (night > 0.3) {
+    this.fireflyUniforms.uAlpha.value = calm ? Math.max(0, night - 0.3) / 0.7 : 0;
+    if (calm && night > 0.3) {
       const pos = this.fireflyPoints.geometry.attributes.position;
       this.fireflies.forEach((f, i) => {
         const a = elapsed * 0.4 + f.a;

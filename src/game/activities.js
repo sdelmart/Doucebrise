@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FOODS } from '../animals/species.js';
+import { ITEMS } from './items.js';
 import { Shape, G, vertexColorToon } from '../core/materials.js';
 
 // Activités : cueillette (baies, pommes, carottes, graines) et pêche.
@@ -50,8 +50,9 @@ export class Resources {
     g.player.character.play(n.type === 'apple' ? 'wave' : 'pick', 0.8);
     g.particles.emit('sparkle', new THREE.Vector3(n.x, n.y, n.z), { count: 2, spread: 0.8 });
     g.audio?.play('pick');
-    const f = FOODS[n.item];
+    const f = ITEMS[n.item];
     g.ui.toast(`+${count} ${f.emoji} ${f.label}`);
+    g.emit('gather', { item: n.item, count });
     g.ui.refreshInventory();
     g.requestSave();
   }
@@ -86,7 +87,7 @@ export class Resources {
   }
 }
 
-const FISH = [
+export const FISH = [
   { name: 'Gardon', min: 12, max: 25, w: 30 },
   { name: 'Perche', min: 15, max: 35, w: 22 },
   { name: 'Truite arc-en-ciel', min: 25, max: 50, w: 14 },
@@ -183,6 +184,7 @@ export class Fishing {
       const record = !this.best[fish.name] || size > this.best[fish.name];
       if (record) this.best[fish.name] = size;
       g.ui.toast(`🐟 Tu as pêché : ${fish.name} (${size} cm)${record ? ' — record !' : ''}`);
+      g.emit('catch', { fish: fish.name, size });
       g.particles.emit('sparkle', this.bobberPos.clone().setY(0.6), { count: 3, spread: 0.6 });
       g.player.character.play('celebrate', 1.2);
       g.ui.refreshInventory();

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Shape, G, toon, addWind, paintGradientY } from '../core/materials.js';
+import { Shape, G, toon, addWind, addSeason, paintGradientY } from '../core/materials.js';
 import { createRng, smoothstep } from '../core/math.js';
 
 // Végétation instanciée : arbres, buissons à baies, fleurs, herbe, rochers,
@@ -245,12 +245,16 @@ export class Vegetation {
     const rng = createRng(4242);
     this.rng = rng;
 
-    const leafMat = addWind(toon('#ffffff', { vertexColors: true }), { strength: 0.006, base: 1.5, key: 'tree' });
-    const bushMat = addWind(toon('#ffffff', { vertexColors: true }), { strength: 0.05, base: 0.2, key: 'bush' });
-    const flowerMat = addWind(toon('#ffffff', { vertexColors: true }), { strength: 0.5, base: 0.05, key: 'flower' });
-    const grassMat = addWind(toon('#ffffff', { vertexColors: true }), { strength: 0.6, base: 0.0, key: 'grass' });
-    const tallMat = addWind(toon('#ffffff', { vertexColors: true }), { strength: 0.025, base: 0.1, key: 'tall' });
-    const staticMat = toon('#ffffff', { vertexColors: true });
+    const vc = () => toon('#ffffff', { vertexColors: true });
+    const leafMat = addSeason(addWind(vc(), { strength: 0.006, base: 1.5, key: 'tree' }), { leaf: 1, snowLo: 0.25, snowHi: 0.65 });
+    const pineMat = addSeason(addWind(vc(), { strength: 0.006, base: 1.5, key: 'pine' }), { snowLo: 0.2, snowHi: 0.6, snow: 0.9 });
+    const bushMat = addSeason(addWind(vc(), { strength: 0.05, base: 0.2, key: 'bush' }), { leaf: 1, snowLo: 0.3, snowHi: 0.7 });
+    const flowerMat = addSeason(addWind(vc(), { strength: 0.5, base: 0.05, key: 'flower' }), { snowLo: 0.3, snowHi: 0.8, snow: 0.6 });
+    const grassMat = addSeason(addWind(vc(), { strength: 0.6, base: 0.0, key: 'grass' }), { leaf: 0.7, snowLo: -1, snowHi: 0, snow: 0.75 });
+    const tallMat = addSeason(addWind(vc(), { strength: 0.025, base: 0.1, key: 'tall' }), { leaf: 0.5, snowLo: 0.4, snowHi: 0.8, snow: 0.8 });
+    const staticMat = addSeason(vc(), { snowLo: 0.4, snowHi: 0.8 });
+    this.pineMat = pineMat;
+    this.flowerMat = flowerMat;
 
     this.placeTrees(rng, leafMat);
     this.placeBushes(rng, bushMat);
@@ -289,7 +293,7 @@ export class Vegetation {
       light: makeInstanced(treeRound('#86c75f', '#d0ea84'), mat, 60),
       cherry: makeInstanced(treeRound('#f19ab8', '#ffd9e6', '#8a5a4a'), mat, 40),
       golden: makeInstanced(treeRound('#f0a45a', '#ffd98a', '#8a5a43'), mat, 30),
-      pine: makeInstanced(treePine(), mat, 160),
+      pine: makeInstanced(treePine(), this.pineMat, 160),
       apple: makeInstanced(treeApple(), mat, 16),
     };
     const forestD = (x, z) => smoothstep(44, 18, Math.hypot(x + 4, z + 58));
@@ -323,6 +327,7 @@ export class Vegetation {
 
     // Verger : pommiers récoltables.
     const apples = makeInstanced(appleGeo(), toon('#ffffff', { vertexColors: true }), 16);
+    this.apples = apples;
     const o = { x: 30, z: -26 };
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
@@ -349,6 +354,7 @@ export class Vegetation {
   placeBushes(rng, mat) {
     const bushes = makeInstanced(bushGeo(), mat, 50);
     const berries = makeInstanced(berriesGeo(), toon('#ffffff', { vertexColors: true }), 50);
+    this.berries = berries;
     berries.castShadow = false;
     const zonesD = (x, z) => 0.25 + 0.75 * Math.max(smoothstep(50, 25, Math.hypot(x + 4, z + 58)), smoothstep(34, 10, Math.hypot(x - 50, z - 8)));
     this.scatter(rng, 34, 3000, { area: 95, pad: 2, pathPad: 2.5, density: (x, z) => zonesD(x, z) * smoothstep(16, 22, Math.hypot(x, z)) }, (x, z, h) => {
@@ -380,22 +386,32 @@ export class Vegetation {
       const useTulip = rng() < 0.3;
       const mesh = useTulip ? rng.pick(tulips) : rng.pick(meshes);
       const n = inMeadow ? rng.int(6, 14) : rng.int(3, 7);
+      let pickable = c % 3 === 0;
       for (let i = 0; i < n; i++) {
         const x = cx + rng.range(-2.2, 2.2);
         const z = cz + rng.range(-2.2, 2.2);
         if (mesh.count >= mesh.instanceMatrix.count) break;
         if (!this.world.canPlace(x, z, { pad: 0.3, pathPad: 1.8, minH: 0.95, maxSlope: 0.3 })) continue;
-        pushInstance(mesh, x, this.world.heightAt(x, z) - 0.02, z, rng.range(0, 6.28), rng.range(0.8, 1.35));
+        const y = this.world.heightAt(x, z) - 0.02;
+        const idx = pushInstance(mesh, x, y, z, rng.range(0, 6.28), rng.range(0.8, 1.35));
+        if (pickable) {
+          pickable = false;
+          this.resources.push({ type: 'flower', x, z, y: y + 0.5, mesh, index: idx, label: 'Cueillir une fleur', item: 'fleur', amount: [1, 2], regrow: 10 });
+        }
       }
     }
     [...meshes, ...tulips].forEach((m) => this.add(m));
+    this.flowerMeshes = [...meshes, ...tulips];
   }
 
   placeGrass(rng, mat) {
+    // L'herbe est découpée en tuiles de 20 m : seules celles proches et visibles sont dessinées.
     const count = 9000;
-    const grass = makeInstanced(grassGeo(), mat, count, { cast: false });
+    const TILE = 20;
     const terrain = this.world.terrain;
-    for (let t = 0; t < count * 3 && grass.count < count; t++) {
+    const buckets = new Map();
+    let placed = 0;
+    for (let t = 0; t < count * 3 && placed < count; t++) {
       const x = rng.range(-100, 100);
       const z = rng.range(-100, 100);
       const h = terrain.heightAt(x, z);
@@ -403,10 +419,36 @@ export class Vegetation {
       if (Math.hypot(x, z) < 15) continue;
       if (terrain.pathDistance(x, z) < 1.9) continue;
       if (terrain.slopeAt(x, z) > 0.3) continue;
-      terrain.colorAt(x, z, h, 1, _c).multiplyScalar(1.28);
-      pushInstance(grass, x, h - 0.03, z, rng.range(0, 6.28), rng.range(0.7, 1.4), _c);
+      const key = `${Math.floor(x / TILE)},${Math.floor(z / TILE)}`;
+      if (!buckets.has(key)) buckets.set(key, []);
+      const col = terrain.colorAt(x, z, h, 1, new THREE.Color()).multiplyScalar(1.28);
+      buckets.get(key).push([x, h - 0.03, z, rng.range(0, 6.28), rng.range(0.7, 1.4), col]);
+      placed++;
     }
-    this.add(grass);
+    const geo = grassGeo();
+    this.grassChunks = [];
+    for (const list of buckets.values()) {
+      const mesh = makeInstanced(geo, mat, list.length, { cast: false });
+      let cx = 0;
+      let cz = 0;
+      for (const [x, y, z, r, sc, col] of list) {
+        pushInstance(mesh, x, y, z, r, sc, col);
+        cx += x;
+        cz += z;
+      }
+      mesh.userData.center = new THREE.Vector2(cx / list.length, cz / list.length);
+      this.add(mesh);
+      this.grassChunks.push(mesh);
+    }
+  }
+
+  /** Affiche l'herbe seulement près du joueur (distance réglable selon la qualité). */
+  updateGrass(focus, radius) {
+    if (!this.grassChunks) return;
+    for (const m of this.grassChunks) {
+      const c = m.userData.center;
+      m.visible = radius > 0 && Math.hypot(c.x - focus.x, c.y - focus.z) < radius;
+    }
   }
 
   placeRocks(rng, mat) {
@@ -422,10 +464,35 @@ export class Vegetation {
 
   placeMushrooms(rng, mat) {
     const shrooms = makeInstanced(mushroomGeo(), mat, 60, { cast: false });
+    let n = 0;
     this.scatter(rng, 55, 2000, { area: 44, center: [-4, -58], pad: 0.5, pathPad: 1.5 }, (x, z, h) => {
-      pushInstance(shrooms, x, h - 0.02, z, rng.range(0, 6.28), rng.range(0.8, 1.6));
+      const i = pushInstance(shrooms, x, h - 0.02, z, rng.range(0, 6.28), rng.range(0.8, 1.6));
+      if (n++ % 3 === 0) {
+        this.resources.push({ type: 'mushroom', x, z, y: h + 0.3, mesh: shrooms, index: i, label: 'Ramasser des champignons', item: 'champignon', amount: [1, 2], regrow: 14 });
+      }
     });
     this.add(shrooms);
+    this.placeShells(rng, mat);
+  }
+
+  placeShells(rng, mat) {
+    const s = new Shape();
+    s.add(G.cone(0.14, 0.12, 7), '#ffc9d6', { rot: [0.3, 0, 0], scale: [1, 1, 0.5] });
+    s.add(G.cone(0.1, 0.1, 6), '#fff1e0', { pos: [0.25, 0, 0.1], rot: [0.2, 0.5, 0], scale: [1, 1, 0.5] });
+    const shells = makeInstanced(s.build(), mat, 40, { cast: false });
+    let placed = 0;
+    for (let t = 0; t < 400 && placed < 26; t++) {
+      const a = rng.range(0.85, 2.2);
+      const r = rng.range(78, 96);
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      const h = this.world.heightAt(x, z);
+      if (h < 0.1 || h > 1.1) continue;
+      const i = pushInstance(shells, x, h + 0.03, z, rng.range(0, 6.28), rng.range(0.9, 1.4));
+      placed++;
+      if (placed % 2 === 0) this.resources.push({ type: 'shell', x, z, y: h + 0.2, mesh: shells, index: i, label: 'Ramasser un coquillage', item: 'coquillage', amount: [1, 1], regrow: 10 });
+    }
+    this.add(shells);
   }
 
   placeSunflowers(rng, mat) {

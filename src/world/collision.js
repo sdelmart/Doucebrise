@@ -12,6 +12,13 @@ export class Colliders {
     return `${cx},${cz}`;
   }
 
+  remove(c) {
+    for (const list of this.grid.values()) {
+      const i = list.indexOf(c);
+      if (i >= 0) list.splice(i, 1);
+    }
+  }
+
   insert(c, radius) {
     const minX = Math.floor((c.x - radius) / CELL);
     const maxX = Math.floor((c.x + radius) / CELL);

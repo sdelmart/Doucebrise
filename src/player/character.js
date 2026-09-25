@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Shape, G, toon, withOutline, paintGradientY, vertexColorToon, getGradientMap } from '../core/materials.js';
 import { createFaceTextures, createPatternTexture, FACE_PHI, FACE_THETA0, FACE_THETA_LEN } from './face.js';
 import { clamp, damp } from '../core/math.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // Personnage « chibi » construit à partir de primitives, entièrement paramétré
 // par une apparence (voir appearance.js). Hiérarchie :
@@ -94,6 +95,15 @@ export class Character {
   }
 
   addPart(parent, geo, material = vertexColorToon(), { outline = true, shadow = true } = {}) {
+    // Les pièces à couleurs par sommet d'un même groupe sont fusionnées en un seul
+    // maillage (voir flushParts) : bien moins d'appels de dessin par personnage.
+    if (material === vertexColorToon() && this.pending) {
+      const key = `${outline ? 1 : 0}${shadow ? 1 : 0}`;
+      let groups = this.pending.get(parent);
+      if (!groups) this.pending.set(parent, (groups = {}));
+      (groups[key] ||= []).push(geo);
+      return null;
+    }
     const mesh = new THREE.Mesh(geo, material);
     mesh.castShadow = shadow;
     if (outline) withOutline(mesh, OUTLINE);
@@ -102,17 +112,34 @@ export class Character {
     return mesh;
   }
 
+  flushParts() {
+    for (const [parent, groups] of this.pending) {
+      for (const [key, geos] of Object.entries(groups)) {
+        const geo = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
+        if (geos.length > 1) geos.forEach((g) => g.dispose());
+        const mesh = new THREE.Mesh(geo, vertexColorToon());
+        mesh.castShadow = key[1] === '1';
+        if (key[0] === '1') withOutline(mesh, OUTLINE);
+        parent.add(mesh);
+        this.parts.push(mesh);
+      }
+    }
+    this.pending = null;
+  }
+
   setAppearance(a) {
     this.appearance = { ...a };
     this.clear();
+    this.pending = new Map();
     this.body.scale.setScalar(a.height);
     this.head.scale.setScalar(a.head);
 
     const b = a.build;
     const isDress = a.top === 'robe';
     const isOveralls = a.top === 'salopette';
-    const base = isOveralls ? a.topColor2 : a.topColor;
-    const accent = isOveralls ? a.topColor : a.topColor2;
+    const inner = isOveralls || a.top === 'veste';
+    const base = inner ? a.topColor2 : a.topColor;
+    const accent = inner ? a.topColor : a.topColor2;
     const pattern = createPatternTexture(a.pattern, base, accent);
     pattern.repeat.set(3, 2);
     this.textures.push(pattern);
@@ -132,6 +159,7 @@ export class Character {
     this.buildHat(a);
     this.buildGlasses(a);
     this.buildBack(a, b);
+    this.flushParts();
     if (this.rod) this.armR.add(this.rod);
   }
 
@@ -174,6 +202,21 @@ export class Character {
           s.add(G.sphere(0.022, 6, 5), '#ffd84d', { pos: [x, 0.29, 0.185 * b] });
         }
         s.add(G.torus(0.085, 0.02, 6, 16), a.topColor2, { pos: [0, 0.43, 0], rot: [Math.PI / 2, 0, 0] });
+        break;
+      }
+      case 'veste': {
+        const shell = new THREE.LatheGeometry(TORSO_PROFILE.slice(1, 7).map(([r, y]) => new THREE.Vector2(r * 1.08, y)), 20, 0.42, Math.PI * 2 - 0.84);
+        shell.scale(b, 1, 0.86 * b);
+        const js = new Shape();
+        js.add(shell, a.topColor);
+        const jm = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
+        this.materials.push(jm);
+        this.addPart(this.torso, js.build(), jm);
+        for (const side of [-1, 1]) {
+          s.add(G.box(0.07, 0.2, 0.02), darken(a.topColor, 0.12), { pos: [side * 0.08, 0.33, 0.17 * b], rot: [-0.35, 0, side * -0.35] });
+          s.add(G.sphere(0.018, 6, 5), '#ffd84d', { pos: [side * 0.12, 0.12 + (side > 0 ? 0.1 : 0), 0.21 * b] });
+        }
+        s.add(G.torus(0.085, 0.022, 6, 16), c2, { pos: [0, 0.43, 0], rot: [Math.PI / 2, 0, 0] });
         break;
       }
       case 'kimono':
@@ -225,6 +268,13 @@ export class Character {
           sleeve = G.cyl(0.08, 0.15, 0.3, 12);
           sleeve.translate(0, -0.14, -0.02);
           break;
+        case 'veste': {
+          const vs = new Shape();
+          vs.add(G.cyl(0.08, 0.074, 0.3, 12), a.topColor, { pos: [0, -0.13, 0] });
+          vs.add(G.torus(0.072, 0.016, 6, 14), darken(a.topColor, 0.15), { pos: [0, -0.27, 0], rot: [Math.PI / 2, 0, 0] });
+          this.addPart(pivot, vs.build());
+          break;
+        }
         default:
           break;
       }
@@ -513,6 +563,71 @@ export class Character {
         }
         s.add(G.torus(0.08, 0.012, 5, 12, Math.PI), '#e5484d', { pos: [0, 0.6, 0.33], rot: [0.2, 0, Math.PI] });
         break;
+      case 'fleur': {
+        const p = onHead(0.75, 0.55, 1.08);
+        const fl = new Shape();
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          fl.add(G.sphere(0.07, 10, 8), c, { pos: [Math.cos(a) * 0.08, Math.sin(a) * 0.08, 0], scale: [1.2, 0.8, 0.35], rot: [0, 0, a] });
+        }
+        fl.add(G.sphere(0.045, 8, 6), '#ffd84d', { pos: [0, 0, 0.02] });
+        fl.add(G.sphere(0.06, 8, 6), '#5fae55', { pos: [-0.12, -0.08, -0.02], scale: [1.4, 0.5, 0.3], rot: [0, 0, 0.6] });
+        const g = fl.build();
+        g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...p.dir).normalize()));
+        g.translate(...p.pos);
+        s.addRaw(g);
+        break;
+      }
+      case 'couronne':
+        s.add(G.cyl(0.25, 0.23, 0.1, 20, true), '#ffd166', { pos: [0, 0.68, -0.02], rot: [-0.12, 0, 0] });
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          s.add(G.cone(0.05, 0.11, 4), '#ffd166', { pos: [Math.sin(a) * 0.235, 0.78 - Math.cos(a) * 0.02, Math.cos(a) * 0.235 - 0.02] });
+          if (i % 2 === 0) s.add(G.sphere(0.03, 6, 5), c, { pos: [Math.sin(a) * 0.25, 0.69, Math.cos(a) * 0.25 - 0.02] });
+        }
+        break;
+      case 'chef':
+        s.add(G.cyl(0.27, 0.26, 0.2, 18), '#ffffff', { pos: [0, 0.66, -0.03], rot: [-0.12, 0, 0] });
+        s.add(G.cyl(0.275, 0.275, 0.05, 18), c, { pos: [0, 0.6, -0.02], rot: [-0.12, 0, 0] });
+        for (const [x, z] of [[0, 0], [0.13, 0.06], [-0.13, 0.06], [0.1, -0.12], [-0.1, -0.12]]) s.add(G.sphere(0.16, 12, 8), '#ffffff', { pos: [x, 0.86, z - 0.05] });
+        break;
+      case 'marin':
+        s.add(new THREE.SphereGeometry(R * 1.1, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), '#ffffff', { pos: HC, rot: [-0.15, 0, 0], scale: HEAD_SCALE });
+        s.add(G.cyl(0.4, 0.42, 0.06, 22, true), '#ffffff', { pos: [0, 0.55, -0.01], rot: [-0.15, 0, 0] });
+        s.add(G.torus(0.36, 0.025, 5, 22), c, { pos: [0, 0.58, -0.01], rot: [Math.PI / 2 - 0.15, 0, 0] });
+        break;
+      case 'etoile': {
+        s.add(G.torus(0.375, 0.02, 5, 20, Math.PI), c, { pos: [0, 0.3, 0.02] });
+        const st = new THREE.Shape();
+        for (let i = 0; i < 10; i++) {
+          const r = i % 2 ? 0.05 : 0.12;
+          const a = (i / 10) * Math.PI * 2 + Math.PI / 2;
+          if (i === 0) st.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+          else st.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        const sg = new THREE.ExtrudeGeometry(st, { depth: 0.04, bevelEnabled: false });
+        s.add(sg, '#ffd84d', { pos: [0.12, 0.78, 0.0], rot: [0, 0, -0.3] });
+        break;
+      }
+      case 'ours':
+        s.add(G.torus(0.375, 0.02, 5, 20, Math.PI), c, { pos: [0, 0.3, 0.02] });
+        for (const side of [-1, 1]) {
+          s.add(G.sphere(0.1, 12, 10), c, { pos: [side * 0.25, 0.64, 0.0], scale: [1, 1, 0.55] });
+          s.add(G.sphere(0.06, 10, 8), '#ffd6c2', { pos: [side * 0.25, 0.63, 0.04], scale: [1, 1, 0.4] });
+        }
+        break;
+      case 'melon':
+        s.add(new THREE.SphereGeometry(0.27, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), c, { pos: [0, 0.66, -0.03], scale: [1, 0.9, 1], rot: [-0.12, 0, 0] });
+        s.add(G.cyl(0.4, 0.4, 0.03, 22), c, { pos: [0, 0.66, -0.03], rot: [-0.12, 0, 0] });
+        s.add(G.cyl(0.275, 0.275, 0.05, 20), darken(c, 0.35), { pos: [0, 0.69, -0.03], rot: [-0.12, 0, 0] });
+        break;
+      case 'cowboy':
+        s.add(new THREE.CylinderGeometry(0.65, 0.65, 0.03, 26), c, { pos: [0, 0.62, -0.03], rot: [-0.1, 0, 0], scale: [1, 1, 0.85] });
+        for (const side of [-1, 1]) s.add(G.box(0.18, 0.03, 0.8), c, { pos: [side * 0.58, 0.7, -0.03], rot: [-0.1, 0, side * -0.6] });
+        s.add(G.cyl(0.24, 0.28, 0.3, 16), c, { pos: [0, 0.78, -0.04], rot: [-0.1, 0, 0] });
+        s.add(G.sphere(0.2, 10, 6), darken(c, 0.12), { pos: [0, 0.93, -0.05], scale: [1.2, 0.3, 1] });
+        s.add(G.cyl(0.285, 0.285, 0.06, 16), darken(c, 0.4), { pos: [0, 0.67, -0.03], rot: [-0.1, 0, 0] });
+        break;
       case 'sorciere':
         s.add(G.cyl(0.52, 0.52, 0.025, 28), c, { pos: [0, 0.6, -0.02], rot: [-0.1, 0, 0] });
         s.add(G.cone(0.29, 0.5, 20), c, { pos: [0, 0.86, -0.05], rot: [-0.18, 0, 0] });
@@ -546,6 +661,24 @@ export class Character {
           s.add(G.cyl(0.078, 0.078, 0.012, 18), '#2e2e3a', { pos: [x, ey, ez], rot: [Math.PI / 2, side * 0.2, 0], order: 'YXZ' });
           s.add(G.torus(0.078, 0.012, 6, 20), c, { pos: [x, ey, ez + 0.005], rot: [0, side * 0.2, 0] });
           break;
+        case 'etoiles': {
+          const st = new THREE.Shape();
+          for (let i = 0; i < 10; i++) {
+            const r = i % 2 ? 0.04 : 0.09;
+            const a = (i / 10) * Math.PI * 2 + Math.PI / 2;
+            if (i === 0) st.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+            else st.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+          }
+          s.add(new THREE.ExtrudeGeometry(st, { depth: 0.015, bevelEnabled: false }), c, { pos: [x, ey, ez - 0.01], rot: [0, side * 0.2, 0] });
+          break;
+        }
+        case 'monocle':
+          if (side === -1) {
+            s.add(G.torus(0.075, 0.012, 6, 20), '#ffd166', { pos: [x, ey, ez], rot: [0, side * 0.2, 0] });
+            s.add(G.cyl(0.07, 0.07, 0.005, 16), '#e8f6ff', { pos: [x, ey, ez], rot: [Math.PI / 2, side * 0.2, 0], order: 'YXZ' });
+            s.add(G.cyl(0.005, 0.005, 0.35, 4), '#ffd166', { pos: [x - 0.05, ey - 0.2, ez - 0.05], rot: [0.2, 0, 0.3] });
+          }
+          break;
         case 'coeur': {
           const hs = new THREE.Shape();
           hs.moveTo(0, -0.07);
@@ -559,9 +692,9 @@ export class Character {
           break;
       }
       // Branches jusqu'aux oreilles.
-      s.add(G.box(0.012, 0.012, 0.3), a.glasses === 'coeur' ? '#4e4c62' : c, { pos: [side * 0.345, ey + 0.01, 0.2], rot: [0, side * 0.2, 0] });
+      if (a.glasses !== 'monocle') s.add(G.box(0.012, 0.012, 0.3), a.glasses === 'coeur' ? '#4e4c62' : c, { pos: [side * 0.345, ey + 0.01, 0.2], rot: [0, side * 0.2, 0] });
     }
-    s.add(G.cyl(0.008, 0.008, 0.08, 4), a.glasses === 'coeur' ? '#4e4c62' : c, { pos: [0, ey + 0.015, ez + 0.01], rot: [0, 0, Math.PI / 2] });
+    if (a.glasses !== 'monocle') s.add(G.cyl(0.008, 0.008, 0.08, 4), a.glasses === 'coeur' ? '#4e4c62' : c, { pos: [0, ey + 0.015, ez + 0.01], rot: [0, 0, Math.PI / 2] });
     this.addPart(this.head, s.build(), vertexColorToon(), { outline: false, shadow: false });
   }
 
@@ -627,6 +760,67 @@ export class Character {
         this.addPart(this.torso, s.build());
         break;
       }
+      case 'panier': {
+        const s = new Shape();
+        s.add(G.cyl(0.18, 0.15, 0.3, 14), '#c98b58', { pos: [0, 0.24, -0.3 * b] });
+        s.add(G.torus(0.18, 0.025, 5, 14), '#d9a86c', { pos: [0, 0.39, -0.3 * b], rot: [Math.PI / 2, 0, 0] });
+        const fr = ['#e5484d', '#ffd84d', '#6fcf97'];
+        for (let i = 0; i < 3; i++) s.add(G.sphere(0.07, 8, 6), fr[i], { pos: [-0.07 + i * 0.07, 0.42, -0.3 * b + (i % 2) * 0.05] });
+        s.add(G.sphere(0.08, 8, 6), '#5fae55', { pos: [0.05, 0.47, -0.34 * b], scale: [1, 0.4, 1] });
+        for (const x of [-0.1, 0.1]) s.add(G.box(0.035, 0.3, 0.02), '#a0785a', { pos: [x, 0.24, 0.175 * b], rot: [-0.1, 0, 0] });
+        this.addPart(this.torso, s.build());
+        break;
+      }
+      case 'nounours': {
+        const s = new Shape();
+        s.add(G.sphere(0.15, 12, 10), c, { pos: [0, 0.18, -0.27 * b], scale: [1, 1.1, 0.8] });
+        s.add(G.sphere(0.12, 12, 10), c, { pos: [0, 0.4, -0.27 * b] });
+        for (const side of [-1, 1]) {
+          s.add(G.sphere(0.05, 8, 6), c, { pos: [side * 0.1, 0.5, -0.27 * b] });
+          s.add(G.sphere(0.05, 8, 6), c, { pos: [side * 0.14, 0.24, -0.25 * b] });
+        }
+        s.add(G.sphere(0.05, 8, 6), lighten(c, 0.5), { pos: [0, 0.37, -0.37 * b] });
+        s.add(G.sphere(0.02, 6, 5), '#2b1d1d', { pos: [0, 0.39, -0.41 * b] });
+        for (const side of [-1, 1]) s.add(G.sphere(0.018, 6, 5), '#2b1d1d', { pos: [side * 0.045, 0.44, -0.38 * b] });
+        for (const x of [-0.1, 0.1]) s.add(G.box(0.035, 0.3, 0.02), darken(c, 0.3), { pos: [x, 0.24, 0.175 * b], rot: [-0.1, 0, 0] });
+        this.addPart(this.torso, s.build());
+        break;
+      }
+      case 'guitare': {
+        const s = new Shape();
+        const g = new Shape();
+        g.add(G.sphere(0.16, 14, 10), c, { pos: [0, 0, 0], scale: [1, 1, 0.3] });
+        g.add(G.sphere(0.12, 14, 10), c, { pos: [0, 0.18, 0], scale: [1, 1, 0.3] });
+        g.add(G.cyl(0.045, 0.045, 0.015, 12), '#3d3744', { pos: [0, 0.08, 0.05], rot: [Math.PI / 2, 0, 0] });
+        g.add(G.box(0.06, 0.45, 0.04), '#8f6243', { pos: [0, 0.48, 0] });
+        g.add(G.box(0.09, 0.1, 0.05), '#6b4a3a', { pos: [0, 0.74, 0] });
+        const geo = g.build();
+        geo.rotateZ(0.7);
+        geo.translate(0, 0.2, -0.3 * b);
+        s.addRaw(geo);
+        s.add(G.box(0.03, 0.6, 0.02), '#6b4a3a', { pos: [0, 0.22, 0.18 * b], rot: [0, 0, 0.7] });
+        this.addPart(this.torso, s.build());
+        break;
+      }
+      case 'papillon': {
+        for (const side of [1, -1]) {
+          const pivot = new THREE.Group();
+          pivot.position.set(side * 0.04, 0.28, -0.17 * b);
+          this.torso.add(pivot);
+          this.parts.push(pivot);
+          const s = new Shape();
+          s.add(G.sphere(1, 16, 10), c, { pos: [side * 0.2, 0.12, -0.02], scale: [0.22, 0.2, 0.015], rot: [0, 0, side * 0.3] });
+          s.add(G.sphere(1, 12, 8), lighten(c, 0.6), { pos: [side * 0.24, 0.16, -0.03], scale: [0.08, 0.07, 0.016] });
+          s.add(G.sphere(1, 14, 8), darken(c, 0.2), { pos: [side * 0.15, -0.1, -0.02], scale: [0.13, 0.12, 0.015], rot: [0, 0, -side * 0.4] });
+          s.add(G.sphere(1, 10, 8), '#2e2e3a', { pos: [side * 0.33, 0.24, -0.025], scale: [0.03, 0.03, 0.016] });
+          const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
+          this.materials.push(mat);
+          const m = this.addPart(pivot, s.build(), mat, { outline: false });
+          m.castShadow = false;
+          this.wings.push({ pivot, side });
+        }
+        break;
+      }
       case 'queueRenard': {
         const pivot = new THREE.Group();
         pivot.position.set(0, 0.03, -0.17 * b);
@@ -668,6 +862,31 @@ export class Character {
     this.anim.action = action;
     this.anim.actionT = duration;
     if (action !== 'pick') this.anim.happy = Math.max(this.anim.happy, duration);
+  }
+
+  /** Assis (sur un banc : hauteur d'assise en mètres) ou debout. */
+  setSit(on, seatHeight = 0.12) {
+    this.anim.sit = on;
+    this.anim.sitHeight = seatHeight;
+  }
+
+  setUmbrella(on, color = '#ff8fab') {
+    if (on && !this.umbrella) {
+      const s = new Shape();
+      for (let i = 0; i < 8; i++) {
+        const g = new THREE.ConeGeometry(0.78, 0.32, 8, 1, true, (i / 8) * Math.PI * 2, Math.PI / 4);
+        s.add(g, i % 2 ? '#ffffff' : color, { pos: [0.02, 1.36, 0.08] });
+      }
+      s.add(G.cyl(0.016, 0.016, 1.3, 5), '#6b4a3a', { pos: [-0.2, 0.72, 0.14] });
+      s.add(G.sphere(0.035, 6, 4), color, { pos: [0.02, 1.53, 0.08] });
+      s.add(G.torus(0.05, 0.014, 5, 10, Math.PI), '#6b4a3a', { pos: [-0.25, 0.08, 0.14], rot: [0, 0, Math.PI] });
+      const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
+      this.umbrella = new THREE.Mesh(s.build(), mat);
+      this.umbrella.castShadow = true;
+      this.torso.add(this.umbrella);
+    }
+    if (this.umbrella) this.umbrella.visible = on;
+    this.anim.umbrella = on;
   }
 
   setFishing(on) {
@@ -743,15 +962,53 @@ export class Character {
           armRz = -2.5;
           bob += Math.abs(Math.sin(an.t * 9)) * 0.15;
           break;
+        case 'dance':
+          armLz = 1.4 + Math.sin(an.t * 8) * 0.9;
+          armRz = -1.4 + Math.sin(an.t * 8) * 0.9;
+          legL = Math.max(0, Math.sin(an.t * 8)) * -0.6;
+          legR = Math.max(0, -Math.sin(an.t * 8)) * -0.6;
+          bob += Math.abs(Math.sin(an.t * 8)) * 0.1;
+          an.danceTwist = Math.sin(an.t * 4) * 0.5;
+          break;
+        case 'kiss':
+          armRx = -1.9 + Math.max(0, an.actionT - 0.6) * 0;
+          armRz = 0.35;
+          armLx = -0.4;
+          break;
+        case 'clap':
+          armLx = -1.25;
+          armRx = -1.25;
+          armLz = -0.25 + Math.abs(Math.sin(an.t * 14)) * 0.45;
+          armRz = 0.25 - Math.abs(Math.sin(an.t * 14)) * 0.45;
+          break;
+        case 'think':
+          armRx = -1.6;
+          armRz = 0.55;
+          break;
         default:
           break;
       }
       if (an.actionT <= 0) an.action = null;
     }
+    if (an.action !== 'dance') an.danceTwist = damp(an.danceTwist || 0, 0, 8, dt);
     if (an.fishing) {
       armRx = -0.9;
       armLx = -0.7;
       armLz = -0.25;
+    }
+    if (an.umbrella && !an.fishing) {
+      armRx = -0.5;
+      armRz = -0.05;
+    }
+    // Position assise (banc ou par terre).
+    if (an.sit) {
+      legL = -1.45;
+      legR = -1.45;
+      if (!an.action) {
+        armLx = -0.35;
+        armRx = -0.35;
+      }
+      bob = (an.sitHeight ?? 0.12) - 0.46 * this.appearance.height;
     }
 
     const k = 1 - Math.exp(-18 * dt);
@@ -763,7 +1020,7 @@ export class Character {
     this.armR.rotation.z += (armRz - this.armR.rotation.z) * k;
     this.body.position.y = bob;
     this.hips.rotation.x = an.lean;
-    this.torso.rotation.y = Math.sin(an.phase) * 0.1 * amp;
+    this.torso.rotation.y = Math.sin(an.phase) * 0.1 * amp + (an.danceTwist || 0);
     const breathe = 1 + Math.sin(an.t * 2.4) * 0.012 * (1 - amp);
     this.torso.scale.set(1, breathe, 1);
     this.head.rotation.z = Math.sin(an.t * 0.8) * 0.04 * (1 - amp);

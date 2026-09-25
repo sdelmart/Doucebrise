@@ -4,13 +4,8 @@ import { Shape, G, vertexColorToon, withOutline } from '../core/materials.js';
 // Espèces d'animaux : fiche (nom, nourriture préférée, caractère) + modèle 3D
 // construit à partir de primitives. Chaque animal regarde vers +Z, pieds à y = 0.
 
-export const FOODS = {
-  baie: { id: 'baie', label: 'Baies', emoji: '🍓' },
-  pomme: { id: 'pomme', label: 'Pommes', emoji: '🍎' },
-  carotte: { id: 'carotte', label: 'Carottes', emoji: '🥕' },
-  graine: { id: 'graine', label: 'Graines', emoji: '🌻' },
-  poisson: { id: 'poisson', label: 'Poissons', emoji: '🐟' },
-};
+// Les nourritures sont des objets du registre général.
+export { ITEMS as FOODS } from '../game/items.js';
 
 export const SPECIES = {
   chat: {
@@ -91,6 +86,44 @@ export const SPECIES = {
       { name: 'Châtaigne', main: '#7a5a44', belly: '#f3dcc0', accent: '#5a4032' },
       { name: 'Sable', main: '#c9a57a', belly: '#fff1e0', accent: '#a07e58' },
       { name: 'Chocolat', main: '#4d3a30', belly: '#e8cfb2', accent: '#35271f' },
+    ],
+  },
+  pandaRoux: {
+    label: 'Panda roux', emoji: '🦝', fav: 'fraise', shy: 0.6, speed: 1.5, gait: 'walk', sound: '*couine joyeusement*',
+    desc: 'Un grimpeur gourmand qui adore les fruits rouges.',
+    variants: [
+      { name: 'Classique', main: '#c8552f', belly: '#3a2c2a', accent: '#fff4e6' },
+      { name: 'Cannelle', main: '#d9793a', belly: '#4a3428', accent: '#fff4e6' },
+      { name: 'Chocolat', main: '#7a4a32', belly: '#2e2420', accent: '#f3e3d0' },
+    ],
+  },
+  poule: {
+    label: 'Poule', emoji: '🐔', fav: 'mais', shy: 0.3, speed: 1.2, gait: 'waddle', sound: 'Cot cot !',
+    desc: 'Elle picore près du moulin et adore le maïs.',
+    variants: [
+      { name: 'Rousse', main: '#c9743a', belly: '#e9a86a', accent: '#ffb02e' },
+      { name: 'Blanche', main: '#fbf8f4', belly: '#ffffff', accent: '#ffb02e' },
+      { name: 'Noire', main: '#3d3744', belly: '#56505e', accent: '#ffb02e' },
+      { name: 'Poussin', main: '#ffe27a', belly: '#fff0a8', accent: '#ff9f2e', baby: true },
+    ],
+  },
+  oiseau: {
+    label: 'Oiseau', emoji: '🐦', fav: 'graine', shy: 0.75, speed: 1.6, gait: 'hop', sound: 'Cui cui !',
+    desc: 'Minuscule et craintif. Les graines l\'attirent.',
+    variants: [
+      { name: 'Mésange bleue', main: '#5aa9e6', belly: '#ffe066', accent: '#2e2a33' },
+      { name: 'Rouge-gorge', main: '#a0785a', belly: '#ff8a3d', accent: '#f3e3d0' },
+      { name: 'Moineau', main: '#b08a64', belly: '#f3e3d0', accent: '#6b4a3a' },
+      { name: 'Canari', main: '#ffd84d', belly: '#fff0a8', accent: '#ff9f2e' },
+    ],
+  },
+  tortue: {
+    label: 'Tortue', emoji: '🐢', fav: 'tomate', shy: 0.25, speed: 0.5, gait: 'walk', sound: '*cligne lentement*',
+    desc: 'Elle prend son temps sur la plage.',
+    variants: [
+      { name: 'Verte', main: '#7cbc55', belly: '#f3e3b0', accent: '#8a6a3a' },
+      { name: 'Lagon', main: '#6fc4b8', belly: '#e8f6f0', accent: '#3a7f86' },
+      { name: 'Étoilée', main: '#8fbf5a', belly: '#f3e3b0', accent: '#3d3744', stars: true },
     ],
   },
 };
@@ -176,7 +209,7 @@ export function buildAnimal(speciesId, variantIndex) {
   };
   m.root.add(m.body);
   m.body.add(m.head);
-  const builders = { chat: buildCat, chien: buildDog, lapin: buildRabbit, renard: buildFox, canard: buildDuck, mouton: buildSheep, faon: buildDeer, herisson: buildHedgehog };
+  const builders = { chat: buildCat, chien: buildDog, lapin: buildRabbit, renard: buildFox, canard: buildDuck, mouton: buildSheep, faon: buildDeer, herisson: buildHedgehog, pandaRoux: buildRedPanda, poule: buildHen, oiseau: buildBird, tortue: buildTurtle };
   builders[speciesId](m, v);
   const mat = vertexColorToon();
   const meshes = [];
@@ -499,6 +532,119 @@ function buildHedgehog(m, v) {
   m.anchors = { neck: { pos: [0, 0.12, 0.1], r: 0.08 }, top: { pos: [0, 0.1, 0] } };
   m.height = 0.45;
   m.radius = 0.25;
+}
+
+function buildRedPanda(m, v) {
+  const b = new Shape();
+  b.add(G.sphere(1, 16, 12), v.main, { pos: [0, 0.3, 0], scale: [0.18, 0.17, 0.27] });
+  b.add(G.sphere(1, 12, 10), v.belly, { pos: [0, 0.25, 0.05], scale: [0.14, 0.12, 0.2] });
+  mesh(b.build(), m.body);
+  m.head.position.set(0, 0.52, 0.27);
+  const h = new Shape();
+  h.add(G.sphere(0.2, 18, 14), v.main, { scale: [1.18, 0.95, 1] });
+  h.add(G.sphere(1, 12, 8), v.accent, { pos: [0, -0.07, 0.14], scale: [0.11, 0.08, 0.09] });
+  h.add(G.sphere(0.028, 8, 6), '#2b1d1d', { pos: [0, -0.04, 0.23] });
+  for (const side of [-1, 1]) {
+    h.add(G.sphere(1, 10, 8), v.accent, { pos: [side * 0.09, 0.06, 0.15], scale: [0.045, 0.03, 0.03] });
+    h.add(G.sphere(1, 10, 8), v.accent, { pos: [side * 0.14, -0.05, 0.12], scale: [0.06, 0.05, 0.05] });
+    h.add(G.sphere(1, 10, 8), v.main, { pos: [side * 0.16, 0.14, -0.01], scale: [0.085, 0.085, 0.04] });
+    h.add(G.sphere(1, 8, 6), v.accent, { pos: [side * 0.16, 0.15, 0.01], scale: [0.06, 0.06, 0.03] });
+  }
+  mesh(h.build(), m.head);
+  addEyes(m, 0.2, { az: 0.45, el: 0.08, size: 0.04, scale: [1.18, 0.95, 1] });
+  addLegs(m, [[0.1, 0.24, 0.14, 0], [-0.1, 0.24, 0.14, 1], [0.1, 0.24, -0.15, 1], [-0.1, 0.24, -0.15, 0]], 0.24, v.belly, v.belly, 0.055);
+  const t = new Shape();
+  for (let i = 0; i < 5; i++) t.add(G.sphere(0.09 - i * 0.004, 10, 8), i % 2 ? v.accent : v.main, { pos: [0, 0.02 + i * 0.03, -0.06 - i * 0.07], scale: [1, 1, 0.7] });
+  addTail(m, [0, 0.32, -0.24], t);
+  m.anchors = { neck: { pos: [0, 0.42, 0.21], r: 0.12 }, top: { pos: [0, 0.2, 0] } };
+  m.height = 0.8;
+  m.radius = 0.36;
+}
+
+function buildHen(m, v) {
+  const b = new Shape();
+  b.add(G.sphere(1, 16, 12), v.main, { pos: [0, 0.3, 0], scale: [0.16, 0.16, 0.2] });
+  b.add(G.sphere(1, 12, 10), v.belly, { pos: [0, 0.28, 0.07], scale: [0.12, 0.13, 0.12] });
+  for (let i = 0; i < 3; i++) b.add(G.sphere(1, 8, 6), v.main, { pos: [(i - 1) * 0.05, 0.42, -0.18], rot: [-0.6 + i * 0.1, 0, (i - 1) * 0.3], scale: [0.04, 0.12, 0.05] });
+  mesh(b.build(), m.body);
+  m.head.position.set(0, 0.5, 0.13);
+  const h = new Shape();
+  h.add(G.sphere(0.1, 14, 10), v.main);
+  h.add(G.cone(0.035, 0.08, 6), v.accent, { pos: [0, -0.01, 0.12], rot: [Math.PI / 2, 0, 0] });
+  if (!v.baby) {
+    for (let i = 0; i < 3; i++) h.add(G.sphere(0.03, 8, 6), '#e5484d', { pos: [0, 0.1 + (i === 1 ? 0.02 : 0), -0.03 + i * 0.035] });
+    h.add(G.sphere(0.022, 6, 5), '#e5484d', { pos: [0, -0.06, 0.09], scale: [1, 1.5, 1] });
+  }
+  mesh(h.build(), m.head);
+  addEyes(m, 0.1, { az: 0.65, el: 0.15, size: 0.026 });
+  for (const side of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.15, 0.32, 0);
+    m.body.add(pivot);
+    mesh(new Shape().add(G.sphere(1, 10, 8), v.main, { pos: [0, -0.02, -0.03], scale: [0.03, 0.09, 0.13] }).build(), pivot);
+    m.wings.push({ pivot, side });
+  }
+  addLegs(m, [[0.05, 0.16, 0.02, 0], [-0.05, 0.16, 0.02, 1]], 0.16, v.accent, v.accent, 0.02);
+  m.anchors = { neck: { pos: [0, 0.42, 0.12], r: 0.08 }, top: { pos: [0, 0.12, 0] } };
+  m.height = 0.7;
+  m.radius = 0.25;
+  if (v.baby) m.scale = 0.55;
+}
+
+function buildBird(m, v) {
+  const b = new Shape();
+  b.add(G.sphere(1, 14, 10), v.main, { pos: [0, 0.14, 0], scale: [0.075, 0.075, 0.1], rot: [-0.3, 0, 0] });
+  b.add(G.sphere(1, 12, 8), v.belly, { pos: [0, 0.12, 0.03], scale: [0.06, 0.06, 0.07] });
+  b.add(G.sphere(1, 8, 6), v.accent, { pos: [0, 0.16, -0.12], rot: [-0.5, 0, 0], scale: [0.03, 0.015, 0.08] });
+  mesh(b.build(), m.body);
+  m.head.position.set(0, 0.23, 0.05);
+  const h = new Shape();
+  h.add(G.sphere(0.065, 12, 10), v.main);
+  h.add(G.sphere(0.05, 10, 8), v.belly, { pos: [0, -0.02, 0.025] });
+  h.add(G.cone(0.018, 0.05, 5), '#3d3744', { pos: [0, -0.005, 0.08], rot: [Math.PI / 2, 0, 0] });
+  mesh(h.build(), m.head);
+  addEyes(m, 0.065, { az: 0.75, el: 0.2, size: 0.016 });
+  for (const side of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.07, 0.16, 0);
+    m.body.add(pivot);
+    mesh(new Shape().add(G.sphere(1, 8, 6), v.accent === '#2e2a33' ? v.main : v.main, { pos: [0, 0, -0.02], scale: [0.015, 0.05, 0.08] }).build(), pivot);
+    m.wings.push({ pivot, side });
+  }
+  addLegs(m, [[0.025, 0.08, 0, 0], [-0.025, 0.08, 0, 0]], 0.08, '#e8a04a', '#e8a04a', 0.01);
+  m.anchors = { neck: { pos: [0, 0.2, 0.05], r: 0.05 }, top: { pos: [0, 0.07, 0] } };
+  m.height = 0.32;
+  m.radius = 0.12;
+}
+
+function buildTurtle(m, v) {
+  const b = new Shape();
+  b.add(new THREE.SphereGeometry(1, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), v.accent, { pos: [0, 0.1, 0], scale: [0.22, 0.17, 0.27] });
+  b.add(G.cyl(1, 1, 0.04, 18), v.belly, { pos: [0, 0.1, 0], scale: [0.23, 1, 0.28] });
+  const spots = [[0, 0.26, 0], [0.1, 0.22, 0.1], [-0.1, 0.22, 0.1], [0.1, 0.22, -0.1], [-0.1, 0.22, -0.1], [0, 0.2, 0.18], [0, 0.2, -0.18]];
+  for (const [x, y, z] of spots) {
+    const dir = [x / 0.22, (y - 0.1) / 0.17, z / 0.27];
+    s_add(b, v.stars ? '#ffd84d' : v.main, [x * 1.01, y, z * 1.01], dir);
+  }
+  mesh(b.build(), m.body);
+  m.head.position.set(0, 0.16, 0.3);
+  const h = new Shape();
+  h.add(G.sphere(0.08, 12, 10), v.main, { scale: [1, 0.9, 1.15] });
+  h.add(G.cyl(0.05, 0.06, 0.12, 8), v.main, { pos: [0, -0.02, -0.08], rot: [Math.PI / 2 - 0.3, 0, 0] });
+  h.add(G.torus(0.025, 0.006, 4, 8, Math.PI), '#6b2f2f', { pos: [0, -0.03, 0.085], rot: [0, 0, Math.PI] });
+  mesh(h.build(), m.head);
+  addEyes(m, 0.08, { az: 0.7, el: 0.2, size: 0.022, scale: [1, 0.9, 1.15] });
+  addLegs(m, [[0.15, 0.08, 0.14, 0], [-0.15, 0.08, 0.14, 1], [0.15, 0.08, -0.14, 1], [-0.15, 0.08, -0.14, 0]], 0.08, v.main, v.main, 0.045);
+  const t = new Shape();
+  t.add(G.cone(0.03, 0.08, 6), v.main, { rot: [-Math.PI / 2, 0, 0] });
+  addTail(m, [0, 0.1, -0.28], t);
+  m.anchors = { neck: { pos: [0, 0.16, 0.25], r: 0.06 }, top: { pos: [0, 0.07, 0] } };
+  m.height = 0.4;
+  m.radius = 0.3;
+}
+
+function s_add(shape, color, pos, dir) {
+  shape.add(G.sphere(0.06, 8, 6), color, { pos, dir, scale: [1, 1, 0.3] });
 }
 
 function darken(hex) {

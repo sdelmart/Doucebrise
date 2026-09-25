@@ -43,17 +43,24 @@
             <div id="clock-time" class="clock-time">08:30</div>
             <div id="clock-day" class="clock-day">Jour 1</div>
           </div>
+          <div class="coin-wrap"><div id="coins" class="coins">🪙 0</div></div>
         </div>
         <div id="zone-label" class="zone-label">Place du Village</div>
+        <button id="quest-tracker" class="quest-tracker" title="Journal (J)"></button>
       </div>
       <div class="hud-tr">
         <canvas id="minimap" class="minimap" width="172" height="172" title="Carte (M)"></canvas>
         <div class="hud-buttons">
           <button class="icon-btn" data-open="creator" title="Personnaliser (C)">👗<span>C</span></button>
           <button class="icon-btn" data-open="pets" title="Animaux (P)">🐾<span>P</span></button>
+          <button class="icon-btn" data-open="journal" title="Journal (J)">📜<span>J</span></button>
+          <button class="icon-btn" data-open="bag" title="Sac (I)">🎒<span>I</span></button>
+          <button id="btn-decor" class="icon-btn" title="Décorer (B)">🛋️<span>B</span></button>
           <button class="icon-btn" data-open="map" title="Carte (M)">🗺️<span>M</span></button>
+          <button id="btn-photo" class="icon-btn" title="Mode photo (O)">📷<span>O</span></button>
+          <button id="btn-music" class="icon-btn off" title="Musique">🎵</button>
+          <button class="icon-btn" data-open="settings" title="Réglages">⚙️</button>
           <button class="icon-btn" data-open="help" title="Aide (H)">❓<span>H</span></button>
-          <button id="btn-music" class="icon-btn" title="Musique">🎵</button>
         </div>
       </div>
       <div id="followers" class="followers"></div>
@@ -107,15 +114,16 @@
         <h2>Comment jouer</h2>
         <div class="help-grid">
           <div><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flèches</div><div>Se déplacer</div>
-          <div><kbd>Maj</kbd></div><div>Courir (attention, ça effraie les animaux timides !)</div>
-          <div><kbd>Espace</kbd></div><div>Sauter</div>
+          <div><kbd>Maj</kbd> · <kbd>Espace</kbd></div><div>Courir (ça effraie les animaux timides !) · sauter</div>
           <div>Glisser la souris · molette</div><div>Tourner la caméra · zoomer</div>
-          <div><kbd>E</kbd></div><div>Caresser · cueillir · pêcher</div>
-          <div><kbd>F</kbd></div><div>Donner à manger (le plat préféré en priorité)</div>
-          <div><kbd>R</kbd></div><div>Adopter (cœurs pleins) · suivre / attendre</div>
-          <div><kbd>C</kbd> <kbd>P</kbd> <kbd>M</kbd></div><div>Personnaliser · animaux · carte</div>
+          <div><kbd>E</kbd></div><div>Parler · caresser · cueillir · planter/arroser · pêcher · entrer · s'asseoir</div>
+          <div><kbd>F</kbd></div><div>Donner à manger (plat préféré en priorité) · changer de semis</div>
+          <div><kbd>R</kbd></div><div>Adopter (cœurs pleins) · « suis-moi » / « attends au jardin »</div>
+          <div><kbd>1</kbd>…<kbd>5</kbd></div><div>Émotes : salut, danse, s'asseoir, bisou, applaudir</div>
+          <div><kbd>B</kbd></div><div>Décorer (chez toi ou dans ton jardin)</div>
+          <div><kbd>C</kbd> <kbd>P</kbd> <kbd>J</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>O</kbd></div><div>Tenue · animaux · journal · sac · carte · photo</div>
         </div>
-        <p class="help-tip">💡 Chaque espèce a un plat préféré. Cueille des 🍓 baies, 🍎 pommes (verger), 🥕 carottes (prairie), 🌻 graines (tournesols) et pêche des 🐟 au ponton ou à l'étang. Remplis les cœurs d'un animal pour l'adopter !</p>
+        <p class="help-tip">💡 Suis les quêtes du journal (J) : elles font découvrir toute l'île. Les habitants ont des boutiques : graines (Mamie Rose), marché (Pomme), meubles (Bruno), vêtements (Lila). Dors dans ton lit pour passer la nuit. Chaque saison dure 3 jours : l'automne rougit les arbres et l'hiver apporte la neige !</p>
       </div>
     </div>
 
@@ -143,6 +151,8 @@
         <button data-key="Space" class="tbtn">⤒</button>
       </div>
     </div>
+
+    <div id="fade" class="fade"></div>
 
     <script type="module" src="./src/main.js"></script>
   </body>

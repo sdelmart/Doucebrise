@@ -190,6 +190,8 @@ export class Animal {
         this.state = 'idle';
         this.stateT = this.rng.range(1, 3);
       }
+    } else if (this.inBed) {
+      this.state = 'sleep';
     } else if (ctx.night && !this.adopted && this.state !== 'flee') {
       if (!this.sleeping) {
         this.sleeping = true;
@@ -265,7 +267,7 @@ export class Animal {
     }
 
     // Hauteur : sol, ou surface de l'eau pour les canards.
-    const ground = this.world.groundAt(this.pos.x, this.pos.z);
+    const ground = this.inBed ? this.pos.y : this.world.groundAt(this.pos.x, this.pos.z);
     this.swimming = this.species === 'canard' && ground < -0.1;
     const targetY = this.swimming ? -0.12 + Math.sin(this.t * 2) * 0.02 : ground;
     this.pos.y = damp(this.pos.y, targetY, 12, dt);

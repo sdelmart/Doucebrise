@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Animal } from './animal.js';
-import { SPECIES, FOODS } from './species.js';
+import { SPECIES } from './species.js';
+import { ITEMS } from '../game/items.js';
 import { createRng } from '../core/math.js';
 
 // Peuplement de l'île et interactions joueur ↔ animaux.
@@ -24,6 +25,11 @@ const SPAWNS = [
   ['herisson', 1, 30, -24, 9],
   ['faon', 1, 34, -30, 10],
   ['renard', 1, 60, -48, 10],
+  ['pandaRoux', 2, -14, -44, 12],
+  ['poule', 4, -32, 42, 9],
+  ['oiseau', 3, 12, 18, 16],
+  ['oiseau', 2, 46, -2, 14],
+  ['tortue', 2, 8, 86, 7],
 ];
 
 const TRUST_PET = 7;
@@ -108,6 +114,31 @@ export class AnimalManager {
     this.zzzT = (this.zzzT || 0) - dt;
     const zzz = this.zzzT <= 0;
     if (zzz) this.zzzT = 1.4;
+    // Les compagnons restés à la maison dorment dans leurs paniers la nuit.
+    const beds = this.game.house ? this.game.house.petBeds() : [];
+    let bi = 0;
+    for (const a of this.animals) {
+      if (!a.adopted || a.follow) {
+        a.inBed = false;
+        continue;
+      }
+      if (night && bi < beds.length) {
+        const b = beds[bi++];
+        if (!a.inBed || a.pos.distanceTo(b) > 0.5) {
+          a.teleport(b.x, b.z);
+          a.pos.y = b.y;
+          a.inBed = true;
+        }
+        a.sleeping = true;
+        a.state = 'sleep';
+        a.target = null;
+      } else if (a.inBed) {
+        a.inBed = false;
+        a.sleeping = false;
+        a.state = 'idle';
+        a.teleport(a.home.x, a.home.z);
+      }
+    }
     for (const a of this.animals) {
       const d = a.pos.distanceTo(player.pos);
       const far = d > 75 && !(a.adopted && a.follow);
@@ -168,14 +199,23 @@ export class AnimalManager {
     a.petToday += gain;
     this.addTrust(a, gain);
     if (this.discover(a) === 'variant') g.ui.toast(`📖 Nouveau dans ton carnet : ${a.sp.label} ${a.variantName} !`);
+    g.emit('pet', { animal: a });
     g.requestSave();
+  }
+
+  /** Choisit ce qu'on donne : plat préféré, sinon friandise, sinon n'importe quelle nourriture. */
+  pickFood(a) {
+    const inv = this.game.inventory;
+    if (inv[a.sp.fav] > 0) return a.sp.fav;
+    if (inv.friandise > 0) return 'friandise';
+    return Object.keys(ITEMS).find((f) => ITEMS[f].feed && inv[f] > 0) || null;
   }
 
   feed(a) {
     const g = this.game;
     const inv = g.inventory;
     const fav = a.sp.fav;
-    let food = inv[fav] > 0 ? fav : Object.keys(FOODS).find((f) => inv[f] > 0);
+    const food = this.pickFood(a);
     if (!food) {
       g.ui.toast('Ton sac est vide ! Cueille des baies, des pommes ou des carottes… 🧺');
       return;
@@ -186,16 +226,18 @@ export class AnimalManager {
     g.player.face(a.pos.x, a.pos.z);
     g.player.character.play('feed', 1.0);
     const isFav = food === fav;
-    g.particles.emit(isFav ? 'heart' : 'note', a.headPosition(), { count: isFav ? 5 : 2, spread: 0.5 });
-    if (isFav) g.particles.emit('sparkle', a.headPosition(), { count: 2, spread: 0.6 });
-    g.audio?.play(isFav ? 'fav' : 'eat');
-    this.addTrust(a, isFav ? TRUST_FAV : TRUST_FOOD);
+    const great = isFav || ITEMS[food].treat;
+    g.particles.emit(great ? 'heart' : 'note', a.headPosition(), { count: great ? 5 : 2, spread: 0.5 });
+    if (great) g.particles.emit('sparkle', a.headPosition(), { count: 2, spread: 0.6 });
+    g.audio?.play(great ? 'fav' : 'eat');
+    this.addTrust(a, great ? TRUST_FAV : TRUST_FOOD);
     const res = this.discover(a, isFav);
     if (res === 'fav') {
-      g.ui.toast(`✨ Le plat préféré du ${a.sp.label.toLowerCase()} : ${FOODS[fav].emoji} ${FOODS[fav].label} !`);
+      g.ui.toast(`✨ Le plat préféré du ${a.sp.label.toLowerCase()} : ${ITEMS[fav].emoji} ${ITEMS[fav].label} !`);
     } else {
-      g.ui.toast(`${a.sp.emoji} ${a.label} a mangé ${FOODS[food].emoji} ${isFav ? '— son préféré !' : ''}`);
+      g.ui.toast(`${a.sp.emoji} ${a.label} a mangé ${ITEMS[food].emoji} ${isFav ? '— son préféré !' : great ? '— un régal !' : ''}`);
     }
+    g.emit('feed', { animal: a, food, fav: isFav });
     g.ui.refreshInventory();
     g.requestSave();
   }
@@ -224,6 +266,7 @@ export class AnimalManager {
         ? `🎉 ${a.name} fait maintenant partie de ta famille et te suit !`
         : `🎉 ${a.name} est adopté ! Il t'attend dans ton jardin (3 compagnons max. à la fois).`,
     );
+    g.emit('adopt', { animal: a });
     g.requestSave();
   }
 

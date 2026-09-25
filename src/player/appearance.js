@@ -23,19 +23,27 @@ export const CLOTH_COLORS = [
 ];
 
 const o = (id, label, icon = '') => ({ id, label, icon });
+// Articles à acheter chez Lila (price) ou à recevoir en cadeau (reward : qui le donne).
+const buy = (id, label, icon, price) => ({ id, label, icon, price });
+const gift = (id, label, icon, from) => ({ id, label, icon, reward: from });
 
 export const OPTIONS = {
   eyes: [o('rond', 'Ronds', '👀'), o('petillants', 'Pétillants', '✨'), o('doux', 'Doux', '😌'), o('points', 'Points', '•'), o('chat', 'Félins', '🐱'), o('rieurs', 'Rieurs', '😊'), o('endormis', 'Endormis', '😪')],
   brows: [o('doux', 'Doux'), o('fins', 'Fins'), o('epais', 'Épais'), o('froncés', 'Déterminés'), o('aucun', 'Aucun')],
   mouth: [o('sourire', 'Sourire'), o('rire', 'Rire'), o('chat', 'Chaton'), o('o', 'Surpris'), o('langue', 'Espiègle'), o('neutre', 'Calme')],
   hair: [o('court', 'Court'), o('carre', 'Carré'), o('long', 'Long'), o('queue', 'Queue'), o('couettes', 'Couettes'), o('chignon', 'Chignon'), o('boucles', 'Bouclés'), o('herisse', 'Hérissé'), o('meche', 'Mèche'), o('rase', 'Ras')],
-  top: [o('tshirt', 'T-shirt'), o('pull', 'Pull'), o('sweat', 'Sweat à capuche'), o('robe', 'Robe'), o('salopette', 'Salopette'), o('kimono', 'Kimono')],
+  top: [o('tshirt', 'T-shirt'), o('pull', 'Pull'), o('sweat', 'Sweat à capuche'), o('robe', 'Robe'), o('salopette', 'Salopette'), o('kimono', 'Kimono'), buy('veste', 'Veste', '🧥', 500)],
   pattern: [o('uni', 'Uni'), o('rayures', 'Rayures'), o('pois', 'Pois'), o('carreaux', 'Vichy'), o('coeurs', 'Cœurs'), o('etoiles', 'Étoiles'), o('fleurs', 'Fleurs')],
   bottom: [o('short', 'Short'), o('pantalon', 'Pantalon'), o('jupe', 'Jupe'), o('jupeLongue', 'Jupe longue')],
   shoes: [o('baskets', 'Baskets'), o('bottes', 'Bottes'), o('ballerines', 'Ballerines'), o('sabots', 'Sabots')],
-  hat: [o('aucun', 'Aucun'), o('beret', 'Béret'), o('casquette', 'Casquette'), o('paille', 'Chapeau de paille'), o('bonnet', 'Bonnet'), o('chat', 'Oreilles de chat'), o('lapin', 'Oreilles de lapin'), o('fleurs', 'Couronne de fleurs'), o('noeud', 'Gros nœud'), o('grenouille', 'Chapeau grenouille'), o('sorciere', 'Chapeau de sorcière')],
-  glasses: [o('aucune', 'Aucunes'), o('rondes', 'Rondes'), o('carrees', 'Carrées'), o('soleil', 'Soleil'), o('coeur', 'Cœur')],
-  back: [o('aucun', 'Rien'), o('sac', 'Sac à dos'), o('ailes', 'Ailes de fée'), o('cape', 'Cape'), o('echarpe', 'Écharpe'), o('queueRenard', 'Queue de renard')],
+  hat: [o('aucun', 'Aucun'), o('beret', 'Béret'), o('casquette', 'Casquette'), o('paille', 'Chapeau de paille'), o('bonnet', 'Bonnet'), o('chat', 'Oreilles de chat'), o('lapin', 'Oreilles de lapin'), o('fleurs', 'Couronne de fleurs'), o('noeud', 'Gros nœud'), o('grenouille', 'Chapeau grenouille'), o('sorciere', 'Chapeau de sorcière'),
+    buy('ours', "Oreilles d'ours", '🐻', 300), buy('melon', 'Chapeau melon', '🎩', 350), buy('cowboy', 'Chapeau de cowboy', '🤠', 450),
+    gift('fleur', 'Grande fleur', '🌺', 'Mamie Rose'), gift('couronne', 'Couronne', '👑', 'Lila'), gift('chef', 'Toque de chef', '👨‍🍳', 'Bruno'),
+    gift('marin', 'Bob de marin', '⚓', 'Marin'), gift('etoile', 'Serre-tête étoile', '⭐', 'la quête « Grande famille »')],
+  glasses: [o('aucune', 'Aucunes'), o('rondes', 'Rondes'), o('carrees', 'Carrées'), o('soleil', 'Soleil'), o('coeur', 'Cœur'), buy('etoiles', 'Étoiles', '🤩', 250), buy('monocle', 'Monocle', '🧐', 200)],
+  back: [o('aucun', 'Rien'), o('sac', 'Sac à dos'), o('ailes', 'Ailes de fée'), o('cape', 'Cape'), o('echarpe', 'Écharpe'), o('queueRenard', 'Queue de renard'),
+    buy('guitare', 'Guitare', '🎸', 600), buy('papillon', 'Ailes de papillon', '🦋', 800),
+    gift('panier', 'Panier à dos', '🧺', 'Pomme'), gift('nounours', 'Sac nounours', '🧸', 'Noé')],
 };
 
 export const DEFAULT_APPEARANCE = {
@@ -74,7 +82,7 @@ const NAMES = ['Lou', 'Maé', 'Noa', 'Lilou', 'Sacha', 'Nina', 'Eliott', 'Jade',
 
 export function randomAppearance(rand = Math.random) {
   const pick = (arr) => arr[Math.floor(rand() * arr.length)];
-  const pickId = (key) => pick(OPTIONS[key]).id;
+  const pickId = (key) => pick(OPTIONS[key].filter((x) => !x.price && !x.reward)).id;
   const hairColor = pick(HAIR_COLORS);
   return {
     ...DEFAULT_APPEARANCE,
@@ -108,6 +116,20 @@ export function randomAppearance(rand = Math.random) {
     back: rand() < 0.5 ? 'aucun' : pickId('back'),
     backColor: pick(CLOTH_COLORS),
   };
+}
+
+/** L'option est-elle verrouillée (à acheter ou à recevoir) ? */
+export function isLocked(key, id, unlocks) {
+  const opt = OPTIONS[key]?.find((x) => x.id === id);
+  if (!opt || (!opt.price && !opt.reward)) return false;
+  return !unlocks.has(`${key}:${id}`);
+}
+
+/** Articles de la boutique de Lila. */
+export function shopClothes() {
+  const out = [];
+  for (const [key, list] of Object.entries(OPTIONS)) for (const opt of list) if (opt.price) out.push({ key, ...opt });
+  return out;
 }
 
 /** Complète une apparence sauvegardée avec les champs ajoutés depuis. */

@@ -76,9 +76,17 @@ export class Creator {
     wrap.className = 'chips';
     for (const o of options) {
       const b = document.createElement('button');
-      b.className = `chip${this.a[key] === o.id ? ' active' : ''}`;
-      b.textContent = o.icon ? `${o.icon} ${o.label}` : o.label;
-      b.onclick = () => this.set(key, o.id);
+      const locked = this.game.isLocked(key, o.id);
+      b.className = `chip${this.a[key] === o.id ? ' active' : ''}${locked ? ' locked' : ''}`;
+      b.textContent = `${locked ? '🔒 ' : ''}${o.icon ? `${o.icon} ` : ''}${o.label}`;
+      b.title = locked ? (o.price ? `En vente chez Lila (Couture) : ${o.price} 🪙` : `Cadeau de ${o.reward}`) : '';
+      b.onclick = () => {
+        if (locked) {
+          this.game.ui.toast(o.price ? `🔒 ${o.label} : en vente chez Lila, à la Couture (${o.price} 🪙).` : `🔒 ${o.label} : un cadeau de ${o.reward}… Deviens son ami !`);
+          return;
+        }
+        this.set(key, o.id);
+      };
       wrap.appendChild(b);
     }
     f.appendChild(wrap);
@@ -191,8 +199,8 @@ export class Creator {
         break;
       case 'tenue': {
         b.append(this.chips('Haut', 'top', OPTIONS.top));
-        const main = a.top === 'salopette' ? 'Salopette' : 'Couleur principale';
-        const second = a.top === 'salopette' ? 'Chemise' : a.top === 'kimono' ? 'Ceinture & col' : 'Couleur secondaire';
+        const main = a.top === 'salopette' ? 'Salopette' : a.top === 'veste' ? 'Veste' : 'Couleur principale';
+        const second = a.top === 'salopette' || a.top === 'veste' ? 'Chemise' : a.top === 'kimono' ? 'Ceinture & col' : 'Couleur secondaire';
         b.append(this.colors(main, 'topColor', CLOTH_COLORS), this.colors(second, 'topColor2', CLOTH_COLORS), this.chips('Motif', 'pattern', OPTIONS.pattern));
         const covered = a.top === 'robe' || a.top === 'salopette';
         if (covered) {

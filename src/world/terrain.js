@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createRng, createNoise2D, fbm, smoothstep, lerp, clamp, distToPolyline } from '../core/math.js';
-import { toon } from '../core/materials.js';
+import { toon, addSeason } from '../core/materials.js';
 import { WORLD_SEED, PATHS, LANDMARKS } from './layout.js';
 
 // Terrain de l'île : une grille de hauteurs partagée entre le rendu et le gameplay,
@@ -212,7 +212,7 @@ export class Terrain {
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     this.vertexColors = colors;
 
-    const mesh = new THREE.Mesh(geo, toon('#ffffff', { vertexColors: true }));
+    const mesh = new THREE.Mesh(geo, addSeason(toon('#ffffff', { vertexColors: true }), { ground: true, snowLo: 0.55, snowHi: 0.85 }));
     mesh.receiveShadow = true;
     mesh.name = 'terrain';
     return mesh;

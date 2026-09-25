@@ -6,6 +6,7 @@ import { Colliders } from './collision.js';
 import { Village } from './village.js';
 import { Vegetation } from './vegetation.js';
 import { Ambient } from './ambient.js';
+import { Weather } from './weather.js';
 import { globalUniforms } from '../core/materials.js';
 
 // Le monde : assemble terrain, ciel, eau, village, végétation et vie ambiante,
@@ -25,6 +26,7 @@ export class World {
     scene.add(this.terrainMesh);
 
     this.sky = new DayNight(scene);
+    this.weather = new Weather(scene, this.sky);
     this.water = createWater(this.terrain, this.sky);
     scene.add(this.water);
 
@@ -104,14 +106,19 @@ export class World {
     return true;
   }
 
-  update(dt, elapsed, focus) {
+  update(dt, elapsed, focus, grassRadius = 80) {
     globalUniforms.uTime.value = elapsed;
     this.sky.update(dt, focus, elapsed);
+    this.weather.update(dt, focus);
     const night = this.sky.nightFactor;
+    this.vegetation.updateGrass(focus, grassRadius);
+    const winter = this.weather.seasonIndex === 3;
+    if (this.vegetation.flowerMeshes[0].visible === winter) {
+      for (const m of this.vegetation.flowerMeshes) m.visible = !winter;
+    }
     this.water.userData.update();
     this.village.update(dt, elapsed, night);
-    this.ambient.update(dt, elapsed, night, focus);
+    this.ambient.update(dt, elapsed, night, focus, this.weather);
   }
 }
 
-export { THREE };

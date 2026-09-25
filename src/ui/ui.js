@@ -1,6 +1,8 @@
 import * as THREE from 'three';
-import { FOODS, SPECIES } from '../animals/species.js';
+import { SPECIES } from '../animals/species.js';
+import { ITEMS, HOTBAR } from '../game/items.js';
 import { ZONES } from '../world/layout.js';
+import { STORY } from '../game/quests.js';
 
 // Interface HTML : HUD, bulle d'interaction, notifications, mini-carte, fenêtres.
 
@@ -17,6 +19,8 @@ export class UI {
       clockIcon: $('#clock-icon'),
       clockTime: $('#clock-time'),
       clockDay: $('#clock-day'),
+      coins: $('#coins'),
+      quest: $('#quest-tracker'),
       zone: $('#zone-label'),
       banner: $('#zone-banner'),
       prompt: $('#prompt'),
@@ -44,6 +48,9 @@ export class UI {
     });
     this.el.minimap.addEventListener('click', () => this.game.openPanel('map'));
     $('#btn-music').addEventListener('click', () => this.game.toggleMusic());
+    $('#btn-decor').addEventListener('click', () => this.game.startDecor());
+    $('#btn-photo').addEventListener('click', () => this.game.startPhoto());
+    this.el.quest.addEventListener('click', () => this.game.openPanel('journal'));
     for (const id of ['#map', '#help']) {
       $(id).addEventListener('click', (e) => {
         if (e.target === e.currentTarget) this.game.closePanels();
@@ -79,14 +86,21 @@ export class UI {
   buildInventory() {
     this.el.inventory.innerHTML = '';
     this.slots = {};
-    for (const f of Object.values(FOODS)) {
+    for (const id of HOTBAR) {
+      const f = ITEMS[id];
       const d = document.createElement('div');
       d.className = 'slot';
       d.title = f.label;
       d.innerHTML = `${f.emoji}<span class="count">0</span>`;
       this.el.inventory.appendChild(d);
-      this.slots[f.id] = d;
+      this.slots[id] = d;
     }
+    const bag = document.createElement('button');
+    bag.className = 'slot bag-btn';
+    bag.title = 'Mon sac (I)';
+    bag.innerHTML = '🎒<span class="count key-hint">I</span>';
+    bag.onclick = () => this.game.openPanel('bag');
+    this.el.inventory.appendChild(bag);
   }
 
   refreshInventory() {
@@ -101,7 +115,44 @@ export class UI {
         d.classList.add('bump');
       }
       d.classList.toggle('empty', n === 0);
+      d.classList.toggle('hidden', id === 'friandise' && n === 0);
     }
+    if (this.openPanel === 'bag') this.game.bag.render();
+  }
+
+  refreshCoins(delta = 0) {
+    this.el.coins.textContent = `🪙 ${this.game.coins}`;
+    if (delta) {
+      const f = document.createElement('div');
+      f.className = 'coin-pop';
+      f.textContent = `${delta > 0 ? '+' : ''}${delta} 🪙`;
+      this.el.coins.parentElement.appendChild(f);
+      setTimeout(() => f.remove(), 1200);
+      this.el.coins.classList.remove('bump');
+      void this.el.coins.offsetWidth;
+      this.el.coins.classList.add('bump');
+    }
+  }
+
+  refreshQuest() {
+    const q = this.game.quests.current;
+    const el = this.el.quest;
+    if (!q) {
+      el.innerHTML = '<b>🌟 Histoire terminée</b>';
+      return;
+    }
+    const qs = this.game.quests;
+    const i = q.goals.findIndex((g, k) => qs.goalProgress(q, k) < g.count);
+    const goal = q.goals[Math.max(i, 0)];
+    const p = qs.goalProgress(q, Math.max(i, 0));
+    el.innerHTML = `<div class="qt-title">📜 ${escapeHtml(q.title)} <span>${STORY.indexOf(q) + 1}/${STORY.length}</span></div><div class="qt-goal">${escapeHtml(goal.label)} — ${p}/${goal.count}</div>`;
+  }
+
+  refreshAll() {
+    this.refreshInventory();
+    this.refreshCoins();
+    this.refreshQuest();
+    this.refreshFollowers();
   }
 
   refreshFollowers() {
@@ -180,9 +231,14 @@ export class UI {
   update(dt) {
     const sky = this.game.world.sky;
     const h = sky.hour;
+    const w = this.game.world.weather;
     this.el.clockTime.textContent = sky.timeLabel();
-    this.el.clockDay.textContent = `Jour ${sky.day}`;
-    this.el.clockIcon.textContent = h < 5.5 || h >= 20.5 ? '🌙' : h < 7.5 ? '🌅' : h >= 18.5 ? '🌇' : '☀️';
+    this.el.clockDay.textContent = `${w.season.emoji} ${w.season.label} · jour ${sky.day}`;
+    const night = h < 5.5 || h >= 20.5;
+    let icon = night ? '🌙' : h < 7.5 ? '🌅' : h >= 18.5 ? '🌇' : '☀️';
+    if (w.current !== 'clair') icon = night ? w.info.night : w.info.emoji;
+    this.el.clockIcon.textContent = icon;
+    this.el.clockIcon.title = w.info.label;
     this.mapT -= dt;
     if (this.mapT <= 0) {
       this.mapT = 0.15;
@@ -195,7 +251,8 @@ export class UI {
     const c = this.el.minimap;
     const ctx = c.getContext('2d');
     const size = c.width;
-    const p = this.game.player.pos;
+    // Dans la maison, la carte reste centrée sur le jardin.
+    const p = this.game.house.inside ? this.game.world.village.doorFront(0, 1.6) : this.game.player.pos;
     const range = 46; // unités visibles de part et d'autre
     const img = this.mapImage;
     const scale = img.width / 220;
@@ -258,7 +315,8 @@ export class UI {
     }
     // Joueur : flèche orientée.
     const p = g.player;
-    const [px, py] = toMap(p.pos.x, p.pos.z);
+    const pp = g.house.inside ? g.world.village.doorFront(0, 1.6) : p.pos;
+    const [px, py] = toMap(pp.x, pp.z);
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(-p.rotY + Math.PI);

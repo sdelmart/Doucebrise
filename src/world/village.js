@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Shape, G, toon, vertexColorToon, getGradientMap } from '../core/materials.js';
+import { Shape, G, toon, vertexColorToon, getGradientMap, addSeason } from '../core/materials.js';
 import { createRng } from '../core/math.js';
 import { LANDMARKS, ZONES } from './layout.js';
 
@@ -177,6 +177,48 @@ function fountain() {
   water.add(G.cyl(2.62, 2.62, 0.05, 24), '#9fe6f2', { pos: [0, 0.62, 0] });
   water.add(G.cyl(1.0, 1.0, 0.04, 16), '#9fe6f2', { pos: [0, 2.42, 0] });
   return { geo: s.build(), water: water.build() };
+}
+
+function seedStandGeo() {
+  const s = new Shape();
+  s.add(G.box(1.8, 0.8, 0.8), WOOD, { pos: [0, 0.4, 0] });
+  s.add(G.box(1.9, 0.08, 0.9), WOOD_DARK, { pos: [0, 0.82, 0] });
+  const cols = ['#ff8fb1', '#ffd84d', '#8fd6e8', '#b5e48c', '#ffb27a', '#c9a0ff'];
+  for (let i = 0; i < 6; i++) {
+    s.add(G.box(0.22, 0.3, 0.05), cols[i], { pos: [-0.65 + i * 0.26, 1.0, 0.1 + (i % 2) * 0.12], rot: [-0.25, 0, 0] });
+  }
+  for (const x of [-0.6, 0.6]) s.add(G.cyl(0.22, 0.18, 0.3, 10), '#c77b62', { pos: [x, 1.0, -0.2] });
+  s.add(G.sphere(0.2, 8, 6), '#5fae55', { pos: [-0.6, 1.25, -0.2] });
+  s.add(G.sphere(0.2, 8, 6), '#ff8fb1', { pos: [0.6, 1.25, -0.2] });
+  return s.build();
+}
+
+function workbenchGeo() {
+  const s = new Shape();
+  s.add(G.box(1.9, 0.12, 0.8), WOOD, { pos: [0, 0.85, 0] });
+  for (const x of [-0.85, 0.85]) for (const z of [-0.3, 0.3]) s.add(G.box(0.1, 0.8, 0.1), WOOD_DARK, { pos: [x, 0.4, z] });
+  s.add(G.box(1.6, 0.06, 0.6), WOOD_DARK, { pos: [0, 0.25, 0] });
+  for (let i = 0; i < 3; i++) s.add(G.box(1.3, 0.06, 0.18), '#d9a86c', { pos: [0.1, 0.95 + i * 0.07, -0.15 + i * 0.03], rot: [0, 0.1 * i, 0] });
+  s.add(G.box(0.4, 0.12, 0.03), '#b8c0cc', { pos: [-0.55, 0.97, 0.2], rot: [0, 0.4, 0] });
+  s.add(G.box(0.12, 0.06, 0.05), '#e5484d', { pos: [-0.35, 0.97, 0.28], rot: [0, 0.4, 0] });
+  s.add(G.cyl(0.03, 0.03, 0.3, 5), WOOD_DARK, { pos: [0.6, 0.97, 0.25], rot: [0, 0, Math.PI / 2] });
+  s.add(G.box(0.12, 0.1, 0.08), '#8a8f99', { pos: [0.78, 0.97, 0.25] });
+  return s.build();
+}
+
+function tailorGeo() {
+  const s = new Shape();
+  s.add(G.box(1.5, 0.75, 0.7), '#f6e8ff', { pos: [0.3, 0.375, 0] });
+  s.add(G.box(1.6, 0.07, 0.8), '#b69cf0', { pos: [0.3, 0.78, 0] });
+  const cols = ['#ff8fab', '#8fd6e8', '#ffd84d', '#b5e48c'];
+  for (let i = 0; i < 4; i++) s.add(G.cyl(0.09, 0.09, 0.6, 10), cols[i], { pos: [-0.1 + i * 0.22, 0.91, 0], rot: [Math.PI / 2, 0, 0] });
+  // Mannequin de couture.
+  s.add(G.cyl(0.03, 0.03, 1.0, 6), WOOD_DARK, { pos: [-0.75, 0.5, 0] });
+  s.add(G.cyl(0.2, 0.05, 0.05, 8), WOOD_DARK, { pos: [-0.75, 0.03, 0] });
+  s.add(G.sphere(0.22, 12, 10), '#ff8fab', { pos: [-0.75, 1.15, 0], scale: [1, 1.3, 0.8] });
+  s.add(G.cone(0.3, 0.45, 12), '#ff8fab', { pos: [-0.75, 0.82, 0] });
+  s.add(G.sphere(0.06, 6, 5), WOOD_DARK, { pos: [-0.75, 1.48, 0] });
+  return s.build();
 }
 
 function signBoard(text, w = 2.6, h = 0.6, bg = '#f6e7c8', fg = '#6b4a2e') {
@@ -376,13 +418,14 @@ export class Village {
     this.buildHouses();
     this.buildLamps();
     this.buildProps(rng);
+    this.buildShops();
     this.buildWindmill();
     this.buildLighthouse();
     this.buildPier();
     this.buildPond(rng);
     this.buildSigns();
 
-    const stat = new THREE.Mesh(this.static.build(), vertexColorToon());
+    const stat = new THREE.Mesh(this.static.build(), addSeason(toon('#ffffff', { vertexColors: true }), { snowLo: 0.5, snowHi: 0.8, key: 'village' }));
     stat.castShadow = true;
     stat.receiveShadow = true;
     this.group.add(stat);
@@ -410,6 +453,7 @@ export class Village {
     this.fountainWater = new THREE.Mesh(place(f.water, 0, y, 0), toon('#9fe6f2', { emissive: '#4fb8d0', emissiveIntensity: 0.3 }));
     this.group.add(this.fountainWater);
     this.world.colliders.addCircle(0, 0, 3.1);
+    this.world.addCamBlocker({ x: 0, z: 0, r: 3.2, top: y + 3.6 });
 
     // Jet d'eau en particules.
     const n = 90;
@@ -455,7 +499,7 @@ export class Village {
     const home = this.houses[0];
     const dx = Math.cos((146 * Math.PI) / 180);
     const dz = Math.sin((146 * Math.PI) / 180);
-    const yard = { x: home.x + dx * 8.5, z: home.z + dz * 8.5, r: 5.5 };
+    const yard = { x: home.x + dx * 8.5, z: home.z + dz * 8.5, r: 5.5, dir: { x: dx, z: dz } };
     this.yard = yard;
     const pts = [];
     const start = Math.atan2(-dz, -dx) + 0.7;
@@ -496,6 +540,51 @@ export class Village {
     this.world.colliders.addCircle(sx, sz, 0.2);
   }
 
+  /** Échoppes devant les maisons des artisans (graines, menuiserie, couture). */
+  buildShops() {
+    const defs = [
+      { id: 'graines', house: 2, label: 'Graines', geo: seedStandGeo() },
+      { id: 'menuiserie', house: 5, label: 'Menuiserie', geo: workbenchGeo() },
+      { id: 'couture', house: 1, label: 'Couture', geo: tailorGeo() },
+    ];
+    for (const d of defs) {
+      const h = this.houses[d.house];
+      const fwd = [Math.sin(h.rot), Math.cos(h.rot)];
+      const side = [fwd[1], -fwd[0]];
+      const sx = h.x + fwd[0] * 5.2 + side[0] * 2.4;
+      const sz = h.z + fwd[1] * 5.2 + side[1] * 2.4;
+      const y = this.h(sx, sz);
+      this.static.addRaw(place(d.geo, sx, y, sz, h.rot));
+      this.world.colliders.addBox(sx, sz, 0.95, 0.45, h.rot);
+      const px = sx - fwd[0] * 1.0;
+      const pz = sz - fwd[1] * 1.0;
+      this.shopSpots[d.id] = { x: px, z: pz, rot: h.rot };
+      // Panneau de l'échoppe.
+      const postX = sx + side[0] * 1.35;
+      const postZ = sz + side[1] * 1.35;
+      this.static.addRaw(place(new Shape().add(G.box(0.1, 1.9, 0.1), WOOD_DARK, { pos: [0, 0.95, 0] }).build(), postX, y, postZ, h.rot));
+      const sign = signBoard(d.label, 1.5, 0.42, '#fff1dc', '#6b4a2e');
+      sign.position.set(postX, y + 2.0, postZ);
+      sign.rotation.y = h.rot;
+      this.group.add(sign);
+      this.world.colliders.addCircle(postX, postZ, 0.15);
+    }
+    // Enseigne du marché.
+    const m = this.shopSpots.marche;
+    const sign = signBoard('Marché', 1.6, 0.44, '#ffe3eb', '#c0584a');
+    const o = rotate2(0, 1.25, m.rot);
+    sign.position.set(m.x + o[0], 5.95, m.z + o[1]);
+    sign.rotation.y = m.rot;
+    this.group.add(sign);
+  }
+
+  /** Point devant la porte d'une maison (pour entrer / sortir). */
+  doorFront(i, dist = 1.4) {
+    const h = this.houses[i];
+    const d = i === 0 ? 5.0 : 4.6;
+    return { x: h.x + Math.sin(h.rot) * (d / 2 + dist), z: h.z + Math.cos(h.rot) * (d / 2 + dist), rot: h.rot };
+  }
+
   buildLamps() {
     const lamp = lampGeo();
     const spots = [];
@@ -521,6 +610,7 @@ export class Village {
 
   buildProps(rng) {
     const bench = benchGeo();
+    this.benches = [];
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + Math.PI / 4 + 0.1;
       const x = Math.cos(a) * 9.8;
@@ -528,6 +618,11 @@ export class Village {
       const rot = Math.atan2(-x, -z);
       this.static.addRaw(place(bench.clone(), x, 2.3, z, rot));
       this.world.colliders.addBox(x, z, 1.15, 0.45, rot);
+      // Deux places assises par banc.
+      for (const off of [-0.5, 0.5]) {
+        const o = rotate2(off, 0.05, rot);
+        this.benches.push({ x: x + o[0], z: z + o[1], rot, y: 2.3 + 0.5 });
+      }
     }
     // Stand du marché.
     {
@@ -536,6 +631,8 @@ export class Village {
       const rot = Math.atan2(-x, -z);
       this.static.addRaw(place(stallGeo(), x, 2.3, z, rot));
       this.world.colliders.addBox(x, z, 1.8, 0.8, rot);
+      const back = rotate2(0, -1.25, rot);
+      this.shopSpots = { marche: { x: x + back[0], z: z + back[1], rot } };
     }
     // Tonneaux et caisses.
     const crates = new Shape();
@@ -571,19 +668,6 @@ export class Village {
       this.static.addRaw(place(hay.clone(), x, this.h(x, z) - 0.1, z, rng.range(0, 6)));
       this.world.colliders.addCircle(x, z, 1.0);
       this.world.reserve(x, z, 1.6);
-    }
-    // Coquillages sur la plage.
-    const shell = new Shape();
-    shell.add(G.cone(0.12, 0.1, 7), '#ffc9d6', { rot: [0.3, 0, 0], scale: [1, 1, 0.5] });
-    const shellGeo = shell.build();
-    for (let i = 0; i < 30; i++) {
-      const a = rng.range(0.9, 2.2);
-      const r = rng.range(80, 92);
-      const x = Math.cos(a) * r;
-      const z = Math.sin(a) * r;
-      const y = this.h(x, z);
-      if (y < 0.05 || y > 1) continue;
-      this.static.addRaw(place(shellGeo.clone(), x, y + 0.03, z, rng.range(0, 6), rng.range(0.8, 1.5)));
     }
   }
 

@@ -35,7 +35,58 @@ export function vertexColorToon() {
 
 export const globalUniforms = {
   uTime: { value: 0 },
+  uSnow: { value: 0 },
+  uAutumn: { value: 0 },
+  uWet: { value: 0 },
 };
+
+// ---------------------------------------------------------------------------
+// Saisons : feuillage d'automne, neige sur les surfaces tournées vers le ciel,
+// sol assombri par la pluie. S'ajoute à un éventuel onBeforeCompile existant.
+// ---------------------------------------------------------------------------
+
+export function addSeason(material, { leaf = 0, ground = false, snowLo = 0.45, snowHi = 0.8, snow = 1, key = 'season' } = {}) {
+  const prev = material.onBeforeCompile;
+  const prevKey = material.customProgramCacheKey ? material.customProgramCacheKey() : '';
+  material.onBeforeCompile = (shader, renderer) => {
+    if (prev) prev.call(material, shader, renderer);
+    shader.uniforms.uSnow = globalUniforms.uSnow;
+    shader.uniforms.uAutumn = globalUniforms.uAutumn;
+    shader.uniforms.uWet = globalUniforms.uWet;
+    shader.vertexShader = `varying vec3 vSeasonPos;\nvarying vec3 vSeasonNormal;\n${shader.vertexShader}`.replace(
+      '#include <project_vertex>',
+      `#include <project_vertex>
+      {
+        vec4 sp = vec4(transformed, 1.0);
+        vec3 sn = objectNormal;
+        #ifdef USE_INSTANCING
+          sp = instanceMatrix * sp;
+          sn = mat3(instanceMatrix) * sn;
+        #endif
+        vSeasonPos = (modelMatrix * sp).xyz;
+        vSeasonNormal = normalize(mat3(modelMatrix) * sn);
+      }`,
+    );
+    shader.fragmentShader = `uniform float uSnow;\nuniform float uAutumn;\nuniform float uWet;\nvarying vec3 vSeasonPos;\nvarying vec3 vSeasonNormal;\n${shader.fragmentShader}`.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+      {
+        float green = clamp((diffuseColor.g - max(diffuseColor.r, diffuseColor.b)) * 6.0, 0.0, 1.0);
+        ${leaf > 0 ? `
+        float hh = fract(sin(dot(floor(vSeasonPos.xz * 0.3), vec2(12.9898, 78.233))) * 43758.5453);
+        vec3 autumn = mix(vec3(0.92, 0.28, 0.04), vec3(0.72, 0.08, 0.05), step(0.55, hh));
+        autumn = mix(autumn, vec3(0.93, 0.62, 0.08), step(0.8, hh));
+        diffuseColor.rgb = mix(diffuseColor.rgb, autumn * (0.55 + diffuseColor.g * 0.9), green * uAutumn * ${leaf.toFixed(2)});` : ''}
+        ${ground ? `diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.45, 0.12) * (0.5 + diffuseColor.g), green * uAutumn * 0.55);` : ''}
+        float up = smoothstep(${snowLo.toFixed(2)}, ${snowHi.toFixed(2)}, vSeasonNormal.y);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.94, 1.0), up * uSnow * ${snow.toFixed(2)});
+        diffuseColor.rgb *= 1.0 - uWet * 0.16 * (1.0 - up * uSnow);
+      }`,
+    );
+  };
+  material.customProgramCacheKey = () => `${prevKey}|${key}-${leaf}-${ground}-${snowLo}-${snowHi}-${snow}`;
+  return material;
+}
 
 export function addWind(material, { strength = 0.04, base = 0, key = 'wind' } = {}) {
   material.onBeforeCompile = (shader) => {
