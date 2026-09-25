@@ -298,19 +298,37 @@ export class SettingsPanel {
 
   render() {
     const g = this.game;
-    this.el.innerHTML = `<div class="modal-card settings-card"><button class="close" data-close>✕</button>
-      <h2>⚙️ Paramètres</h2>
-      <div class="settings-layout"><nav class="settings-tabs">${TABS.map(([id, l]) => `<button class="stab${this.tab === id ? ' active' : ''}" data-tab="${id}">${l}</button>`).join('')}</nav>
-      <div class="settings-body">${this[this.tab]()}</div></div></div>`;
-    this.el.querySelector('[data-close]').onclick = () => g.closePanels();
-    this.el.querySelectorAll('[data-tab]').forEach((b) => {
-      b.onclick = () => {
-        this.tab = b.dataset.tab;
-        this.listening = null;
-        this.render();
-      };
-    });
+    // La fenêtre n'est construite qu'une fois : ensuite on ne redessine que le contenu
+    // (pas d'animation d'ouverture rejouée à chaque clic).
+    if (!this.body || !this.el.contains(this.body)) {
+      this.el.innerHTML = `<div class="modal-card settings-card"><button class="close" data-close>✕</button>
+        <h2>⚙️ Paramètres</h2>
+        <div class="settings-layout"><nav class="settings-tabs">${TABS.map(([id, l]) => `<button class="stab" data-tab="${id}">${l}</button>`).join('')}</nav>
+        <div class="settings-body"></div></div></div>`;
+      this.body = this.el.querySelector('.settings-body');
+      this.el.querySelector('[data-close]').onclick = () => g.closePanels();
+      this.el.querySelectorAll('[data-tab]').forEach((b) => {
+        b.onclick = () => {
+          this.tab = b.dataset.tab;
+          this.listening = null;
+          g.input.listening = null;
+          this.render();
+          this.body.scrollTop = 0;
+        };
+      });
+    }
+    this.el.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === this.tab));
+    const scroll = this.body.scrollTop;
+    this.body.innerHTML = this[this.tab]();
+    this.body.scrollTop = scroll;
     this.bind();
+  }
+
+  /** À l'ouverture : on rejoue l'animation de la fenêtre. */
+  open() {
+    this.body = null;
+    this.confirmReset = false;
+    this.render();
   }
 
   // Petits composants.

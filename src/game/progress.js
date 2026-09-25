@@ -125,6 +125,8 @@ export const ACHIEVEMENTS = [
   A('source', 'Détente absolue', 'Se prélasser dans la source chaude.', (g, s) => s.bathe >= 1),
   A('etoile-filante', 'Fais un vœu', 'Faire un vœu sous une étoile filante.', (g, s) => s.wish >= 1),
   A('voeux-10', 'Attrape-étoiles', 'Faire 10 vœux sous les étoiles filantes.', (g, s) => s.wish >= 10, { title: 'Attrape-étoiles', furniture: { 'etoile-murale': 1 } }),
+  A('kiosque', 'Première représentation', 'Jouer un air au kiosque à musique.', (g, s) => s.music >= 1),
+  A('concert', 'Star du kiosque', 'Jouer au kiosque devant au moins 3 habitants.', (g, s) => s.concert >= 1, { title: 'Star du kiosque', coins: 300 }),
   A('telescope', 'Astronome en herbe', 'Observer le ciel au télescope de Sacha.', (g, s) => s.stargaze >= 1),
   A('aquarium-30', 'Grand aquarium', 'Pêcher 30 espèces différentes.', (g) => Object.keys(g.fishing.best).length >= 30, { title: 'Maître pêcheur', furniture: { 'aquarium-geant': 1 } }),
   A('insectes-20', 'Muséum d\'histoire naturelle', 'Attraper 20 espèces d\'insectes.', (g) => Object.keys(g.insects.caught).length >= 20, { coins: 1200 }),
@@ -204,6 +206,10 @@ export class Progress {
     on('travel', () => bump('travel'));
     on('bathe', () => bump('bathe'));
     on('wish', () => bump('wish'));
+    on('music', (d) => {
+      bump('music');
+      if (d.fans >= 3) bump('concert');
+    });
     on('stargaze', () => bump('stargaze'));
     on('sidequest', () => bump('sidequest'));
     on('zone', (d) => this.zones.add(d.zone));

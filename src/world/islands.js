@@ -208,6 +208,103 @@ function paillote() {
   return s.build();
 }
 
+// --- Décors remarquables -------------------------------------------------------------
+
+/** Kiosque à musique octogonal, toit rayé et guirlande lumineuse. */
+function bandstand() {
+  const s = new Shape();
+  const glow = new Shape();
+  s.add(new THREE.CylinderGeometry(4.3, 4.5, 1.3, 8), '#ece2d2', { pos: [0, 0.0, 0], rot: [0, Math.PI / 8, 0] });
+  s.add(new THREE.CylinderGeometry(4.45, 4.45, 0.1, 8), '#c9b89e', { pos: [0, 0.68, 0], rot: [0, Math.PI / 8, 0] });
+  s.add(new THREE.CylinderGeometry(4.0, 4.0, 0.06, 8), '#c98b58', { pos: [0, 0.72, 0], rot: [0, Math.PI / 8, 0] });
+  for (let i = 0; i < 3; i++) s.add(G.box(2.4, 0.24, 0.55), '#e2d6c2', { pos: [0, 0.12 + i * 0.22, 5.0 - i * 0.5] });
+  const R = 3.75;
+  const pillars = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    const x = Math.sin(a) * R;
+    const z = Math.cos(a) * R;
+    pillars.push([x, z]);
+    s.add(G.cyl(0.13, 0.16, 3.2, 8), '#fffaf2', { pos: [x, 0.75 + 1.6, z] });
+    s.add(G.cyl(0.22, 0.22, 0.14, 8), '#e5d8c4', { pos: [x, 0.82, z] });
+  }
+  // Rambardes (ouvertes vers l'avant, côté +Z).
+  for (let i = 0; i < 8; i++) {
+    const [x0, z0] = pillars[i];
+    const [x1, z1] = pillars[(i + 1) % 8];
+    const mx = (x0 + x1) / 2;
+    const mz = (z0 + z1) / 2;
+    if (mz > 3) continue;
+    const len = Math.hypot(x1 - x0, z1 - z0);
+    const rot = Math.atan2(x1 - x0, z1 - z0);
+    s.add(G.box(0.1, 0.1, len), '#fffaf2', { pos: [mx, 1.75, mz], rot: [0, rot, 0] });
+    s.add(G.box(0.08, 0.08, len), '#fffaf2', { pos: [mx, 1.05, mz], rot: [0, rot, 0] });
+    for (let k = 1; k < 6; k++) {
+      const t = k / 6;
+      s.add(G.cyl(0.035, 0.035, 0.7, 5), '#fffaf2', { pos: [x0 + (x1 - x0) * t, 1.4, z0 + (z1 - z0) * t] });
+    }
+  }
+  // Toit rayé rose et crème, festons, fleuron.
+  for (let k = 0; k < 8; k++) s.add(new THREE.ConeGeometry(4.9, 2.2, 8, 1, true, (k / 8) * Math.PI * 2 + Math.PI / 8, Math.PI / 4), k % 2 ? '#fffaf2' : '#ff8fab', { pos: [0, 5.05, 0] });
+  s.add(new THREE.CircleGeometry(4.85, 8).rotateX(Math.PI / 2), '#f3e6d0', { pos: [0, 3.95, 0], rot: [0, Math.PI / 8, 0] });
+  for (let k = 0; k < 24; k++) {
+    const a = (k / 24) * Math.PI * 2;
+    s.add(G.sphere(0.32, 8, 6), k % 2 ? '#ff8fab' : '#fffaf2', { pos: [Math.sin(a) * 4.55, 3.85, Math.cos(a) * 4.55], scale: [1, 0.55, 0.6] });
+    glow.add(G.sphere(0.09, 6, 5), '#ffffff', { pos: [Math.sin(a + 0.13) * 4.3, 3.62, Math.cos(a + 0.13) * 4.3] });
+  }
+  s.add(G.sphere(0.3, 10, 8), '#ffd84d', { pos: [0, 6.25, 0] });
+  s.add(G.cyl(0.03, 0.03, 1.1, 4), IRON, { pos: [0, 6.8, 0] });
+  s.add(G.box(0.02, 0.35, 0.6), '#e5484d', { pos: [0, 7.1, 0.3] });
+  // Pupitres et chaises de musiciens.
+  for (const [x, z, r] of [[-1.4, -1.2, 0.5], [1.4, -1.2, -0.5], [0, -2.2, 0]]) {
+    s.add(G.cyl(0.03, 0.03, 1.0, 4), IRON, { pos: [x, 1.25, z] });
+    s.add(G.box(0.55, 0.4, 0.04), '#4e4c62', { pos: [x, 1.8, z], rot: [-0.4, r, 0] });
+  }
+  return { geo: s.build(), glow: glow.build(), pillars };
+}
+
+/** Arche fleurie à l'entrée d'un pont. */
+function flowerArch(width = 4.4) {
+  const s = new Shape();
+  const r = width / 2;
+  for (const sx of [-1, 1]) {
+    s.add(G.box(0.22, 2.6, 0.22), '#fffaf2', { pos: [sx * r, 1.3, 0] });
+    s.add(G.box(0.36, 0.3, 0.36), '#e5d8c4', { pos: [sx * r, 0.15, 0] });
+  }
+  s.add(new THREE.TorusGeometry(r, 0.12, 6, 24, Math.PI), '#fffaf2', { pos: [0, 2.6, 0] });
+  const cols = ['#ff8fab', '#ffd84d', '#ffffff', '#c58cff', '#ff6f7d', '#8fd6e8'];
+  for (let i = 0; i <= 30; i++) {
+    const a = (i / 30) * Math.PI;
+    const x = Math.cos(a) * r;
+    const y = 2.6 + Math.sin(a) * r;
+    s.add(G.sphere(0.22, 6, 5), i % 3 === 0 ? '#6fcf97' : '#8fd66a', { pos: [x, y, 0.05], scale: [1, 1, 0.8] });
+    if (i % 2 === 0) s.add(G.sphere(0.16, 7, 6), cols[i % cols.length], { pos: [x * 1.02, y + 0.05, 0.2] });
+  }
+  for (const sx of [-1, 1]) {
+    for (let y = 0.5; y < 2.6; y += 0.35) {
+      s.add(G.sphere(0.2, 6, 5), '#6fcf97', { pos: [sx * r + (y % 0.7 > 0.35 ? 0.1 : -0.1), y, 0.12] });
+      s.add(G.sphere(0.13, 6, 5), cols[Math.floor(y * 3) % cols.length], { pos: [sx * r, y + 0.1, 0.25] });
+    }
+  }
+  return s.build();
+}
+
+/** Gloriette blanche au toit turquoise. */
+function gazebo() {
+  const s = new Shape();
+  s.add(new THREE.CylinderGeometry(3.0, 3.2, 0.9, 12), '#f3ece0', { pos: [0, 0.0, 0] });
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    s.add(G.cyl(0.11, 0.13, 2.8, 8), '#ffffff', { pos: [Math.sin(a) * 2.6, 0.45 + 1.4, Math.cos(a) * 2.6] });
+  }
+  s.add(new THREE.SphereGeometry(3.1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), '#5fc8c0', { pos: [0, 3.2, 0], scale: [1, 0.55, 1] });
+  s.add(new THREE.CylinderGeometry(3.15, 3.15, 0.25, 16), '#ffffff', { pos: [0, 3.2, 0] });
+  s.add(G.sphere(0.25, 8, 6), '#ffd84d', { pos: [0, 5.0, 0] });
+  // Banc circulaire.
+  s.add(new THREE.TorusGeometry(1.9, 0.18, 6, 20, Math.PI * 1.4), '#c98b58', { pos: [0, 0.95, 0], rot: [Math.PI / 2, 0, Math.PI * 0.8] });
+  return s.build();
+}
+
 // --- Petits éléments --------------------------------------------------------------------
 
 function lanternPost() {
@@ -375,8 +472,10 @@ export class IslandVillages {
     // Sur l'île principale, les voyages partent du poteau indicateur de la place.
     this.travelPoints.push({ id: 'main', name: 'Place du Village', emoji: '🏡', x: -8.5, z: 11.3 });
     this.buildBridges();
+    this.buildBandstand();
     this.buildBourg();
     this.buildPort();
+    this.buildGazebo();
     for (const [id, sh] of Object.entries(this.shapes)) {
       const g = new THREE.Group();
       g.name = `island-${id}`;
@@ -432,6 +531,13 @@ export class IslandVillages {
       a -= 1.5;
       b += 1.5;
       this.buildBridge({ x: dx * a, z: dz * a }, { x: dx * b, z: dz * b }, I.id === 'pins' ? '#a8714a' : '#c9935f');
+      // Arche fleurie côté village, sur la terre ferme.
+      const ax = dx * (a - 2.2);
+      const az = dz * (a - 2.2);
+      const rot = Math.atan2(dx, dz);
+      this.add('bridges', flowerArch(4.4), ax, this.h(ax, az), az, rot);
+      for (const sd of [-1, 1]) this.world.colliders.addCircle(ax + Math.cos(rot) * sd * 2.2, az - Math.sin(rot) * sd * 2.2, 0.25);
+      this.world.reserve(ax, az, 3);
     }
   }
 
@@ -495,6 +601,48 @@ export class IslandVillages {
         }
       }
     }
+  }
+
+  // --- Kiosque à musique (Prairie aux Fleurs) -------------------------------------------
+
+  buildBandstand() {
+    const x = 38;
+    const z = 21;
+    const rot = Math.atan2(22 - x, 5 - z) + 0.35; // entrée tournée vers le chemin
+    const y = this.h(x, z) - 0.05;
+    const b = bandstand();
+    this.add('bridges', b.geo, x, y, z, rot);
+    this.addGlow('bridges', b.glow, x, y, z, rot);
+    this.world.reserve(x, z, 7);
+    const deck = y + 0.75;
+    this.world.addPlatform(x, z, 3.1, 3.1, rot, deck);
+    for (let i = 1; i <= 3; i++) {
+      const o = rotate2(0, 5.0 - (i - 1) * 0.5, rot);
+      this.world.addPlatform(x + o[0], z + o[1], 1.15, 0.26, rot, y + 0.24 + (i - 1) * 0.22);
+    }
+    for (const [px, pz] of b.pillars) {
+      const o = rotate2(px, pz, rot);
+      this.world.colliders.addCircle(x + o[0], z + o[1], 0.2);
+    }
+    this.bandstand = { x, z, y: deck, rot };
+    this.sign('bridges', 'Kiosque à musique', x + rotate2(2.2, 5.6, rot)[0], y + 1.6, z + rotate2(2.2, 5.6, rot)[1], rot, 2.4, ['#fff1f5', '#c0406a']);
+  }
+
+  // --- Gloriette de la Colline aux Mouettes ---------------------------------------------
+
+  buildGazebo() {
+    const L = LANDMARKS.lookout;
+    const x = L.x + 2;
+    const z = L.z - 1;
+    const y = this.h(x, z) - 0.1;
+    this.add('corail', gazebo(), x, y, z, 0.4);
+    this.world.reserve(x, z, 5);
+    this.world.addPlatform(x, z, 2.2, 2.2, 0.4, y + 0.45);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.4;
+      this.world.colliders.addCircle(x + Math.sin(a) * 2.6, z + Math.cos(a) * 2.6, 0.18);
+    }
+    this.gazebo = { x, z, y: y + 0.45 };
   }
 
   // --- Bourg-Sapin ---------------------------------------------------------------------

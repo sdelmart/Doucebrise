@@ -596,6 +596,7 @@ export class UI {
     for (const t of isl.travelPoints) places.push([t, '🧭']);
     if (isl.spring) places.push([isl.spring, '♨️']);
     if (isl.telescope) places.push([isl.telescope, '🔭']);
+    if (isl.bandstand) places.push([isl.bandstand, '🎼']);
     for (const [pl, em] of places) {
       if (!pl) continue;
       const [px, py] = toMap(pl.x, pl.z);

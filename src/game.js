@@ -359,8 +359,7 @@ export class Game {
         document.querySelector('#credits').classList.remove('hidden');
         break;
       case 'settings':
-        this.settingsPanel.confirmReset = false;
-        this.settingsPanel.render();
+        this.settingsPanel.open();
         document.querySelector('#settings').classList.remove('hidden');
         break;
       case 'help':
@@ -405,6 +404,30 @@ export class Game {
     this.settings.musicOn = on;
     saveSettings(this.settings);
     return on;
+  }
+
+  /** Petit concert au kiosque : les habitants alentour applaudissent. */
+  playBandstand() {
+    if (this.concertUntil && this.elapsed < this.concertUntil) return;
+    this.concertUntil = this.elapsed + 3;
+    const bs = this.world.islands.bandstand;
+    this.audio.ensure();
+    this.audio.piano();
+    setTimeout(() => this.audio.piano(), 1500);
+    this.character.play('dance', 3);
+    for (let k = 0; k < 5; k++) setTimeout(() => this.particles.emit('note', new THREE.Vector3(bs.x + (Math.random() - 0.5) * 3, bs.y + 2.2, bs.z + (Math.random() - 0.5) * 3), { count: 2, spread: 0.8 }), k * 500);
+    let fans = 0;
+    for (const v of this.villagers.list) {
+      if (v.pos.distanceTo(this.player.pos) < 22 && !v.home) {
+        fans++;
+        setTimeout(() => {
+          v.character.play('clap', 2);
+          if (Math.random() < 0.5) v.say(['Bravo !', 'Encore !', 'Quel talent !', '♪ ♫ ♪', 'J\'adore cet air !'][Math.floor(Math.random() * 5)], 2200);
+        }, 1500 + Math.random() * 1200);
+      }
+    }
+    this.emit('music', { fans });
+    if (fans) setTimeout(() => this.ui.toast(`🎼 ${fans} habitant${fans > 1 ? 's' : ''} t'applaudi${fans > 1 ? 'ssent' : 't'} !`, 2500), 2600);
   }
 
   // --- Étoiles filantes et vœux -------------------------------------------------------
@@ -989,6 +1012,12 @@ export class Game {
       const t = this.world.islands.telescope;
       this.ui.setPrompt({ pos: new THREE.Vector3(t.x, t.y + 2.6, t.z), title: '🔭 Longue-vue', sub: this.world.sky.isNight ? 'Idéal pour observer les étoiles' : 'Vue sur tout l\'archipel', actions: [{ key: 'E', label: this.world.sky.isNight ? 'Observer le ciel' : 'Regarder au loin' }] });
       if (input.hit('KeyE')) arch.stargaze();
+      return;
+    }
+    const bs = this.world.islands.bandstand;
+    if (bs && !this.house.inside && !this.vehicles.riding && Math.hypot(bs.x - this.player.pos.x, bs.z - this.player.pos.z) < 3 && this.player.pos.y > bs.y - 0.3) {
+      this.ui.setPrompt({ pos: new THREE.Vector3(bs.x, bs.y + 2.6, bs.z), title: '🎼 Kiosque à musique', sub: 'Les habitants adorent les concerts !', actions: [{ key: 'E', label: 'Jouer un air' }] });
+      if (input.hit('KeyE')) this.playBandstand();
       return;
     }
     if (!this.house.inside && !this.vehicles.riding && arch.inSpring()) {

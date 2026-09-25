@@ -725,3 +725,5 @@ body.no-keyhints #keyhints { display: none; }
 /* Crédits */
 .credits-card { text-align: center; }
 .credits-list p { margin: 10px 0; line-height: 1.45; }
+/* Paramètres, crédits et aide s'ouvrent aussi depuis l'écran titre : au-dessus de lui. */
+#settings, #credits, #help { z-index: 60; }
