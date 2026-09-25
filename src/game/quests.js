@@ -12,7 +12,7 @@ const st = (check, count, label) => ({ check, count, label });
 
 // --- Cibles du guide ------------------------------------------------------------------
 
-const T = {
+export const T = {
   villager: (id) => (g) => {
     const v = g.villagers.get(id);
     if (!v) return null;
@@ -220,7 +220,7 @@ export const STORY = [
     goals: [ev('job', 1, 'Terminer un petit boulot')],
     target: T.jobBoard, reward: { coins: 100 } },
   { id: 'voisins', chapter: 'chemins', title: 'Bon voisin', giver: null,
-    desc: 'Les habitants apprécient les cadeaux et ont parfois besoin d\'aide (icône « ! » au-dessus de leur tête).',
+    desc: 'Les habitants apprécient les cadeaux et ont parfois besoin d\'aide (petit « ! » bleu au-dessus de leur tête).',
     hint: 'Parle à un habitant et choisis « Offrir un cadeau ». Les demandes du jour sont dans le journal (J), onglet Demandes.',
     goals: [ev('gift', 1, 'Offrir un cadeau'), ev('request', 1, 'Terminer une demande du jour')],
     target: null, reward: { coins: 150 } },
@@ -312,6 +312,7 @@ const INTROS = [
 export class Quests {
   constructor(game) {
     this.game = game;
+    this.targets = T;
     this.index = 0;
     this.progress = {};
     this.completed = [];

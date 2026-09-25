@@ -471,6 +471,7 @@ body.photo-mode .hud, body.photo-mode .prompt, body.photo-mode .toasts, body.pho
 @keyframes hint-glow { 50% { background: #ffe79a; transform: scale(1.06); } }
 .qt-chap { font-weight: 900; font-size: 11px; color: var(--pink-d); text-transform: uppercase; letter-spacing: 0.5px; }
 .qt-job { font-weight: 800; font-size: 12px; color: #2f86d6; margin-top: 3px; border-top: 1px dashed var(--line); padding-top: 3px; }
+.qt-side { font-weight: 800; font-size: 12px; color: #9a5fd6; margin-top: 3px; border-top: 1px dashed var(--line); padding-top: 3px; max-width: 260px; }
 .challenge-tracker {
   display: flex; gap: 8px; align-items: center; background: rgba(255, 253, 249, 0.9); border: 2px solid var(--line);
   border-radius: 12px; padding: 4px 10px; font-weight: 800; font-size: 12px; max-width: 290px; text-align: left;
@@ -505,6 +506,7 @@ body.photo-mode .hud, body.photo-mode .prompt, body.photo-mode .toasts, body.pho
   background: #ffcf3a; border: 3px solid #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 .guide-arrow.job .ga-pointer { background: #5bb6ff; }
+.guide-arrow.side .ga-pointer { background: #c58cff; }
 .guide-arrow.onscreen .ga-pointer { width: 30px; height: 30px; font-size: 16px; }
 .ga-glyph { display: inline-block; line-height: 1; }
 .ga-text { background: rgba(255, 253, 249, 0.94); border: 2px solid var(--line); border-radius: 99px; padding: 1px 9px; font-weight: 900; font-size: 12px; white-space: nowrap; }
@@ -595,3 +597,24 @@ body.photo-mode .hud, body.photo-mode .prompt, body.photo-mode .toasts, body.pho
 .reel-zone { position: absolute; top: 0; bottom: 0; background: #7fd1b9; border-left: 2px solid #4fb896; border-right: 2px solid #4fb896; }
 .reel-cursor { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; background: #ef6f94; border-radius: 3px; box-shadow: 0 0 0 2px #fff; }
 .reel-info { font-weight: 800; font-size: 12px; color: var(--ink-soft); }
+
+/* Quêtes des habitants */
+.mk { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; color: #5b4636; font-weight: 900; box-shadow: 0 1px 3px rgba(91, 70, 54, 0.3); }
+.mk-offer { background: #ffd84d; }
+.mk-ready { background: #7fe0a0; }
+.track-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; margin: 6px 0 10px; }
+.quest-card.tracked { box-shadow: 0 0 0 3px #c58cff inset; }
+.q-ready { margin-top: 6px; font-weight: 800; color: #2f9e74; }
+.q-actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.chip.on { background: #efe2ff; color: #7a3fc0; border-radius: 999px; padding: 4px 10px; font-weight: 800; font-size: 12px; }
+
+/* Voyages */
+.travel-list { display: grid; gap: 8px; margin-top: 10px; }
+.travel-row { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 14px; border-radius: 16px; border: 2px solid var(--line); background: #fff; cursor: pointer; font: inherit; color: inherit; }
+.travel-row:hover:not(:disabled) { border-color: #8fd0ff; background: #f3fbff; }
+.travel-row:disabled { opacity: 0.6; cursor: default; }
+.travel-row.here { opacity: 1; background: #fff8e6; }
+.tr-emoji { font-size: 28px; }
+.tr-text { flex: 1; display: grid; }
+.tr-text small { color: #8a7563; font-weight: 700; }
+.tr-go { font-size: 22px; }

@@ -6,7 +6,7 @@ import { escapeHtml } from './ui.js';
 // la distance, et une étoile sur la mini-carte. Dorée pour l'histoire, bleue pour
 // les petits boulots.
 
-const COLORS = { story: '#ffcf3a', job: '#5bb6ff' };
+const COLORS = { story: '#ffcf3a', job: '#5bb6ff', side: '#c58cff' };
 
 function starTexture(color) {
   const c = document.createElement('canvas');
@@ -66,13 +66,13 @@ class Beacon {
 export class Guide {
   constructor(game) {
     this.game = game;
-    this.beacons = { story: new Beacon(game.scene, COLORS.story), job: new Beacon(game.scene, COLORS.job) };
+    this.beacons = { story: new Beacon(game.scene, COLORS.story), job: new Beacon(game.scene, COLORS.job), side: new Beacon(game.scene, COLORS.side) };
     this.arrow = document.createElement('div');
     this.arrow.id = 'guide-arrow';
     this.arrow.className = 'guide-arrow hidden';
     this.arrow.innerHTML = '<div class="ga-pointer"><span class="ga-glyph">➤</span></div><div class="ga-text"></div>';
     document.body.appendChild(this.arrow);
-    this.targets = { story: null, job: null };
+    this.targets = { story: null, job: null, side: null };
     this.enabled = true;
     this.t = 0;
     this._v = new THREE.Vector3();
@@ -97,13 +97,23 @@ export class Guide {
     const playing = g.state === 'play' && this.enabled && !g.photo.active;
     const story = playing ? this.resolve(g.quests.target()) : null;
     const job = playing ? this.resolve(g.jobs.target()) : null;
-    this.targets = { story, job };
+    let side = null;
+    if (playing) {
+      try {
+        side = this.resolve(g.sideQuests.target());
+      } catch {
+        side = null;
+      }
+    }
+    this.targets = { story, job, side };
     const p = g.player.pos;
     const near = (t) => t && Math.hypot(t.x - p.x, t.z - p.z) < 6;
     this.beacons.story.set(story, this.t, near(story));
     this.beacons.job.set(job, this.t, near(job));
-    // La flèche suit la mission en cours en priorité (plus urgente), sinon l'histoire.
-    const main = job ? { ...job, kind: 'job' } : story ? { ...story, kind: 'story' } : null;
+    this.beacons.side.set(side, this.t, near(side));
+    // La flèche suit la mission en cours en priorité (plus urgente), puis la quête
+    // d'habitant suivie, sinon l'histoire.
+    const main = job ? { ...job, kind: 'job' } : side ? { ...side, kind: 'side' } : story ? { ...story, kind: 'story' } : null;
     this.updateArrow(main);
   }
 
@@ -131,6 +141,7 @@ export class Guide {
     }
     el.classList.remove('hidden');
     el.classList.toggle('job', t.kind === 'job');
+    el.classList.toggle('side', t.kind === 'side');
     let angle = Math.PI / 2;
     if (onScreen) {
       el.classList.add('onscreen');

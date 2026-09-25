@@ -19,6 +19,7 @@ import { Garden } from './game/garden.js';
 import { Quests } from './game/quests.js';
 import { Cooking } from './game/cooking.js';
 import { Archipelago } from './game/travel.js';
+import { SideQuests } from './game/sidequests.js';
 import { House } from './house/house.js';
 import { DecorMode } from './house/decor.js';
 import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS, FURNITURE_CATS, shopFurniture } from './house/furniture.js';
@@ -92,6 +93,7 @@ export class Game {
     this.cooking = new Cooking(this);
     this.quests = new Quests(this);
     this.archipelago = new Archipelago(this);
+    this.sideQuests = new SideQuests(this);
     this.cam = new FollowCamera(this.camera, this.world);
 
     this.ui = new UI(this);
@@ -788,7 +790,7 @@ export class Game {
       this.ui.setPrompt({
         pos: v.pos.clone().add(new THREE.Vector3(0, 2.4, 0)),
         title: `${v.def.emoji} ${v.met ? v.def.name : '???'}${bday ? ' 🎂' : ''}`,
-        sub: `${v.def.job}${story ? ' · ✨ histoire' : ''}${req && !req.done ? ' · a une demande !' : ''}`,
+        sub: `${v.def.job}${story ? ' · ✨ histoire' : ''}${{ ready: ' · ✅ quête à rendre', offer: ' · ❗ a une quête' }[this.sideQuests.markerFor(v.def.id)] || ''}${req && !req.done ? ' · a une demande' : ''}`,
         hearts: v.friendship,
         actions: [{ key: 'E', label: 'Parler' }],
       });
@@ -1153,6 +1155,7 @@ export class Game {
       jobs: this.jobs.serialize(),
       calendar: this.calendar.serialize(),
       archipelago: this.archipelago.serialize(),
+      sideQuests: this.sideQuests.serialize(),
       settings: { ...this.settings, music: this.audio.musicOn, sfx: this.audio.sfxOn },
     });
   }
@@ -1184,6 +1187,7 @@ export class Game {
     this.jobs.restore(s.jobs);
     this.calendar.restore(s.calendar);
     this.archipelago.restore(s.archipelago);
+    this.sideQuests.restore(s.sideQuests);
     if (s.settings) {
       this.audio.musicOn = !!s.settings.music;
       this.audio.sfxOn = s.settings.sfx !== false;

@@ -163,7 +163,18 @@ export class UI {
     }
     const job = g.jobs?.active;
     if (job) html += `<div class="qt-job">${JOB_TYPES[job.type].emoji} ${escapeHtml(g.jobs.progressText())}</div>`;
+    const sq = g.sideQuests;
+    const side = sq?.tracked && sq.get(sq.tracked);
+    if (side && sq.active[side.id]) {
+      const ready = sq.isReady(side);
+      const to = g.villagers.get(sq.turnInOf(side));
+      html += `<div class="qt-side">❗ ${escapeHtml(side.title)} — ${ready ? `retourne voir ${to.def.emoji} ${escapeHtml(to.def.name)}` : escapeHtml(sq.progressText(side))}</div>`;
+    }
     el.innerHTML = html;
+  }
+
+  refreshSideQuest() {
+    this.refreshQuest();
   }
 
   refreshChallenges() {

@@ -16,6 +16,7 @@ import { heartsString, escapeHtml } from './ui.js';
 
 const TABS = [
   { id: 'quetes', label: '📜 Histoire' },
+  { id: 'habquetes', label: '❗ Quêtes' },
   { id: 'demandes', label: '📋 Demandes' },
   { id: 'defis', label: '🎯 Défis' },
   { id: 'metiers', label: '🛠️ Métiers' },
@@ -64,6 +65,27 @@ export class Journal {
     body.querySelector('[data-hint]')?.addEventListener('click', () => {
       this.game.closePanels();
       this.game.showHint();
+    });
+    body.querySelectorAll('[data-track]').forEach((b) => {
+      b.onclick = () => {
+        const sq = this.game.sideQuests;
+        sq.tracked = b.dataset.track || null;
+        this.game.ui.refreshQuest();
+        this.game.audio.play('ui');
+        this.game.requestSave();
+        this.render();
+      };
+    });
+    body.querySelectorAll('[data-abandon]').forEach((b) => {
+      b.onclick = () => {
+        if (b.dataset.confirm !== '1') {
+          b.dataset.confirm = '1';
+          b.textContent = 'Sûr·e ?';
+          return;
+        }
+        this.game.sideQuests.abandon(b.dataset.abandon);
+        this.render();
+      };
     });
     body.querySelector('[data-replay]')?.addEventListener('click', () => {
       this.game.closePanels();
@@ -121,6 +143,55 @@ export class Journal {
       html += `<div class="q-done${i === ci ? ' now' : ''}">${i < ci ? '✅' : i === ci ? '▶️' : '🔒'} ${c.emoji} ${i <= ci ? escapeHtml(c.title) : '???'}</div>`;
     });
     html += `<p class="note">${q.completed.length}/${STORY.length} quêtes terminées.</p>`;
+    return html;
+  }
+
+  habquetes() {
+    const g = this.game;
+    const sq = g.sideQuests;
+    const active = sq.activeList();
+    let html = `<p class="note">Les habitants avec un <b class="mk mk-offer">!</b> au-dessus de la tête ont une quête pour toi ; <b class="mk mk-ready">?</b> : une quête à rendre. ${sq.done.size}/${sq.total} quêtes terminées.</p>`;
+    html += `<div class="track-row">🧭 La flèche suit : <b>${sq.tracked ? escapeHtml(sq.get(sq.tracked).title) : 'l\'histoire'}</b>${sq.tracked ? ' <button class="btn small" data-track="">Suivre l\'histoire</button>' : ''}</div>`;
+    if (!active.length) html += '<div class="quest-card"><p class="q-desc">Aucune quête en cours. Va parler aux habitants qui ont un « ! » !</p></div>';
+    for (const q of active) {
+      const giver = g.villagers.get(q.giver);
+      const to = g.villagers.get(sq.turnInOf(q));
+      const ready = sq.isReady(q);
+      html += `<div class="quest-card current${sq.tracked === q.id ? ' tracked' : ''}"><div class="q-title">${escapeHtml(q.title)}</div>
+        <div class="q-giver">${giver.def.emoji} ${escapeHtml(giver.def.name)}${to !== giver ? ` → ${to.def.emoji} ${escapeHtml(to.def.name)}` : ''}</div>
+        <p class="q-desc">${escapeHtml(q.desc)}</p>`;
+      q.goals.forEach((goal, i) => {
+        if (goal.talk) {
+          html += `<div class="q-goal${ready ? ' done' : ''}"><span>${ready ? '➡️' : '▫️'} ${escapeHtml(goal.label)}</span></div>`;
+          return;
+        }
+        const p = sq.goalValue(q, i);
+        const pct = Math.round((p / goal.count) * 100);
+        html += `<div class="q-goal${p >= goal.count ? ' done' : ''}"><span>${p >= goal.count ? '✅' : '▫️'} ${escapeHtml(goal.label)}</span><span>${p}/${goal.count}</span></div>
+          <div class="q-bar"><span style="width:${pct}%"></span></div>`;
+      });
+      html += `<div class="q-reward">Récompense : ${this.rewardText(q.reward)}</div>
+        ${ready ? `<div class="q-ready">✨ Retourne voir ${to.def.emoji} ${escapeHtml(to.def.name)} !</div>` : ''}
+        <div class="q-actions">${sq.tracked === q.id ? '<span class="chip on">🧭 Suivie</span>' : `<button class="btn small primary" data-track="${q.id}">🧭 Suivre</button>`}
+        <button class="btn small" data-abandon="${q.id}">Abandonner</button></div></div>`;
+    }
+    // Quêtes proposées en ce moment.
+    const offers = g.villagers.list.map((v) => sq.availableFor(v.def.id)).filter(Boolean);
+    if (offers.length) {
+      html += '<div class="field-title" style="margin-top:12px">❗ Quêtes proposées</div>';
+      for (const q of offers) {
+        const v = g.villagers.get(q.giver);
+        html += `<div class="q-done">${v.def.emoji} ${escapeHtml(v.def.name)} — ${escapeHtml(q.title)}</div>`;
+      }
+    }
+    if (sq.done.size) {
+      html += '<div class="field-title" style="margin-top:12px">✅ Terminées</div>';
+      for (const id of sq.done) {
+        const q = sq.get(id);
+        const v = g.villagers.get(q.giver);
+        html += `<div class="q-done">✅ ${v.def.emoji} ${escapeHtml(q.title)}</div>`;
+      }
+    }
     return html;
   }
 

@@ -55,6 +55,22 @@ export class Resources {
     return best;
   }
 
+  /** Ressource disponible la plus proche donnant cet objet. */
+  closestOf(item) {
+    const p = this.game.player.pos;
+    let best = null;
+    let bestD = Infinity;
+    for (const n of this.nodes) {
+      if (n.item !== item || !this.available(n)) continue;
+      const d = Math.hypot(n.x - p.x, n.z - p.z);
+      if (d < bestD) {
+        best = n;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
   harvest(n) {
     const g = this.game;
     const [a, b] = n.amount;

@@ -726,28 +726,35 @@ export const CHATTER = [
   ['On va à la paillote ce soir ?', 'Paco a promis des lampions !'],
 ];
 
-let bubbleTex = null;
-function bubbleTexture() {
-  if (bubbleTex) return bubbleTex;
+// Marqueurs au-dessus des têtes : « ! » quête à proposer, « ? » quête à rendre,
+// petit « ! » bleu pour une demande du jour.
+const markerTex = {};
+function markerTexture(kind) {
+  if (markerTex[kind]) return markerTex[kind];
   const c = document.createElement('canvas');
-  c.width = 64;
-  c.height = 64;
+  c.width = 128;
+  c.height = 128;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#ffd84d';
+  const fill = kind === 'request' ? '#8fd0ff' : kind === 'ready' ? '#7fe0a0' : '#ffd84d';
+  ctx.shadowColor = 'rgba(91, 70, 54, 0.35)';
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = fill;
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 5;
+  ctx.lineWidth = 9;
   ctx.beginPath();
-  ctx.arc(32, 30, 24, 0, Math.PI * 2);
+  ctx.arc(64, 60, 46, 0, Math.PI * 2);
   ctx.fill();
+  ctx.shadowBlur = 0;
   ctx.stroke();
   ctx.fillStyle = '#5b4636';
-  ctx.font = '900 34px Nunito, sans-serif';
+  ctx.font = '900 72px Nunito, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('!', 32, 32);
-  bubbleTex = new THREE.CanvasTexture(c);
-  bubbleTex.colorSpace = THREE.SRGBColorSpace;
-  return bubbleTex;
+  ctx.fillText(kind === 'ready' ? '?' : '!', 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  markerTex[kind] = t;
+  return t;
 }
 
 const RING = 6.8;
@@ -801,7 +808,8 @@ export class Villager {
     this.met = false;
     this.wanderT = 0;
     this.bubbleT = 4 + Math.random() * 8;
-    this.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture(), depthWrite: false }));
+    this.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTexture('request'), depthWrite: false }));
+    this.markerKind = 'request';
     this.bubble.scale.setScalar(0.5);
     this.bubble.position.y = 2.25 * (def.appearance.height || 1);
     this.bubble.visible = false;
@@ -1095,8 +1103,16 @@ export class VillagerManager {
     for (const v of this.list) {
       v.update(dt, sky.hour, raining);
       const req = this.game.quests?.requestFor(v.def.id);
-      v.bubble.visible = !!req && !req.done && !v.override;
-      if (v.bubble.visible) v.bubble.position.y = 2.25 * (v.def.appearance.height || 1) + Math.sin(this.game.elapsed * 3) * 0.05;
+      const kind = v.override ? null : this.game.sideQuests?.markerFor(v.def.id) || (req && !req.done ? 'request' : null);
+      v.bubble.visible = !!kind;
+      if (kind) {
+        if (v.markerKind !== kind) {
+          v.markerKind = kind;
+          v.bubble.material.map = markerTexture(kind);
+          v.bubble.scale.setScalar(kind === 'request' ? 0.5 : 0.72);
+        }
+        v.bubble.position.y = 2.3 * (v.def.appearance.height || 1) + Math.sin(this.game.elapsed * 3) * 0.06 + (kind === 'request' ? 0 : 0.1);
+      }
     }
     this.updateChatter(dt);
   }

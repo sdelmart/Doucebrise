@@ -71,6 +71,7 @@ export const CATEGORIES = [
   { id: 'seed', label: 'Graines' },
   { id: 'dish', label: 'Plats' },
   { id: 'tool', label: 'Matériel' },
+  { id: 'quest', label: 'Objets de quête' },
 ];
 
 /** Objets affichés en permanence dans la barre du bas. */

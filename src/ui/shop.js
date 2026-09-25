@@ -120,6 +120,7 @@ export class Shop {
       return;
     }
     for (const cat of CATEGORIES) {
+      if (cat.id === 'quest') continue;
       const ids = owned.filter((id) => ITEMS[id].cat === cat.id);
       if (!ids.length) continue;
       const h = document.createElement('div');
