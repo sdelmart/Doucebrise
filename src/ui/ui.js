@@ -615,6 +615,7 @@ export class UI {
     if (isl.spring) places.push([isl.spring, '♨️']);
     if (isl.telescope) places.push([isl.telescope, '🔭']);
     if (isl.bandstand) places.push([isl.bandstand, '🎼']);
+    if (g.sled) places.push([g.sled.startSign, '🛷']);
     for (const [pl, em] of places) {
       if (!pl) continue;
       const [px, py] = toMap(pl.x, pl.z);

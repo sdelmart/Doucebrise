@@ -131,6 +131,9 @@ export const ACHIEVEMENTS = [
   A('visites-16', 'Voisin·e de tout l\'archipel', 'Rendre visite aux 16 habitants.', (g) => Object.keys(g.visits.visitedDay).length >= 16, { title: 'Voisin·e modèle', coins: 800 }),
   A('kiosque', 'Première représentation', 'Jouer un air au kiosque à musique.', (g, s) => s.music >= 1),
   A('concert', 'Star du kiosque', 'Jouer au kiosque devant au moins 3 habitants.', (g, s) => s.concert >= 1, { title: 'Star du kiosque', coins: 300 }),
+  A('luge', 'Descente du Pic', 'Terminer la course de luge du Pic des Neiges.', (g, s) => s.sled >= 1),
+  A('luge-portes', 'Slalom parfait', 'Passer les 7 portes en une seule descente.', (g, s) => s.sledGates >= 1, { coins: 300 }),
+  A('luge-record', 'Bolide des neiges', 'Descendre la piste de luge en moins de 7 secondes.', (g) => g.sled?.best != null && g.sled.best < 7, { title: 'Bolide des neiges', coins: 500 }),
   A('telescope', 'Astronome en herbe', 'Observer le ciel au télescope de Sacha.', (g, s) => s.stargaze >= 1),
   A('aquarium-30', 'Grand aquarium', 'Pêcher 30 espèces différentes.', (g) => Object.keys(g.fishing.best).length >= 30, { title: 'Maître pêcheur', furniture: { 'aquarium-geant': 1 } }),
   A('insectes-20', 'Muséum d\'histoire naturelle', 'Attraper 20 espèces d\'insectes.', (g) => Object.keys(g.insects.caught).length >= 20, { coins: 1200 }),
@@ -216,6 +219,10 @@ export class Progress {
       if (d.fans >= 3) bump('concert');
     });
     on('stargaze', () => bump('stargaze'));
+    on('sled', (d) => {
+      bump('sled');
+      if (d.gates >= 7) bump('sledGates');
+    });
     on('sidequest', () => bump('sidequest'));
     on('zone', (d) => this.zones.add(d.zone));
     on('mail', () => bump('mail'));

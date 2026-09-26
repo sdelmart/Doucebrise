@@ -84,7 +84,12 @@ export const PATHS = [
   [[141, 70], [154, 88], [168, 104], [184, 120]],
   [[141, 70], [162, 76], [184, 86], [198, 94]],
   [[141, 70], [134, 54], [128, 46]],
+  // Piste de luge : du flanc du Pic des Neiges jusqu'à la place de Bourg-Sapin.
+  [[-171, -157], [-163, -162], [-155, -157], [-150, -150], [-146, -141], [-138, -134], [-132, -124], [-128, -117]],
 ];
+
+/** Tracé de la course de luge (même tracé que la piste ci-dessus). */
+export const SLED_COURSE = [[-171, -157], [-163, -162], [-155, -157], [-150, -150], [-146, -141], [-138, -134], [-132, -124], [-128, -117]];
 // Premier indice des chemins des îles secondaires (le relief de l'île principale ne les voit pas).
 export const MAIN_PATH_COUNT = 8;
 

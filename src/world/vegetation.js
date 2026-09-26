@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Shape, G, toon, addWind, addSeason, paintGradientY } from '../core/materials.js';
 import { createRng, smoothstep } from '../core/math.js';
-import { ISLANDS, LANDMARKS } from './layout.js';
+import { ISLANDS, LANDMARKS, SLED_COURSE } from './layout.js';
 
 // Végétation instanciée : arbres, buissons à baies, fleurs, herbe, rochers,
 // champignons, tournesols et carottes sauvages (les trois derniers sont récoltables).
@@ -13,6 +13,20 @@ const _s = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
 const _c = new THREE.Color();
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+
+/** Distance à la piste de luge (dégagée des arbres et des rochers). */
+function sledDistance(x, z) {
+  let best = Infinity;
+  for (let i = 1; i < SLED_COURSE.length; i++) {
+    const [ax, az] = SLED_COURSE[i - 1];
+    const [bx, bz] = SLED_COURSE[i];
+    const dx = bx - ax;
+    const dz = bz - az;
+    const t = Math.min(1, Math.max(0, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+    best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
+  }
+  return best;
+}
 
 // --- Géométries --------------------------------------------------------------
 
@@ -444,6 +458,7 @@ export class Vegetation {
     this.scatter(rng, 900, 12000, { ...area, pad: 1.9, pathPad: 2.6, minH: 0.8, maxSlope: 0.5 }, (x, z, h) => {
       const B = LANDMARKS.bourg;
       if (Math.hypot(x - B.x, z - B.z) < 22 && rng() < 0.85) return false;
+      if (sledDistance(x, z) < 5) return false;
       // Sommet dégagé (roche et neige), clairières autour du lac et de la source.
       if (h > 16 || (h > 12 && rng() < 0.6)) return false;
       const P = LANDMARKS.peak;
@@ -465,6 +480,7 @@ export class Vegetation {
     // Rochers du Pic.
     const rocks = makeInstanced(rockGeo(), staticMat, 120);
     this.scatter(rng, 110, 3000, { ...area, pad: 1.5, pathPad: 2.2, minH: 0.3, maxSlope: 0.9 }, (x, z, h) => {
+      if (sledDistance(x, z) < 5.5) return false;
       const sc = rng.range(0.5, 1.6) * (h > 9 ? 1.4 : 1);
       pushInstance(rocks, x, h + 0.1 * sc, z, rng.range(0, 6.28), sc, _c.setScalar(rng.range(0.9, 1.1)));
       if (sc > 0.7) this.world.colliders.addCircle(x, z, 0.85 * sc);

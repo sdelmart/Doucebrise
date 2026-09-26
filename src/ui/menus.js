@@ -3,6 +3,7 @@ import { keyLabel, bindingOf, actionKey } from '../core/input.js';
 import { slotSummaries, getSlot, setSlot, clearSave, exportSave, importSave } from '../core/save.js';
 import { SEASONS } from '../world/weather.js';
 import { escapeHtml } from './ui.js';
+import { VERSION, checkForUpdate } from '../core/updates.js';
 
 // Menus : écran titre (3 profils), menu pause (Échap), paramètres complets
 // (graphismes, affichage, contrôles, audio, jeu) et crédits.
@@ -52,6 +53,14 @@ export class TitleMenu {
     this.el = document.querySelector('#title');
     this.view = 'main';
     this.confirm = null;
+    this.update = null;
+    // Application de bureau : une nouvelle version est-elle publiée ?
+    if (isDesktop() && game.settings.checkUpdates !== false) {
+      checkForUpdate().then((u) => {
+        this.update = u;
+        if (u && this.view === 'main' && game.state === 'title') this.render();
+      });
+    }
   }
 
   render() {
@@ -75,7 +84,8 @@ export class TitleMenu {
             ${isDesktop() ? '<button id="btn-quit" class="btn">🚪 Quitter</button>' : ''}
           </div>
         </div>
-        <p class="hint">Clavier + souris ou manette · Sauvegarde automatique · v0.4</p>`;
+        ${this.update ? `<a class="update-link" href="${escapeHtml(this.update.url)}" target="_blank" rel="noopener">✨ La version ${escapeHtml(this.update.version)} est disponible — la télécharger</a>` : ''}
+        <p class="hint">Clavier + souris ou manette · Sauvegarde automatique · v${VERSION}</p>`;
       card.querySelector('#btn-continue').onclick = () => g.continueGame();
       card.querySelector('#btn-new').onclick = () => {
         if (!active || active.empty) g.newGame();
@@ -424,6 +434,7 @@ export class SettingsPanel {
     return [
       this.row('Durée d\'une journée', this.chips('daySpeed', Object.entries(DAY_SPEEDS).map(([id, d]) => [id, d.label]), s.daySpeed)),
       this.row('Langue', '<div class="chips"><button class="chip active">🇫🇷 Français</button></div>'),
+      isDesktop() ? this.row('Nouvelles versions', this.toggle('checkUpdates', s.checkUpdates !== false), `Version installée : ${VERSION}. L'écran titre prévient quand une mise à jour est publiée.`) : '',
       this.row('Sauvegarde', `<div class="chips"><button class="btn small" data-export>📤 Exporter le profil ${getSlot()}</button></div>`, 'Un fichier à garder précieusement, ou à importer sur un autre ordinateur (écran titre → Profils).'),
       playing ? this.row('Recommencer', `<button class="btn small${this.confirmReset ? ' danger' : ''}" data-reset>${this.confirmReset ? '⚠️ Vraiment tout effacer ? Clique encore' : '🗑️ Effacer ce profil et recommencer'}</button>`) : '',
       this.row('Tout réinitialiser', '<button class="btn small" data-defaults>↺ Paramètres par défaut</button>', 'Remet les graphismes, l\'affichage, les touches et le son d\'origine.'),
@@ -557,6 +568,7 @@ export class Credits {
         <p><b>Technologies</b><br>Three.js (moteur 3D) · Vite · Electron (applications Windows et macOS)</p>
         <p><b>Police</b><br>Nunito — SIL Open Font License</p>
         <p><b>Développé avec l'aide de Claude</b></p>
+        <p class="note">Version ${VERSION}</p>
         <p class="note">Merci d'avoir joué ! 🌸🐱🌊</p>
       </div></div>`;
     document.body.appendChild(this.el);

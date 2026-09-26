@@ -81,6 +81,7 @@ export function defaultSettings() {
     keys: {}, // action → code physique (absent = défaut)
     daySpeed: 'normale',
     fullscreen: false,
+    checkUpdates: true,
   };
 }
 

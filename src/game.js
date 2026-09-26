@@ -21,6 +21,7 @@ import { Quests } from './game/quests.js';
 import { Cooking } from './game/cooking.js';
 import { Archipelago } from './game/travel.js';
 import { SideQuests } from './game/sidequests.js';
+import { SledRace } from './game/sled.js';
 import { House } from './house/house.js';
 import { DecorMode } from './house/decor.js';
 import { Visits } from './house/visits.js';
@@ -109,6 +110,7 @@ export class Game {
     this.quests = new Quests(this);
     this.archipelago = new Archipelago(this);
     this.sideQuests = new SideQuests(this);
+    this.sled = new SledRace(this);
     this.cam = new FollowCamera(this.camera, this.world);
 
     this.ui = new UI(this);
@@ -326,7 +328,7 @@ export class Game {
   }
 
   get busy() {
-    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || !document.querySelector('#dialog').classList.contains('hidden');
+    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden');
   }
 
   openPanel(name) {
@@ -493,7 +495,7 @@ export class Game {
       if (e.code === 'Escape') this.closePanels();
       return;
     }
-    if (this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || !document.querySelector('#dialog').classList.contains('hidden')) return;
+    if (this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden')) return;
     if (this.decor.active) return;
     if (this.photo.active) {
       if (e.code === 'Escape' || e.code === 'KeyO') this.photo.exit();
@@ -1066,6 +1068,13 @@ export class Game {
       if (input.hit('KeyE')) arch.stargaze();
       return;
     }
+    if (!this.indoors && !this.vehicles.riding && this.sled.nearStart()) {
+      const st = this.sled.startSign;
+      this.tips.show('luge');
+      this.ui.setPrompt({ pos: new THREE.Vector3(st.x, this.player.pos.y + 3, st.z), title: '🛷 Course de luge', sub: this.sled.best ? `Record : ${this.sled.best.toFixed(1)} s` : 'Jusqu\'en bas du Pic, en passant les portes', actions: [{ key: 'E', label: 'Descendre la piste' }] });
+      if (input.hit('KeyE')) this.sled.begin();
+      return;
+    }
     const bs = this.world.islands.bandstand;
     if (bs && !this.indoors && !this.vehicles.riding && Math.hypot(bs.x - this.player.pos.x, bs.z - this.player.pos.z) < 3 && this.player.pos.y > bs.y - 0.3) {
       this.tips.show('kiosque');
@@ -1396,6 +1405,7 @@ export class Game {
     this.fishing.update(sdt, this.input);
     this.insects.update(sdt);
     this.vehicles.update(sdt);
+    this.sled.update(sdt);
     this.jobs.update(sdt);
     this.calendar.update(sdt);
     this.house.update(sdt, this.elapsed, this.camera);
@@ -1527,6 +1537,7 @@ export class Game {
       tips: this.tips.serialize(),
       visits: this.visits.serialize(),
       sideQuests: this.sideQuests.serialize(),
+      sled: this.sled.serialize(),
       stats: { playtime: Math.round(this.playtime || 0) },
     });
   }
@@ -1561,6 +1572,7 @@ export class Game {
     this.tips.restore(s.tips);
     this.visits.restore(s.visits);
     this.sideQuests.restore(s.sideQuests);
+    this.sled.restore(s.sled);
     this.playtime = s.stats?.playtime || 0;
   }
 }

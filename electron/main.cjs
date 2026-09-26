@@ -36,9 +36,15 @@ function createWindow() {
   });
   win.once('ready-to-show', () => win.show());
   win.loadURL('app://jeu/index.html');
+  // Liens (page des nouvelles versions) : ouverts dans le navigateur, jamais dans le jeu.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (/^https:\/\//.test(url)) shell.openExternal(url);
     return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (e, url) => {
+    if (url.startsWith('app://')) return;
+    e.preventDefault();
+    if (/^https:\/\//.test(url)) shell.openExternal(url);
   });
   win.on('enter-full-screen', () => win.webContents.send('app:fullscreen', true));
   win.on('leave-full-screen', () => win.webContents.send('app:fullscreen', false));

@@ -14,7 +14,7 @@ const TIPS = {
   port: { emoji: '⚓', title: 'Bienvenue à Port-Corail', text: () => 'Capitainerie, galerie, club de plongée et la paillote du lagon. Secoue les cocotiers, et cherche des perles dans le corail !' },
   nuit: { emoji: '🌙', title: 'La nuit tombe', text: () => 'Lève les yeux : étoiles, lune et parfois des étoiles filantes. Les lucioles sortent près de l\'étang. Dors dans ton lit pour passer au matin.' },
   pause: { emoji: '⏸️', title: 'Le menu', text: () => `${escapeHtml('Échap')} ouvre le menu : paramètres (graphismes, touches, son), sauvegarde et profils. ${escapeHtml(actionKey('fps'))} affiche le compteur d'images par seconde.` },
-  luge: { emoji: '🛷', title: 'La course de luge', text: () => 'Au sommet du Pic, prends la luge de Hugo et dévale la pente jusqu\'au bourg. Passe dans les portes pour gagner du temps !' },
+  luge: { emoji: '🛷', title: 'La course de luge', text: () => 'Au sommet du Pic, prends la luge de Hugo et dévale la pente jusqu\'au bourg. Chaque porte manquée coûte une seconde, et les étoiles rapportent des pièces !' },
   visite: { emoji: '🚪', title: 'Rendre visite', text: () => `Frappe à la porte d'un habitant (${actionKey('interact')}) quand il est chez lui, le soir ou tôt le matin. Chacun a décoré sa maison à sa façon !` },
 };
 
