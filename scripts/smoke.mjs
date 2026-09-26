@@ -15,6 +15,11 @@ const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// SMOKE_SLOW=4 : processeur 4× plus lent, pour reproduire une machine de CI chargée.
+if (process.env.SMOKE_SLOW) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.SMOKE_SLOW) });
+}
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => {
@@ -36,6 +41,19 @@ async function step(name, fn) {
 }
 const state = () => page.evaluate(() => window.game?.state);
 
+// Attend que le jeu soit libre (carte du chapitre, dialogue d'accueil… refermés).
+async function settle() {
+  const end = Date.now() + 60000;
+  while (Date.now() < end) {
+    const s = await page.evaluate(() => ({ busy: window.game.busy, panel: window.game.panel }));
+    if (!s.busy && !s.panel) return;
+    // Clic direct : à 1 image par seconde, l'animation d'apparition fait échouer un clic « réel ».
+    await page.evaluate(() => document.querySelector('#chapter:not(.hidden) [data-chap-ok]')?.click());
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`le jeu reste occupé : ${await page.evaluate(() => JSON.stringify({ chapitre: window.game.ui.chapterOpen, dialogue: window.game.dialogue.open, fenetre: window.game.panel }))}`);
+}
+
 try {
   await step('Écran titre', async () => {
     await page.goto(url, { waitUntil: 'load' });
@@ -50,19 +68,21 @@ try {
     await page.click('#cr-done');
     await page.waitForFunction(() => window.game.state === 'play', null, { timeout: 60000 });
     await page.waitForTimeout(3000);
-    await page.click('[data-chap-ok]', { timeout: 5000 }).catch(() => {});
+    await settle();
     await page.screenshot({ path: `${OUT}/2-jeu.png` });
   });
   await step('Fenêtres (carte, journal, sac, aide, pause, paramètres)', async () => {
     for (const panel of ['map', 'journal', 'bag', 'help', 'pause', 'settings']) {
+      await settle();
       await page.evaluate((p) => window.game.openPanel(p), panel);
       await page.waitForTimeout(400);
       const open = await page.evaluate(() => window.game.panel);
-      if (open !== panel) throw new Error(`la fenêtre « ${panel} » ne s'ouvre pas`);
+      if (open !== panel) throw new Error(`la fenêtre « ${panel} » ne s'ouvre pas (ouverte : ${open}, occupé : ${await page.evaluate(() => window.game.busy)})`);
       await page.evaluate(() => window.game.closePanels());
     }
   });
   await step('Se déplacer', async () => {
+    await settle();
     const before = await page.evaluate(() => ({ x: window.game.player.pos.x, z: window.game.player.pos.z }));
     await page.keyboard.down('KeyW');
     await page.waitForFunction((b) => Math.hypot(window.game.player.pos.x - b.x, window.game.player.pos.z - b.z) > 0.5, before, { timeout: 30000 });
@@ -88,6 +108,7 @@ try {
     await page.waitForFunction(() => window.game && window.game.state === 'title', null, { timeout: 180000 });
     await page.click('#btn-continue');
     await page.waitForFunction(() => window.game.state === 'play', null, { timeout: 60000 });
+    await settle();
     const name = await page.evaluate(() => window.game.character.appearance.name);
     if (name !== 'Fumée') throw new Error(`profil perdu (nom : ${name})`);
     await page.waitForTimeout(2000);
