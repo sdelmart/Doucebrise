@@ -83,8 +83,8 @@ export class Guide {
     if (!t) return null;
     const g = this.game;
     const out = { ...t };
-    if (g.house.inside && !t.inside) {
-      const e = g.house.entryPoint;
+    if (g.indoors && !t.inside) {
+      const e = g.visits.active ? g.visits.entryPoint : g.house.entryPoint;
       return { x: e.x, z: e.z + 0.3, y: 0, label: '🚪 Sortir de la maison', exit: true };
     }
     out.y = t.y ?? g.world.groundAt(t.x, t.z);

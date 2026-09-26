@@ -537,6 +537,61 @@ export class IslandVillages {
     return this.world.heightAt(x, z);
   }
 
+  /** Décors des fêtes de l'archipel. */
+  setFestival(id, firDone = false) {
+    this.festivalId = id;
+    this.setFirLit(firDone || id === 'hiver');
+    if (id === 'lanternes' && !this.lanterns) this.buildLanterns();
+    if (id === 'port' && !this.sailboats) this.buildSailboats();
+    if (this.lanterns) this.lanterns.visible = id === 'lanternes';
+    if (this.sailboats) this.sailboats.visible = id === 'port';
+  }
+
+  /** Lanternes flottantes sur le Lac Miroir. */
+  buildLanterns() {
+    const L = LANDMARKS.lake;
+    const body = new Shape();
+    body.add(G.box(0.36, 0.3, 0.36), '#e8663d', { pos: [0, 0.15, 0] });
+    body.add(G.box(0.46, 0.05, 0.46), '#8a5a3a', { pos: [0, 0.02, 0] });
+    const glow = new Shape().add(G.box(0.28, 0.32, 0.28), '#ffffff', { pos: [0, 0.16, 0] });
+    const n = 36;
+    const bm = new THREE.InstancedMesh(body.build(), vertexColorToon(), n);
+    const gm = new THREE.InstancedMesh(glow.build(), this.glowMat, n);
+    bm.frustumCulled = false;
+    gm.frustumCulled = false;
+    const rng = createRng(4242);
+    this.lanternData = [];
+    for (let i = 0; i < n; i++) this.lanternData.push({ a: rng.range(0, Math.PI * 2), r: rng.range(1.5, L.r - 2.5), s: rng.range(0.02, 0.06) * (rng() < 0.5 ? -1 : 1), p: rng.range(0, 6) });
+    this.lanterns = new THREE.Group();
+    this.lanterns.add(bm, gm);
+    this.lanterns.userData = { bm, gm, L };
+    this.groups.pins.add(this.lanterns);
+  }
+
+  /** Voiliers de la Fête du Port, qui tournent dans la baie. */
+  buildSailboats() {
+    const Pt = LANDMARKS.port;
+    const a = (246 * Math.PI) / 180;
+    const cx = Pt.x + Math.cos(a) * 58;
+    const cz = Pt.z + Math.sin(a) * 58;
+    this.sailboats = new THREE.Group();
+    this.sailboats.userData.center = { x: cx, z: cz };
+    const cols = ['#ff8fab', '#ffd84d', '#8fd6e8', '#b5e48c', '#c9a4ff'];
+    cols.forEach((col, i) => {
+      const s = new Shape();
+      s.addRaw(boatGeo());
+      s.add(G.cyl(0.05, 0.06, 3.2, 6), WOOD_DARK, { pos: [0, 1.9, 0.1] });
+      const tri = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(1.5, 0), new THREE.Vector2(0, 2.6)]);
+      s.add(new THREE.ExtrudeGeometry(tri, { depth: 0.04, bevelEnabled: false }).rotateY(-Math.PI / 2), col, { pos: [0, 0.6, 0.15] });
+      s.add(G.box(0.02, 0.35, 0.5), col, { pos: [0, 3.4, 0.35] });
+      const m = new THREE.Mesh(s.build(), vertexColorToon());
+      m.castShadow = true;
+      m.userData = { a: (i / cols.length) * Math.PI * 2, r: 9 + (i % 3) * 4, sp: 0.08 + (i % 2) * 0.03, p: i * 1.3 };
+      this.sailboats.add(m);
+    });
+    this.groups.corail.add(this.sailboats);
+  }
+
   setFirLit(on) {
     if (!this.firOn) return;
     this.firOn.visible = on;
@@ -1056,6 +1111,28 @@ export class IslandVillages {
   }
 
   update(dt, elapsed, night, focus, particles, range = 300) {
+    if (this.lanterns?.visible) {
+      const { bm, gm, L } = this.lanterns.userData;
+      const m = new THREE.Matrix4();
+      this.lanternData.forEach((d, i) => {
+        d.a += d.s * dt;
+        m.makeTranslation(L.x + Math.cos(d.a) * d.r, 0.08 + Math.sin(elapsed * 1.3 + d.p) * 0.05, L.z + Math.sin(d.a) * d.r);
+        bm.setMatrixAt(i, m);
+        gm.setMatrixAt(i, m);
+      });
+      bm.instanceMatrix.needsUpdate = true;
+      gm.instanceMatrix.needsUpdate = true;
+    }
+    if (this.sailboats?.visible) {
+      const c = this.sailboats.userData.center;
+      for (const b of this.sailboats.children) {
+        const u = b.userData;
+        u.a += u.sp * dt;
+        b.position.set(c.x + Math.cos(u.a) * u.r, 0.15 + Math.sin(elapsed * 1.1 + u.p) * 0.08, c.z + Math.sin(u.a) * u.r);
+        b.rotation.y = -u.a;
+        b.rotation.z = Math.sin(elapsed * 0.9 + u.p) * 0.06;
+      }
+    }
     for (const b of this.boats) {
       b.mesh.position.y = 0.15 + Math.sin(elapsed * 1.2 + b.phase) * 0.07;
       b.mesh.rotation.z = Math.sin(elapsed * 0.9 + b.phase) * 0.05;

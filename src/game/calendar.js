@@ -12,6 +12,11 @@ export const FESTIVALS = [
   { id: 'peche', season: 1, day: 2, label: 'Concours de pêche', emoji: '🎣', desc: 'De 6 h à 18 h : pêche le plus gros poisson possible et présente-le à Marin !' },
   { id: 'recolte', season: 2, day: 2, label: 'Fête des Récoltes', emoji: '🎃', desc: 'Pomme rachète récoltes et plats 50 % plus cher.' },
   { id: 'etoiles', season: 3, day: 2, label: 'Nuit des Étoiles', emoji: '🌟', desc: 'Lanternes sur la place, cadeaux au courrier et étoiles filantes la nuit.' },
+  // Fêtes des villages de l'archipel.
+  { id: 'cerisiers', season: 0, day: 3, label: 'Pique-nique des cerisiers', emoji: '🌸', desc: 'Pique-nique sous les cerisiers : les plats cuisinés offerts ravissent les habitants (+50 % d\'amitié).' },
+  { id: 'port', season: 1, day: 3, label: 'Fête du Port', emoji: '⛵', desc: 'Voiliers dans la baie de Port-Corail ! Les poissons se vendent 50 % plus cher ; capitainerie et paillote à -20 %.', discount: { capitainerie: 0.8, paillote: 0.8 } },
+  { id: 'lanternes', season: 2, day: 3, label: 'Fête des Lanternes', emoji: '🏮', desc: 'Des lanternes flottent sur le Lac Miroir. Tous les cadeaux aux habitants comptent 50 % de plus.' },
+  { id: 'hiver', season: 3, day: 3, label: 'Marché d\'hiver de Bourg-Sapin', emoji: '🎄', desc: 'Le grand sapin brille, pâtisserie et atelier sont à -30 %, et Élise offre du chocolat chaud.', discount: { patisserie: 0.7, atelier: 0.7 } },
 ];
 
 const LETTER_LINES = [
@@ -71,11 +76,25 @@ export class Calendar {
     return this.birthdaysOf().includes(villagerId);
   }
 
+  /** Réduction d'une boutique pendant une fête (1 = aucune). */
+  discountFor(shopId) {
+    return this.festival?.discount?.[shopId] || 1;
+  }
+
+  /** Bonus d'amitié des cadeaux pendant certaines fêtes. */
+  giftBonus(id) {
+    const f = this.festival?.id;
+    if (f === 'lanternes') return 1.5;
+    if (f === 'cerisiers' && ITEMS[id]?.cat === 'dish') return 1.5;
+    return 1;
+  }
+
   /** Prix de vente, avec les bonus de fête. */
   sellPrice(id) {
     const it = ITEMS[id];
     const f = this.festival?.id;
     if (f === 'fleurs' && id === 'fleur') return it.price * 2;
+    if (f === 'port' && it.cat === 'fish') return Math.round(it.price * 1.5);
     if (f === 'recolte' && (it.cat === 'crop' || it.cat === 'dish')) return Math.round(it.price * 1.5);
     return it.price;
   }
@@ -87,6 +106,7 @@ export class Calendar {
     const day = g.world.sky.day;
     const f = this.festival;
     g.world.village.setFestival(f?.id || null);
+    g.world.islands.setFestival?.(f?.id || null, g.quests?.completed?.includes('sapin-rallume'));
     if (this.mailDay !== day) {
       this.mailDay = day;
       this.deliverMail(day);
@@ -136,6 +156,10 @@ export class Calendar {
         this.addLetter({ signature: '🌠 Le ciel étoilé', title: 'Un cadeau tombé du ciel', text: 'Cette nuit, ton vœu a été entendu. Au matin, un petit éclat lumineux brillait au pied de ta boîte aux lettres…', gift: { items: { 'fragment-etoile': 1 } } });
       }
       this.wishes = 0;
+    }
+    // Marché d'hiver : Élise offre le chocolat chaud.
+    if (this.festival?.id === 'hiver') {
+      this.addLetter({ from: 'elise', text: 'C\'est le marché d\'hiver au bourg ! Voilà deux chocolats chauds pour te réchauffer. Viens nous voir sous le grand sapin ! ☕', gift: { items: { chocolat: 2 } } });
     }
     // Nuit des étoiles : tout le monde envoie un petit mot.
     if (this.festival?.id === 'etoiles') {

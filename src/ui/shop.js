@@ -40,6 +40,8 @@ export class Shop {
     this.el.querySelector('#shop-title').textContent = names[shopId] || 'Boutique';
     this.el.querySelector('#shop-greet').textContent = villager ? `${villager.def.emoji} « ${villager.def.lines.shop} »` : '';
     this.tabs = g.shopTabs(shopId);
+    this.discount = g.calendar.discountFor(shopId);
+    if (this.discount < 1) this.el.querySelector('#shop-greet').textContent += ` 🎉 ${g.calendar.festival.label} : -${Math.round((1 - this.discount) * 100)} % sur tout !`;
     if (!this.tabs.some((t) => t.id === this.tab)) this.tab = this.tabs[0].id;
     this.el.classList.remove('hidden');
     this.render();
@@ -82,7 +84,7 @@ export class Shop {
       card.innerHTML = `<div class="si-icon" style="${e.color ? `background:${e.color}` : ''}">${e.emoji}</div>
         <div class="si-name">${escapeHtml(e.label)}</div>
         ${e.desc ? `<div class="si-desc">${escapeHtml(e.desc)}</div>` : ''}
-        <div class="si-price">${e.owned ? e.ownedLabel || 'Acquis ✓' : `🪙 ${e.price}`}</div>`;
+        <div class="si-price">${e.owned ? e.ownedLabel || 'Acquis ✓' : `🪙 ${Math.round(e.price * this.discount)}${this.discount < 1 ? ` <s class="old-price">${e.price}</s>` : ''}`}</div>`;
       if (e.locked) {
         card.classList.add('owned');
         const note = document.createElement('div');
@@ -95,10 +97,11 @@ export class Shop {
       const btn = document.createElement('button');
       btn.className = 'btn small primary';
       btn.textContent = e.owned && !e.repeatable ? 'Acquis' : 'Acheter';
-      btn.disabled = (e.owned && !e.repeatable) || g.coins < e.price;
+      const price = Math.round(e.price * this.discount);
+      btn.disabled = (e.owned && !e.repeatable) || g.coins < price;
       btn.onclick = () => {
-        if (g.coins < e.price) return;
-        g.coins -= e.price;
+        if (g.coins < price) return;
+        g.coins -= price;
         e.buy();
         g.audio.play('pick');
         g.emit('buy', { id: e.id, shop: this.shopId });

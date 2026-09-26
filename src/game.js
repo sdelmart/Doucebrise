@@ -23,6 +23,7 @@ import { Archipelago } from './game/travel.js';
 import { SideQuests } from './game/sidequests.js';
 import { House } from './house/house.js';
 import { DecorMode } from './house/decor.js';
+import { Visits } from './house/visits.js';
 import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS, FURNITURE_CATS, shopFurniture } from './house/furniture.js';
 import { HOME_SIZES, ROOF_STYLES, FACADES, HOME_EXTRAS } from './world/home.js';
 import { Input, initKeyboardLayout, logicalCode } from './core/input.js';
@@ -103,6 +104,7 @@ export class Game {
     this.calendar = new Calendar(this);
     this.garden = new Garden(this);
     this.house = new House(this);
+    this.visits = new Visits(this);
     this.cooking = new Cooking(this);
     this.quests = new Quests(this);
     this.archipelago = new Archipelago(this);
@@ -313,6 +315,16 @@ export class Game {
     window.location.reload();
   }
 
+  /** Dans une maison (la sienne ou chez un habitant). */
+  get indoors() {
+    return this.house.inside || !!this.visits.active;
+  }
+
+  /** Point dehors qui représente l'intérieur (porte de la maison visitée). */
+  indoorAnchor() {
+    return this.world.village.doorFront(this.visits.active ? this.visits.active.def.house : 0, 1.6);
+  }
+
   get busy() {
     return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || !document.querySelector('#dialog').classList.contains('hidden');
   }
@@ -438,7 +450,7 @@ export class Game {
   // --- Étoiles filantes et vœux -------------------------------------------------------
 
   onShootingStar() {
-    if (this.state !== 'play' || this.house.inside) return;
+    if (this.state !== 'play' || this.indoors) return;
     this.tips.show('voeu');
     this.audio.play('star');
     this.wishT = 2.6;
@@ -566,6 +578,10 @@ export class Game {
 
   startDecor() {
     if (this.state !== 'play' || this.busy) return;
+    if (this.visits.active) {
+      this.ui.toast('🛋️ On ne décore pas chez les autres ! Rentre chez toi pour décorer.');
+      return;
+    }
     if (this.vehicles.riding) {
       this.ui.toast('Descends de ton véhicule pour décorer (V).');
       return;
@@ -652,6 +668,18 @@ export class Game {
     });
     const furn = (filter) => () => SHOP_FURNITURE.filter(filter).map(furnEntry);
     const shopFurn = (shop) => () => shopFurniture(shop).map(furnEntry);
+    const clothes = (shop) => ({
+      id: 'mode', label: '👕 Mode des îles',
+      items: () => shopClothes(shop).map((c) => ({
+        id: `${c.key}:${c.id}`, label: c.label, emoji: c.icon || '👕', price: c.price,
+        desc: { hat: 'Chapeau', glasses: 'Lunettes', back: 'Accessoire de dos', top: 'Haut' }[c.key] || '',
+        owned: this.unlocks.has(`${c.key}:${c.id}`),
+        buy: () => {
+          this.unlocks.add(`${c.key}:${c.id}`);
+          setTimeout(() => this.ui.toast('👗 Essaie-le dans la personnalisation (C) !', 2500), 600);
+        },
+      })),
+    });
     const recipes = (ids) => ids.map((id) => ({
       id: `recette:${id}`, label: `Recette : ${ITEMS[id].label}`, emoji: ITEMS[id].emoji, price: 250 + ITEMS[id].price * 4,
       desc: `Ingrédients : ${Object.entries(RECIPE_BY_ID[id]?.needs || {}).map(([k, n]) => `${ITEMS[k].emoji}×${n}`).join(' ')}`,
@@ -726,6 +754,7 @@ export class Game {
         return [
           { id: 'chalet', label: '🪵 Meubles de chalet', items: shopFurn('atelier') },
           { id: 'foret', label: '🌲 De la forêt', items: () => [item('pomme-pin', 14), item('champignon', 24), item('myrtille', 22)] },
+          clothes('atelier'),
           { id: 'recettes', label: '📖 Recettes', items: () => recipes(['soupe-bois']) },
           { id: 'vendre', label: '💰 Vendre' },
         ];
@@ -743,12 +772,14 @@ export class Game {
       case 'plongee':
         return [
           { id: 'lagon', label: '🐠 Trésors du lagon', items: shopFurn('plongee') },
+          clothes('plongee'),
           { id: 'recettes', label: '📖 Recettes', items: () => recipes(['salade-tropicale']) },
         ];
       case 'paillote':
         return [
           { id: 'boissons', label: '🍹 Rafraîchissements', items: () => [item('glace', 46), item('cocktail', 62), item('jus-coco', Math.round(ITEMS['jus-coco'].price * 1.6)), item('noix-coco', 36)] },
           { id: 'plage', label: '🏖️ Esprit plage', items: shopFurn('paillote') },
+          clothes('paillote'),
           { id: 'recettes', label: '📖 Recettes', items: () => recipes(['jus-coco']) },
         ];
       default:
@@ -979,9 +1010,23 @@ export class Game {
 
     // Porte de la maison (dehors) / sortie (dedans).
     const door = this.world.village.doorFront(0, 1.0);
-    if (!this.house.inside && Math.hypot(door.x - this.player.pos.x, door.z - this.player.pos.z) < 1.4) {
+    if (!this.indoors && Math.hypot(door.x - this.player.pos.x, door.z - this.player.pos.z) < 1.4) {
       this.ui.setPrompt({ pos: new THREE.Vector3(door.x, this.player.pos.y + 2.6, door.z), title: '🏡 Ta maison', actions: [{ key: 'E', label: 'Entrer' }] });
       if (input.hit('KeyE')) this.enterHouse();
+      return;
+    }
+    if (this.visits.nearExit()) {
+      const e = this.visits.entryPoint;
+      this.ui.setPrompt({ pos: new THREE.Vector3(e.x, 2.6, e.z + 0.8), title: '🚪 Porte', sub: `Chez ${this.visits.active.def.name}`, actions: [{ key: 'E', label: 'Sortir' }] });
+      if (input.hit('KeyE')) this.visits.exit();
+      return;
+    }
+    const vdoor = !this.indoors && !this.vehicles.riding ? this.visits.nearestDoor() : null;
+    if (vdoor) {
+      const { v, door: dp } = vdoor;
+      const open = this.visits.canVisit();
+      this.ui.setPrompt({ pos: new THREE.Vector3(dp.x, this.player.pos.y + 2.6, dp.z), title: `🚪 Maison de ${v.met ? v.def.name : '???'}`, sub: open ? 'Tu peux rendre visite' : `${v.def.name} dort (visites de 6 h à 22 h)`, actions: [{ key: 'E', label: open ? 'Frapper à la porte' : 'Frapper doucement', dim: !open }] });
+      if (input.hit('KeyE')) this.visits.enter(v);
       return;
     }
     if (this.house.nearDoorInside()) {
@@ -993,7 +1038,7 @@ export class Game {
 
     // Boîte aux lettres et tableau des petits boulots.
     const vil = this.world.village;
-    if (!this.house.inside && Math.hypot(vil.mailbox.x - this.player.pos.x, vil.mailbox.z - this.player.pos.z) < 1.6) {
+    if (!this.indoors && Math.hypot(vil.mailbox.x - this.player.pos.x, vil.mailbox.z - this.player.pos.z) < 1.6) {
       const n = this.calendar.letters.length;
       this.ui.setPrompt({ pos: new THREE.Vector3(vil.mailbox.x, this.player.pos.y + 2.2, vil.mailbox.z), title: '📬 Boîte aux lettres', sub: n ? `${n} lettre${n > 1 ? 's' : ''} !` : 'Vide', actions: [{ key: 'E', label: 'Relever le courrier', dim: !n }] });
       if (input.hit('KeyE')) this.calendar.openMail();
@@ -1008,27 +1053,27 @@ export class Game {
 
     // Archipel : panneaux des voyages, longue-vue, source chaude.
     const arch = this.archipelago;
-    const sign = !this.house.inside && arch.nearestSign();
+    const sign = !this.indoors && arch.nearestSign();
     if (sign) {
       this.tips.show('voyage');
       this.ui.setPrompt({ pos: new THREE.Vector3(sign.x - 1.2, this.player.pos.y + 3.4, sign.z - 1.2), title: '🧭 Voyages', sub: 'Le bateau de Nérée relie les villages', actions: [{ key: 'E', label: 'Voyager' }] });
       if (input.hit('KeyE')) arch.open(sign);
       return;
     }
-    if (!this.house.inside && arch.nearTelescope()) {
+    if (!this.indoors && arch.nearTelescope()) {
       const t = this.world.islands.telescope;
       this.ui.setPrompt({ pos: new THREE.Vector3(t.x, t.y + 2.6, t.z), title: '🔭 Longue-vue', sub: this.world.sky.isNight ? 'Idéal pour observer les étoiles' : 'Vue sur tout l\'archipel', actions: [{ key: 'E', label: this.world.sky.isNight ? 'Observer le ciel' : 'Regarder au loin' }] });
       if (input.hit('KeyE')) arch.stargaze();
       return;
     }
     const bs = this.world.islands.bandstand;
-    if (bs && !this.house.inside && !this.vehicles.riding && Math.hypot(bs.x - this.player.pos.x, bs.z - this.player.pos.z) < 3 && this.player.pos.y > bs.y - 0.3) {
+    if (bs && !this.indoors && !this.vehicles.riding && Math.hypot(bs.x - this.player.pos.x, bs.z - this.player.pos.z) < 3 && this.player.pos.y > bs.y - 0.3) {
       this.tips.show('kiosque');
       this.ui.setPrompt({ pos: new THREE.Vector3(bs.x, bs.y + 2.6, bs.z), title: '🎼 Kiosque à musique', sub: 'Les habitants adorent les concerts !', actions: [{ key: 'E', label: 'Jouer un air' }] });
       if (input.hit('KeyE')) this.playBandstand();
       return;
     }
-    if (!this.house.inside && !this.vehicles.riding && arch.inSpring()) {
+    if (!this.indoors && !this.vehicles.riding && arch.inSpring()) {
       this.tips.show('source');
       const sp = this.world.islands.spring;
       this.ui.setPrompt({ pos: new THREE.Vector3(sp.x, sp.y + 2.2, sp.z), title: '♨️ Source chaude', sub: arch.bathedDay === this.world.sky.day ? 'Déjà détendu·e aujourd\'hui' : 'Bonus « Bien-être » une fois par jour', actions: [{ key: 'E', label: 'Se prélasser' }] });
@@ -1341,7 +1386,9 @@ export class Game {
     const sdt = paused ? 0 : dt;
     const worldDt = this.state === 'title' ? 0 : sdt;
     this.world.update(worldDt, this.elapsed, this.player.pos, this.grassRadius);
-    this.audio.setRain(this.state === 'play' && !this.house.inside ? this.world.weather.rainAmt : 0);
+    this.audio.setRain(this.state === 'play' && !this.indoors ? this.world.weather.rainAmt : 0);
+    this.world.weather.indoors = this.indoors;
+    this.visits.update(this.camera);
     this.animals.update(sdt, this.world.sky.isNight);
     this.villagers.update(sdt);
     this.resources.update(sdt);
@@ -1362,13 +1409,13 @@ export class Game {
       if (free) this.updateInteractions();
       else if (!this.fishing.active) this.ui.setPrompt(null);
       this.quests.update();
-      const z = this.house.inside ? null : zoneAt(this.player.pos.x, this.player.pos.z);
+      const z = this.indoors ? null : zoneAt(this.player.pos.x, this.player.pos.z);
       if (z !== this.zone) {
         if (z) {
           this.ui.zoneBanner(z);
           this.emit('zone', { zone: z.id });
           if (z.id === 'bourg' || z.id === 'port') setTimeout(() => this.tips.show(z.id), 2500);
-        } else this.ui.setZoneLabel(this.house.inside ? { emoji: '🏡', name: 'Ta maison' } : null);
+        } else this.ui.setZoneLabel(this.house.inside ? { emoji: '🏡', name: 'Ta maison' } : this.visits.active ? { emoji: '🚪', name: `Chez ${this.visits.active.def.name}` } : null);
         this.zone = z;
       }
       if (this.lastDay !== this.world.sky.day) {
@@ -1420,7 +1467,7 @@ export class Game {
       // Astuces de première fois.
       if (this.state === 'play' && !this.busy && !this.panel) {
         if (!this.tips.seen.has('quete') && this.villagers.list.some((v) => v.root.visible && v.pos.distanceTo(p) < 14 && this.sideQuests.markerFor(v.def.id) === 'offer')) this.tips.show('quete');
-        if (sky.isNight && !this.house.inside && this.playtime > 60) this.tips.show('nuit');
+        if (sky.isNight && !this.indoors && this.playtime > 60) this.tips.show('nuit');
         if (this.playtime > 240) this.tips.show('pause');
         this.ui.refreshBuffs();
       }
@@ -1428,7 +1475,7 @@ export class Game {
     const a = this.atmo || { sea: 0, altitude: 0 };
     this.audio.updateAmbience(dt, {
       night: sky.isNight, rain: w.weather.rainAmt, sea: a.sea, altitude: a.altitude,
-      storm: w.weather.isStorm, inside: this.house.inside, active: this.state === 'play',
+      storm: w.weather.isStorm, inside: this.indoors, active: this.state === 'play',
     });
   }
 
@@ -1452,7 +1499,7 @@ export class Game {
     const sky = this.world.sky;
     // Dans la maison, on sauvegarde la position devant la porte (plus simple au rechargement) ;
     // en bateau ou en montgolfière, sur la terre ferme la plus proche.
-    let pos = this.house.inside ? this.world.village.doorFront(0, 1.6) : { x: this.player.pos.x, z: this.player.pos.z };
+    let pos = this.indoors ? this.indoorAnchor() : { x: this.player.pos.x, z: this.player.pos.z };
     if (this.player.vehicle && this.player.vehicle.def.mode !== 'ground') pos = this.vehicles.findLand(this.player.pos, 40, 0.2) || this.world.village.doorFront(0, 1.6);
     writeSave({
       appearance: this.character.appearance,
@@ -1478,6 +1525,7 @@ export class Game {
       calendar: this.calendar.serialize(),
       archipelago: this.archipelago.serialize(),
       tips: this.tips.serialize(),
+      visits: this.visits.serialize(),
       sideQuests: this.sideQuests.serialize(),
       stats: { playtime: Math.round(this.playtime || 0) },
     });
@@ -1511,6 +1559,7 @@ export class Game {
     this.calendar.restore(s.calendar);
     this.archipelago.restore(s.archipelago);
     this.tips.restore(s.tips);
+    this.visits.restore(s.visits);
     this.sideQuests.restore(s.sideQuests);
     this.playtime = s.stats?.playtime || 0;
   }

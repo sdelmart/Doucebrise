@@ -284,7 +284,7 @@ export class Weather {
     this.petalAmt = damp(this.petalAmt, si === 0 ? calm * 0.9 : 0, 0.5, dt);
     this.leafAmt = damp(this.leafAmt, si === 2 ? calm * 0.8 : 0, 0.5, dt);
     for (const [m, amt] of [[this.petals, this.petalAmt], [this.leaves, this.leafAmt]]) {
-      m.visible = amt > 0.02 && this.particlesOn !== false;
+      m.visible = amt > 0.02 && this.particlesOn !== false && !this.indoors;
       m.material.uniforms.uAmount.value = amt;
       m.material.uniforms.uOrigin.value.copy(focus);
     }
@@ -293,8 +293,8 @@ export class Weather {
     u.uAurora.value = si === 3 ? sky.nightFactor * (1 - c) * (this.auroraBoost || 0.7) : 0;
 
     // Pluie et neige autour de la caméra.
-    this.rain.visible = this.rainAmt > 0.02;
-    this.snow.visible = this.snowAmt > 0.02;
+    this.rain.visible = this.rainAmt > 0.02 && !this.indoors;
+    this.snow.visible = this.snowAmt > 0.02 && !this.indoors;
     this.rain.material.uniforms.uAmount.value = this.rainAmt;
     this.snow.material.uniforms.uAmount.value = this.snowAmt;
     this.rain.material.uniforms.uOrigin.value.copy(focus);

@@ -24,7 +24,7 @@ export const CLOTH_COLORS = [
 
 const o = (id, label, icon = '') => ({ id, label, icon });
 // Articles à acheter chez Lila (price) ou à recevoir en cadeau (reward : qui le donne).
-const buy = (id, label, icon, price) => ({ id, label, icon, price });
+const buy = (id, label, icon, price, shop) => ({ id, label, icon, price, shop });
 const gift = (id, label, icon, from) => ({ id, label, icon, reward: from });
 
 export const OPTIONS = {
@@ -42,7 +42,8 @@ export const OPTIONS = {
     gift('marin', 'Bob de marin', '⚓', 'Marin'), gift('etoile', 'Serre-tête étoile', '⭐', 'la quête « Grande famille »'),
     buy('casque', 'Casque de vélo', '⛑️', 250), buy('bandeau', 'Bandeau à nœud', '🎀', 180),
     gift('aureole', 'Auréole', '😇', 'le carnet d\'étoiles'), gift('chatBonnet', 'Bonnet chat', '🐱', 'le carnet d\'étoiles'),
-    gift('capitaine', 'Casquette de capitaine', '🧑‍✈️', 'Léo'), gift('tasse', 'Chapeau tasse de thé', '☕', 'Mimi')],
+    gift('capitaine', 'Casquette de capitaine', '🧑‍✈️', 'Léo'), gift('tasse', 'Chapeau tasse de thé', '☕', 'Mimi'),
+    buy('pompon', 'Bonnet à pompon', '🧶', 380, 'atelier'), buy('capeline', 'Capeline de plage', '👒', 420, 'paillote'), buy('hibiscus', 'Couronne d\'hibiscus', '🌺', 360, 'plongee')],
   glasses: [o('aucune', 'Aucunes'), o('rondes', 'Rondes'), o('carrees', 'Carrées'), o('soleil', 'Soleil'), o('coeur', 'Cœur'), buy('etoiles', 'Étoiles', '🤩', 250), buy('monocle', 'Monocle', '🧐', 200),
     buy('aviateur', 'Aviateur', '🕶️', 300), gift('lune', 'Lunettes lune', '🌙', 'le carnet d\'étoiles'), gift('plongee', 'Masque de plongée', '🤿', 'Coralie')],
   back: [o('aucun', 'Rien'), o('sac', 'Sac à dos'), o('ailes', 'Ailes de fée'), o('cape', 'Cape'), o('echarpe', 'Écharpe'), o('queueRenard', 'Queue de renard'),
@@ -50,7 +51,7 @@ export const OPTIONS = {
     gift('panier', 'Panier à dos', '🧺', 'Pomme'), gift('nounours', 'Sac nounours', '🧸', 'Noé'),
     buy('sacChat', 'Sac chat', '🐈', 450), gift('ailesAnge', "Ailes d'ange", '🪽', 'le carnet d\'étoiles'),
     gift('ailesArcEnCiel', 'Ailes arc-en-ciel', '🌈', 'le carnet d\'étoiles'), gift('filet', 'Filet en bandoulière', '🎒', 'Noé'),
-    gift('sacRando', 'Sac de randonnée', '🎒', 'Sacha')],
+    gift('sacRando', 'Sac de randonnée', '🎒', 'Sacha'), buy('surf', 'Planche de surf', '🏄', 650, 'paillote'), buy('luge', 'Petite luge', '🛷', 520, 'atelier')],
 };
 
 export const DEFAULT_APPEARANCE = {
@@ -133,9 +134,9 @@ export function isLocked(key, id, unlocks) {
 }
 
 /** Articles de la boutique de Lila. */
-export function shopClothes() {
+export function shopClothes(shop = 'couture') {
   const out = [];
-  for (const [key, list] of Object.entries(OPTIONS)) for (const opt of list) if (opt.price) out.push({ key, ...opt });
+  for (const [key, list] of Object.entries(OPTIONS)) for (const opt of list) if (opt.price && (opt.shop || 'couture') === shop) out.push({ key, ...opt });
   return out;
 }
 

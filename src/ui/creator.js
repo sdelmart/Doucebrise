@@ -90,10 +90,11 @@ export class Creator {
       const locked = this.game.isLocked(key, o.id);
       b.className = `chip${this.a[key] === o.id ? ' active' : ''}${locked ? ' locked' : ''}`;
       b.textContent = `${locked ? '🔒 ' : ''}${o.icon ? `${o.icon} ` : ''}${o.label}`;
-      b.title = locked ? (o.price ? `En vente chez Lila (Couture) : ${o.price} 🪙` : `Cadeau de ${o.reward}`) : '';
+      const where = { atelier: 'chez Hugo (Atelier du bois, Bourg-Sapin)', paillote: 'chez Paco (Paillote du lagon)', plongee: 'chez Coralie (Club de plongée, Port-Corail)' }[o.shop] || 'chez Lila (Couture)';
+      b.title = locked ? (o.price ? `En vente ${where} : ${o.price} 🪙` : `Cadeau de ${o.reward}`) : '';
       b.onclick = () => {
         if (locked) {
-          this.game.ui.toast(o.price ? `🔒 ${o.label} : en vente chez Lila, à la Couture (${o.price} 🪙).` : `🔒 ${o.label} : un cadeau de ${o.reward}… Deviens son ami !`);
+          this.game.ui.toast(o.price ? `🔒 ${o.label} : en vente ${where} (${o.price} 🪙).` : `🔒 ${o.label} : un cadeau de ${o.reward}… Deviens son ami !`);
           return;
         }
         this.set(key, o.id);

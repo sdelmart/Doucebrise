@@ -757,6 +757,38 @@ function markerTexture(kind) {
   return t;
 }
 
+// Répliques supplémentaires (archipel, saisons, souvenirs).
+const EXTRA_CHAT = {
+  rose: ['Élise et moi, on faisait les confitures ensemble, autrefois. Les meilleures de l\'archipel !', 'Tu as vu les cerisiers au printemps ? On dirait de la neige rose.', 'Un jardin, c\'est comme une amitié : ça s\'arrose tous les jours.', 'Si tu passes au bourg, dis bonjour à Élise de ma part.', 'Les abeilles adorent mes fleurs. Moi, j\'adore leur miel !'],
+  pomme: ['Les noix de coco de Paco se vendent comme des petits pains !', 'Au marché, on apprend tout ce qui se passe sur l\'île. Tout !', 'Une pomme par jour… et le docteur n\'a plus de clients !', 'Nérée prétend que ses poissons sont plus frais que les miens. Pfff.', 'Le verger donne plus de pommes depuis que le phare brille. Coïncidence ?'],
+  bruno: ['Le pin de l\'île des Pins sent bon la résine. Hugo a de la chance.', 'Une chaise bancale, c\'est une chaise qui a une histoire.', '… Le kiosque de la prairie ? C\'est moi qui ai posé le plancher.', 'Mesure deux fois, coupe une fois. Toujours.', 'Le bois vivant craque la nuit. Il raconte sa journée.'],
+  lila: ['Les hibiscus de l\'île Corail donnent une teinture rose incroyable !', 'Un chapeau, c\'est la cerise sur le gâteau d\'une tenue.', 'Maëlys et moi, on prépare un défilé sur la plage. Chut, c\'est secret !', 'J\'ai cousu une écharpe pour chaque chèvre des neiges. Elles n\'ont pas aimé.', 'Le vichy revient à la mode. Enfin, il n\'est jamais parti.'],
+  marin: ['Nérée était mon second, autrefois. Un sacré marin, ce gamin.', 'Les baleines chantaient, quand j\'étais jeune. Tu y crois, toi ?', 'Le vent du large a toujours raison. Toujours.', 'Au Lac Miroir, l\'eau est si froide que les poissons ont des écharpes. Ha !', 'Un bon pêcheur sait attendre. Un très bon pêcheur sait attendre en dormant.'],
+  noe: ['Sacha m\'a montré une chèvre qui escalade les rochers à la verticale ! TROP FORT !', 'Un jour, j\'irai jusqu\'au sommet du Pic tout seul. Enfin… avec toi.', 'Tu savais que les loutres se tiennent la main pour dormir ? C\'est vrai !', 'J\'ai trouvé un cristal ! Ah non, c\'est un bonbon.', 'Les perroquets de la palmeraie savent dire « Noé ». Je leur ai appris !'],
+  mimi: ['Les chats de Port-Corail adorent les sardines de Nérée. Traîtres !', 'Miaou… pardon, c\'est l\'habitude.', 'Un chat qui ronronne, c\'est un chat qui dit merci.', 'J\'ai rêvé que les chats avaient leur propre île. Ce serait le paradis.', 'Chut… Pompon dort sur la caisse. On ne le dérange pas.'],
+  leo: ['Le pont du Soleil tient bon. Je l\'ai vérifié à vélo. Trois fois.', 'Une luge avec un moteur, tu crois que Hugo me laisserait essayer ?', 'Les montgolfières détestent le vent d\'orage. Moi aussi.', 'Si ça roule, je le répare. Si ça vole, je le répare aussi !', 'J\'ai installé des phares sur ma trottinette. Pour les balades de nuit.'],
+  aurele: ['L\'eau de la source vient du cœur de la montagne. Elle est plus vieille que moi.', 'Un bain le matin, une tisane le soir. Voilà le secret d\'une longue vie.', 'Les jeunes courent partout. Moi, je laisse le monde venir à moi.', 'Le Pic a vu passer mille hivers. Il a de la patience, lui aussi.', 'Écoute le silence de la neige. Il en dit long.'],
+  elise: ['Rose m\'écrit de nouveau ! Tu ne sais pas le bonheur que ça me fait.', 'Le secret d\'une pâte feuilletée ? Du beurre froid et des mains chaudes.', 'Les croissants du matin partent avant sept heures. Lève-toi tôt !', 'Hugo mange mes tartes en cachette. Je le sais, il y a des miettes partout.', 'Une pincée de cannelle, et tout l\'hiver sent bon.'],
+  hugo: ['Un arbre abattu, deux arbres plantés. C\'est la règle de la montagne.', 'Bruno ? Un grand artisan. Mais ne lui dis pas que j\'ai dit ça.', 'Les écureuils me volent mes pommes de pin. On a un accord, eux et moi.', 'La hache, c\'est comme le piano : il faut du rythme.', 'Le soir, je sculpte au coin du poêle. Des chèvres, surtout.'],
+  sacha: ['Là-haut, on voit les trois îles d\'un seul coup d\'œil. Magique.', 'La constellation du Chat, c\'est moi qui l\'ai baptisée. Elle est officielle. Presque.', 'Les aurores dansent surtout les nuits d\'hiver bien claires.', 'Une bonne randonnée commence par de bonnes chaussettes.', 'Les chèvres des neiges connaissent des chemins que personne ne connaît.'],
+  neree: ['Le port n\'a jamais été aussi animé depuis que le phare brille !', 'Marin ? Il m\'a tout appris. Même à perdre aux cartes.', 'Un bon capitaine sent la tempête avant qu\'elle arrive. Là, je sens… des croissants.', 'Mon bateau s\'appelle « Bonne Brise ». Original, hein ?', 'La mer donne, la mer reprend. Surtout mes chapeaux.'],
+  coralie: ['Le lagon abrite plus de cent espèces. J\'en ai compté quatre-vingt-dix-sept !', 'Les tortues reviennent pondre sur la même plage où elles sont nées. Fascinant.', 'Le corail, c\'est vivant ! Il faut le ramasser seulement quand il est tombé.', 'Un jour, je plongerai avec la baleine. C\'est mon rêve.', 'Les perles naissent d\'un grain de sable. Comme les belles idées.'],
+  paco: ['¡ Hola ! Un jus de coco pour te rafraîchir ?', 'La paillote ferme quand le dernier danseur s\'endort.', 'Le secret de mes cocktails ? De la musique pendant qu\'on mélange !', 'Les perroquets me réclament des cacahuètes. Je n\'ai que des noix de coco.', 'Le coucher de soleil sur le lagon, c\'est gratuit et c\'est le plus beau spectacle.'],
+  maelys: ['Les couleurs du lagon changent toutes les heures. Impossible de les attraper !', 'Je peins le phare chaque saison. Il n\'est jamais pareil.', 'Un tableau, c\'est une fenêtre qu\'on ouvre sur un souvenir.', 'Lila m\'a promis une robe couleur aurore. J\'ai hâte !', 'Parfois, je peins les yeux fermés. C\'est… surprenant.'],
+};
+const SHARED_LINES = {
+  storm: ['Quel orage ! Reste à l\'abri, d\'accord ?', 'Tu as entendu ce coup de tonnerre ? J\'ai sursauté !', 'Les éclairs, c\'est beau… de loin.'],
+  fog: ['Quel brouillard ce matin ! On ne voit pas le bout de son nez.', 'Le brouillard, c\'est la mer qui fait la grasse matinée.'],
+  aurora: ['Tu as vu les aurores, cette nuit ? Le ciel dansait !'],
+  visit: ['Fais comme chez toi ! Mais ne touche pas à mes affaires, hein.', 'Ça me fait plaisir que tu passes me voir.', 'Tu veux un thé ? J\'en ai toujours un qui chauffe.', 'Alors, comment tu trouves ma déco ?'],
+  festival: {
+    fleurs: ['Des fleurs partout, quel bonheur !'], peche: ['Tu participes au concours ? Bonne chance !'], recolte: ['Quelle belle fête des récoltes !'], etoiles: ['Ce soir, on regarde les étoiles ensemble ?'],
+    cerisiers: ['Un pique-nique sous les cerisiers, c\'est la meilleure fête de l\'année !'], port: ['Tu as vu les voiliers dans la baie ? Magnifique !'],
+    lanternes: ['Ce soir, les lanternes vont flotter sur le Lac Miroir. Il faut voir ça !'], hiver: ['Le marché d\'hiver ! Un chocolat chaud, et tout va mieux.'],
+  },
+};
+for (const v of VILLAGERS) if (EXTRA_CHAT[v.id]) v.lines.chat.push(...EXTRA_CHAT[v.id]);
+
 const RING = 6.8;
 const WALK = 2.3;
 
@@ -1016,6 +1048,13 @@ export class Villager {
     const h = g.world.sky.hour;
     const pool = [];
     if (w.isRaining) pool.push(this.line('rain'));
+    const pick = (list) => list[Math.floor(Math.random() * list.length)];
+    if (w.isStorm) pool.push(pick(SHARED_LINES.storm));
+    if (w.current === 'brouillard') pool.push(pick(SHARED_LINES.fog));
+    if (w.seasonIndex === 3 && (h < 9 || h > 20)) pool.push(pick(SHARED_LINES.aurora));
+    const fest = g.calendar?.festival;
+    if (fest && SHARED_LINES.festival[fest.id]) pool.push(pick(SHARED_LINES.festival[fest.id]), pick(SHARED_LINES.festival[fest.id]));
+    if (g.visits?.active === this) pool.push(pick(SHARED_LINES.visit), pick(SHARED_LINES.visit));
     if (w.seasonIndex === 3) pool.push(this.line('snow'));
     if (w.seasonIndex === 2) pool.push(this.line('autumn'));
     if (h >= 18) pool.push(this.line('evening'));

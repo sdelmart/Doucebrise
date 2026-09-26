@@ -353,7 +353,7 @@ export class UI {
     if (g.sitting) list = [[K('interact'), 'Se lever']];
     else if (g.fishing.active) list = [[K('interact'), 'Ferrer / remonter']];
     else if (veh) list = [[move, 'Conduire'], [K('run'), 'Accélérer'], [K('interact'), veh.def.mode === 'air' ? 'Atterrir' : 'Descendre']];
-    else if (g.house.inside) list = [[move, 'Marcher'], [K('interact'), 'Interagir'], [K('decor'), 'Décorer'], [K('bag'), 'Sac'], [keyLabel('Escape'), 'Menu']];
+    else if (g.indoors) list = [[move, 'Marcher'], [K('interact'), 'Interagir'], ...(g.house.inside ? [[K('decor'), 'Décorer']] : []), [K('bag'), 'Sac'], [keyLabel('Escape'), 'Menu']];
     else {
       list = [[move, 'Marcher'], [K('run'), 'Courir'], [K('jump'), 'Sauter'], [K('interact'), 'Interagir'], [K('map'), 'Carte'], [K('journal'), 'Journal']];
       if (Object.keys(g.vehicles.owned || {}).length) list.push([K('vehicle'), 'Véhicule']);
@@ -481,7 +481,7 @@ export class UI {
     const ctx = c.getContext('2d');
     const size = c.width;
     // Dans la maison, la carte reste centrée sur le jardin.
-    const p = this.game.house.inside ? this.game.world.village.doorFront(0, 1.6) : this.game.player.pos;
+    const p = this.game.indoors ? this.game.indoorAnchor() : this.game.player.pos;
     const range = 46; // unités visibles de part et d'autre
     const img = this.mapImage;
     const scale = img.width / (MAP_RANGE * 2);
@@ -553,7 +553,7 @@ export class UI {
   }
 
   centerBigMap(half) {
-    const p = this.game.house.inside ? this.game.world.village.doorFront(0, 1.6) : this.game.player.pos;
+    const p = this.game.indoors ? this.game.indoorAnchor() : this.game.player.pos;
     this.mapView.cx = p.x;
     this.mapView.cz = p.z;
     if (half) this.mapView.half = half;
@@ -663,7 +663,7 @@ export class UI {
     }
     // Joueur : flèche orientée.
     const p = g.player;
-    const pp = g.house.inside ? g.world.village.doorFront(0, 1.6) : p.pos;
+    const pp = g.indoors ? g.indoorAnchor() : p.pos;
     const [px, py] = toMap(pp.x, pp.z);
     ctx.save();
     ctx.translate(px, py);

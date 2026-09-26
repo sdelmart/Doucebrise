@@ -490,6 +490,49 @@ export class Character {
     const c = a.hatColor;
     const s = new Shape();
     switch (a.hat) {
+      case 'pompon':
+        s.add(new THREE.SphereGeometry(R * 1.13, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), c, { pos: HC, rot: [-0.25, 0, 0], scale: HEAD_SCALE });
+        s.add(G.torus(R * 1.1, 0.055, 8, 28), '#ffffff', { pos: [0, 0.37, -0.03], rot: [Math.PI / 2 - 0.25, 0, 0], scale: [HEAD_SCALE[0], 1, 1] });
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2;
+          s.add(G.sphere(0.035, 6, 5), '#ffffff', { pos: [Math.sin(a) * 0.36, 0.52 - Math.cos(a) * 0.08, Math.cos(a) * 0.34 - 0.05], scale: [1, 1, 0.6] });
+        }
+        s.add(G.sphere(0.14, 12, 10), '#ffffff', { pos: [0, 0.8, -0.1] });
+        for (const side of [-1, 1]) {
+          s.add(G.sphere(0.1, 10, 8), c, { pos: [side * 0.33, 0.24, -0.02], scale: [0.45, 1.25, 0.9] });
+          s.add(G.cyl(0.012, 0.012, 0.3, 4), '#ffffff', { pos: [side * 0.34, 0.03, 0] });
+          s.add(G.sphere(0.04, 6, 5), '#ffffff', { pos: [side * 0.34, -0.13, 0] });
+        }
+        break;
+      case 'capeline':
+        s.add(G.cyl(0.74, 0.74, 0.02, 32), c, { pos: [0, 0.6, -0.02], rot: [-0.16, 0, 0.04] });
+        s.add(G.torus(0.74, 0.02, 5, 32), darken(c, 0.08), { pos: [0, 0.6, -0.02], rot: [Math.PI / 2 - 0.16, 0, 0.04] });
+        s.add(G.cyl(0.26, 0.3, 0.22, 20), c, { pos: [0, 0.72, -0.04], rot: [-0.14, 0, 0] });
+        s.add(G.cyl(0.305, 0.305, 0.07, 20), '#ffffff', { pos: [0, 0.645, -0.03], rot: [-0.14, 0, 0] });
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2;
+          s.add(G.sphere(0.05, 8, 6), '#ff6f91', { pos: [0.3 + Math.cos(a) * 0.05, 0.68 + Math.sin(a) * 0.05, 0.1], scale: [1, 1, 0.5] });
+        }
+        s.add(G.sphere(0.03, 6, 5), '#ffd84d', { pos: [0.3, 0.68, 0.13] });
+        break;
+      case 'hibiscus': {
+        s.add(G.torus(0.34, 0.03, 6, 28), '#5fae55', { pos: [0, 0.57, -0.02], rot: [Math.PI / 2 - 0.25, 0, 0] });
+        const cols = [c, '#ff6f91', '#ffd84d'];
+        for (let i = 0; i < 6; i++) {
+          const an = (i / 6) * Math.PI * 2 + 0.3;
+          const x = Math.cos(an) * 0.34;
+          const zz = Math.sin(an) * 0.34;
+          const y = 0.57 - zz * Math.sin(0.25);
+          const z = zz * Math.cos(0.25) - 0.02;
+          for (let p = 0; p < 5; p++) {
+            const pa = (p / 5) * Math.PI * 2;
+            s.add(G.sphere(0.06, 7, 5), cols[i % cols.length], { pos: [x + Math.cos(pa) * 0.06, y + 0.03, z + Math.sin(pa) * 0.06], scale: [1, 0.45, 1] });
+          }
+          s.add(G.sphere(0.03, 6, 5), '#ffe27a', { pos: [x, y + 0.06, z] });
+          s.add(G.sphere(0.06, 6, 5), '#5fae55', { pos: [x * 1.12, y - 0.01, z * 1.12], scale: [1.4, 0.35, 0.8] });
+        }
+        break;
+      }
       case 'beret':
         s.add(G.sphere(0.33, 18, 10), c, { pos: [0.05, 0.66, -0.02], scale: [1.12, 0.32, 1.12], rot: [0, 0, -0.25] });
         s.add(G.cyl(0.015, 0.02, 0.07, 5), c, { pos: [0.02, 0.77, -0.02] });
@@ -894,6 +937,37 @@ export class Character {
         }
         s.add(G.sphere(0.02, 6, 5), '#ff8fab', { pos: [0, 0.22, -0.34 * b] });
         for (const x of [-0.1, 0.1]) s.add(G.box(0.035, 0.3, 0.02), darken(c, 0.25), { pos: [x, 0.24, 0.175 * b], rot: [-0.1, 0, 0] });
+        this.addPart(this.torso, s.build());
+        break;
+      }
+      case 'surf': {
+        const s = new Shape();
+        const board = new Shape();
+        board.add(G.sphere(1, 16, 10), c, { scale: [0.2, 0.62, 0.04] });
+        board.add(G.box(0.03, 1.1, 0.085), '#ffffff', {});
+        board.add(G.sphere(1, 10, 6), lighten(c, 0.35), { pos: [0, -0.35, 0.02], scale: [0.14, 0.12, 0.03] });
+        board.add(G.cone(0.05, 0.12, 4), '#3d3744', { pos: [0, -0.52, -0.05], rot: [Math.PI / 2, 0, 0], scale: [0.3, 1, 1] });
+        const geo = board.build();
+        geo.rotateZ(0.35);
+        geo.translate(0, 0.25, -0.3 * b);
+        s.addRaw(geo);
+        s.add(G.box(0.03, 0.6, 0.02), '#6b4a3a', { pos: [0, 0.22, 0.18 * b], rot: [0, 0, 0.35] });
+        this.addPart(this.torso, s.build());
+        break;
+      }
+      case 'luge': {
+        const s = new Shape();
+        const sl = new Shape();
+        for (const x of [-0.14, 0.14]) {
+          sl.add(G.box(0.03, 0.62, 0.03), '#c0584a', { pos: [x, 0, 0.06] });
+          sl.add(G.torus(0.06, 0.015, 5, 10, Math.PI), '#c0584a', { pos: [x, 0.31, 0.02], rot: [0, Math.PI / 2, 0] });
+        }
+        for (let i = 0; i < 5; i++) sl.add(G.box(0.36, 0.08, 0.025), i % 2 ? '#e8c9a0' : c, { pos: [0, -0.24 + i * 0.12, 0] });
+        const geo = sl.build();
+        geo.rotateZ(-0.2);
+        geo.translate(0, 0.22, -0.28 * b);
+        s.addRaw(geo);
+        for (const x of [-0.12, 0.12]) s.add(G.box(0.03, 0.34, 0.02), '#6b4a3a', { pos: [x, 0.24, 0.175 * b], rot: [-0.1, 0, 0] });
         this.addPart(this.torso, s.build());
         break;
       }

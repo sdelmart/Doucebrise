@@ -143,7 +143,7 @@ export class Vehicles {
     const g = this.game;
     const def = VEHICLES[id];
     const p = g.player.pos;
-    if (g.house.inside) {
+    if (g.indoors) {
       g.ui.toast('🏡 Sors de la maison pour prendre ton véhicule !');
       return;
     }

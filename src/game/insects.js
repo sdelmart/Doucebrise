@@ -275,7 +275,7 @@ export class Insects {
   update(dt) {
     const g = this.game;
     const p = g.player.pos;
-    const outside = g.state === 'play' && !g.house.inside;
+    const outside = g.state === 'play' && !g.indoors;
     this.spawnT -= dt;
     if (outside && this.spawnT <= 0) {
       this.spawnT = 2.5;

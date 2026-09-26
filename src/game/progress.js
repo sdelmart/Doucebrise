@@ -127,6 +127,8 @@ export const ACHIEVEMENTS = [
   A('voeux-10', 'Attrape-étoiles', 'Faire 10 vœux sous les étoiles filantes.', (g, s) => s.wish >= 10, { title: 'Attrape-étoiles', furniture: { 'etoile-murale': 1 } }),
   A('veilleurs', 'Nuit des Veilleurs', 'Rallumer le grand sapin de Bourg-Sapin.', (g) => g.quests.completed.includes('sapin-rallume'), { coins: 400 }),
   A('baleine', 'Le chant du lagon', 'Faire revenir la baleine au large de l\'île Corail.', (g) => g.quests.completed.includes('chant-baleine'), { coins: 600 }),
+  A('visite', 'Toc toc !', 'Rendre visite à un habitant chez lui.', (g) => Object.keys(g.visits.visitedDay).length >= 1),
+  A('visites-16', 'Voisin·e de tout l\'archipel', 'Rendre visite aux 16 habitants.', (g) => Object.keys(g.visits.visitedDay).length >= 16, { title: 'Voisin·e modèle', coins: 800 }),
   A('kiosque', 'Première représentation', 'Jouer un air au kiosque à musique.', (g, s) => s.music >= 1),
   A('concert', 'Star du kiosque', 'Jouer au kiosque devant au moins 3 habitants.', (g, s) => s.concert >= 1, { title: 'Star du kiosque', coins: 300 }),
   A('telescope', 'Astronome en herbe', 'Observer le ciel au télescope de Sacha.', (g, s) => s.stargaze >= 1),
@@ -208,6 +210,7 @@ export class Progress {
     on('travel', () => bump('travel'));
     on('bathe', () => bump('bathe'));
     on('wish', () => bump('wish'));
+    on('visit', () => bump('visit'));
     on('music', (d) => {
       bump('music');
       if (d.fans >= 3) bump('concert');

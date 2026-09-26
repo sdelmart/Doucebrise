@@ -237,7 +237,7 @@ export class Dialogue {
     const r = v.reaction(id);
     const birthday = g.calendar.isBirthday(v.def.id);
     const flowers = g.calendar.festival?.id === 'fleurs' && id === 'fleur';
-    const gain = GIFT_GAIN[r] * (birthday && r !== 'dislike' ? 2 : 1) * (flowers ? 1.5 : 1);
+    const gain = GIFT_GAIN[r] * (birthday && r !== 'dislike' ? 2 : 1) * (flowers ? 1.5 : 1) * (r !== 'dislike' ? g.calendar.giftBonus(id) : 1);
     this.addFriendship(v, Math.round(gain));
     v.character.play(r === 'dislike' ? 'think' : r === 'love' ? 'celebrate' : 'clap', 1.4);
     if (r !== 'dislike') g.particles.emit('heart', v.pos.clone().setY(v.pos.y + 2.2), { count: r === 'love' ? 5 : 2 });
