@@ -115,7 +115,7 @@ export class Journal {
     if (cur) {
       const chap = CHAPTERS.find((c) => c.id === cur.chapter);
       const giver = cur.giver ? this.game.villagers.get(cur.giver) : null;
-      html += `<div class="chap-banner">${chap.emoji} ${chap.n <= 8 ? `Chapitre ${chap.n}` : 'Épilogue'} — ${escapeHtml(chap.title)} <button class="btn small" data-replay>Relire</button></div>`;
+      html += `<div class="chap-banner">${chap.emoji} ${chap.id === 'epilogue' ? 'Épilogue' : `Chapitre ${chap.n}`} — ${escapeHtml(chap.title)} <button class="btn small" data-replay>Relire</button></div>`;
       html += `<div class="quest-card current"><div class="q-title">${escapeHtml(cur.title)}</div>
         ${giver ? `<div class="q-giver">${giver.def.emoji} ${escapeHtml(giver.def.name)}</div>` : ''}
         <p class="q-desc">${escapeHtml(cur.desc)}</p>`;

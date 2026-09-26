@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { World } from './world/world.js';
 import { zoneAt, LANDMARKS, islandAt } from './world/layout.js';
+import { whaleModel } from './world/islands.js';
 import { Character } from './player/character.js';
 import { Player } from './player/player.js';
 import { FollowCamera } from './player/camera.js';
@@ -40,6 +41,8 @@ import { PhotoMode } from './ui/photo.js';
 import { BagPanel } from './ui/panels.js';
 import { TitleMenu, PauseMenu, SettingsPanel, Credits, toggleFullscreen } from './ui/menus.js';
 import { PerfOverlay } from './ui/perf.js';
+import { Tips } from './ui/tips.js';
+import { UINavigator } from './ui/navigator.js';
 import { Guide } from './ui/guide.js';
 
 const PET_NAMES = ['Moka', 'Caramel', 'Noisette', 'Biscuit', 'Plume', 'Pépite', 'Brioche', 'Praline', 'Nougat', 'Mochi', 'Tofu', 'Pistache', 'Câlin', 'Filou', 'Guimauve', 'Cannelle', 'Pompon', 'Réglisse', 'Sésame', 'Myrtille'];
@@ -120,6 +123,8 @@ export class Game {
     this.titleMenu = new TitleMenu(this);
     this.pauseMenu = new PauseMenu(this);
     this.credits = new Credits(this);
+    this.tips = new Tips(this);
+    this.navigator = new UINavigator(this);
 
     this.state = 'title';
     this.panel = null;
@@ -434,6 +439,7 @@ export class Game {
 
   onShootingStar() {
     if (this.state !== 'play' || this.house.inside) return;
+    this.tips.show('voeu');
     this.audio.play('star');
     this.wishT = 2.6;
     this.ui.wishPrompt?.(true);
@@ -555,7 +561,7 @@ export class Game {
     c.play(name, dur);
     if (name === 'kiss') setTimeout(() => this.particles.emit('heart', this.player.pos.clone().setY(this.player.pos.y + 1.6), { count: 3 }), 400);
     if (name === 'dance') this.audio.play('pet');
-    this.emit('emote', { name });
+    this.emit('emote', { name, zone: this.zone?.id });
   }
 
   startDecor() {
@@ -700,7 +706,7 @@ export class Game {
             unlock('tool:plumeau', 'Plumeau', '🪶', 250, 'Touche G près d\'un animal pour jouer avec lui !'),
           ] },
           { id: 'f-animaux', label: '🧺 Coin des minous', items: furn((f) => f.cat === 'animaux') },
-          { id: 'douceurs', label: '🍰 Douceurs', items: () => ['tarte', 'jus', 'confiture', 'maki'].map((id) => item(id, Math.round(ITEMS[id].price * 1.4), { desc: 'Parfait comme cadeau !' })) },
+          { id: 'douceurs', label: '🍰 Douceurs', items: () => ['tarte', 'jus', 'confiture', 'maki'].map((id) => item(id, Math.round(ITEMS[id].price * 1.6), { desc: 'Parfait comme cadeau !' })) },
         ];
       case 'garage':
         return [{
@@ -712,7 +718,7 @@ export class Game {
         }];
       case 'patisserie':
         return [
-          { id: 'douceurs', label: '🥐 Douceurs', items: () => [item('croissant', 45), item('chocolat', 50), ...['tarte-myrtille', 'crepe', 'tarte'].map((id) => item(id, Math.round(ITEMS[id].price * 1.4), { desc: 'Tout juste sorti du four !' }))] },
+          { id: 'douceurs', label: '🥐 Douceurs', items: () => [item('croissant', 48), item('chocolat', 55), ...['tarte-myrtille', 'crepe', 'tarte'].map((id) => item(id, Math.round(ITEMS[id].price * 1.6), { desc: 'Tout juste sorti du four !' }))] },
           { id: 'ingredients', label: '🧺 Ingrédients', items: () => [item('myrtille', 22), item('fraise', 34), item('mais', 34), item('pomme', 22)] },
           { id: 'recettes', label: '📖 Recettes', items: () => recipes(['tarte-myrtille', 'crepe']) },
         ];
@@ -741,7 +747,7 @@ export class Game {
         ];
       case 'paillote':
         return [
-          { id: 'boissons', label: '🍹 Rafraîchissements', items: () => [item('glace', 42), item('cocktail', 55), item('jus-coco', Math.round(ITEMS['jus-coco'].price * 1.4)), item('noix-coco', 36)] },
+          { id: 'boissons', label: '🍹 Rafraîchissements', items: () => [item('glace', 46), item('cocktail', 62), item('jus-coco', Math.round(ITEMS['jus-coco'].price * 1.6)), item('noix-coco', 36)] },
           { id: 'plage', label: '🏖️ Esprit plage', items: shopFurn('paillote') },
           { id: 'recettes', label: '📖 Recettes', items: () => recipes(['jus-coco']) },
         ];
@@ -1004,6 +1010,7 @@ export class Game {
     const arch = this.archipelago;
     const sign = !this.house.inside && arch.nearestSign();
     if (sign) {
+      this.tips.show('voyage');
       this.ui.setPrompt({ pos: new THREE.Vector3(sign.x - 1.2, this.player.pos.y + 3.4, sign.z - 1.2), title: '🧭 Voyages', sub: 'Le bateau de Nérée relie les villages', actions: [{ key: 'E', label: 'Voyager' }] });
       if (input.hit('KeyE')) arch.open(sign);
       return;
@@ -1016,11 +1023,13 @@ export class Game {
     }
     const bs = this.world.islands.bandstand;
     if (bs && !this.house.inside && !this.vehicles.riding && Math.hypot(bs.x - this.player.pos.x, bs.z - this.player.pos.z) < 3 && this.player.pos.y > bs.y - 0.3) {
+      this.tips.show('kiosque');
       this.ui.setPrompt({ pos: new THREE.Vector3(bs.x, bs.y + 2.6, bs.z), title: '🎼 Kiosque à musique', sub: 'Les habitants adorent les concerts !', actions: [{ key: 'E', label: 'Jouer un air' }] });
       if (input.hit('KeyE')) this.playBandstand();
       return;
     }
     if (!this.house.inside && !this.vehicles.riding && arch.inSpring()) {
+      this.tips.show('source');
       const sp = this.world.islands.spring;
       this.ui.setPrompt({ pos: new THREE.Vector3(sp.x, sp.y + 2.2, sp.z), title: '♨️ Source chaude', sub: arch.bathedDay === this.world.sky.day ? 'Déjà détendu·e aujourd\'hui' : 'Bonus « Bien-être » une fois par jour', actions: [{ key: 'E', label: 'Se prélasser' }] });
       if (input.hit('KeyE')) arch.bathe();
@@ -1163,6 +1172,124 @@ export class Game {
     }, 13500);
   }
 
+  // --- Scènes de l'archipel ----------------------------------------------------------
+
+  /** Chapitre 9 : tout Bourg-Sapin rassemblé, le grand sapin se rallume. */
+  treeCeremony(done) {
+    const B = LANDMARKS.bourg;
+    this.inFinale = true;
+    if (this.vehicles.riding) this.vehicles.dismount(true);
+    this.standUp();
+    this.ui.setPrompt(null);
+    const gy = this.world.heightAt(B.x, B.z);
+    const pins = ['aurele', 'elise', 'hugo', 'sacha'].map((id) => this.villagers.get(id));
+    this.fade(() => {
+      this.player.teleport(B.x, B.z + 6, Math.PI);
+      pins.forEach((v, i) => {
+        const a = Math.PI / 2 + (i - 1.5) * 0.55;
+        const x = B.x + Math.cos(a) * 6.2;
+        const z = B.z + Math.sin(a) * 6.2;
+        v.character.setSit(false);
+        v.override = { x, z, rot: Math.atan2(B.x - x, B.z - z) };
+      });
+      this.cam.setCinematic(new THREE.Vector3(B.x + 3, gy + 3.2, B.z + 15), new THREE.Vector3(B.x, gy + 5.5, B.z));
+      this.cam.snap = true;
+      this.ui.showHUD(false);
+    }, 500);
+    setTimeout(() => pins[0].say('Tout le monde est là… À toi l\'honneur !', 3000), 1400);
+    setTimeout(() => {
+      this.character.play('celebrate', 2.5);
+      this.world.islands.setFirLit(true);
+      this.audio.play('chapter');
+      this.ui.levelBanner('🌲 Le grand sapin des Veilleurs brille à nouveau !');
+      for (const v of pins) v.character.play('celebrate', 2);
+    }, 3600);
+    for (let k = 0; k < 10; k++) {
+      setTimeout(() => {
+        const a = Math.random() * Math.PI * 2;
+        this.particles.emit(k % 3 ? 'sparkle' : 'heart', new THREE.Vector3(B.x + Math.cos(a) * 2.5, gy + 5 + Math.random() * 5, B.z + Math.sin(a) * 2.5), { count: 8, spread: 2.5, size: 0.9, life: 2 });
+      }, 3800 + k * 450);
+    }
+    const lines = ['Magnifique…', 'Comme quand j\'étais petite !', 'Il n\'a jamais été aussi beau !', 'Merci, vraiment.'];
+    pins.forEach((v, i) => setTimeout(() => v.say(lines[i], 3000), 5200 + i * 900));
+    setTimeout(() => {
+      this.fade(() => {
+        for (const v of pins) {
+          v.override = null;
+          v.placeAt(v.scheduled(this.world.sky.hour));
+        }
+        this.inFinale = false;
+        this.ui.showHUD(true);
+        this.cam.setMode('follow');
+        this.cam.yaw = this.player.rotY + Math.PI;
+        this.cam.snap = true;
+        done();
+      }, 400);
+    }, 10500);
+  }
+
+  /** Chapitre 10 : la conque chante, la baleine revient au large du lagon. */
+  whaleEvent(spot, done) {
+    this.inFinale = true;
+    this.standUp();
+    if (this.fishing.active) this.fishing.stop();
+    this.ui.setPrompt(null);
+    const dir = new THREE.Vector3(spot.dirX, 0, spot.dirZ).normalize();
+    const side = new THREE.Vector3(-dir.z, 0, dir.x);
+    const base = new THREE.Vector3(spot.x, 0, spot.z).addScaledVector(dir, 42).addScaledVector(side, -7);
+    this.ui.showHUD(false);
+    const w = whaleModel();
+    w.root.position.copy(base).setY(-5);
+    w.root.rotation.y = Math.atan2(side.x, side.z);
+    this.scene.add(w.root);
+    this.player.face(base.x, base.z);
+    this.character.play('wave', 1.5);
+    this.cam.setCinematic(new THREE.Vector3(spot.x, spot.y + 3, spot.z).addScaledVector(dir, -5).addScaledVector(side, 3), base.clone().setY(1.5));
+    this.cam.snap = true;
+    // Le chant : de longues notes graves qui glissent.
+    this.audio.ensure();
+    const song = [[220, 0.62, 0], [330, 0.55, 1.4], [262, 1.4, 3.0], [196, 0.7, 4.6], [294, 0.6, 6.2]];
+    for (const [f, sl, t] of song) this.audio.tone(f, { t: t + 0.5, dur: 2.2, type: 'sine', vol: 0.12, slide: sl, bus: 'ambience', attack: 0.4 });
+    this.ui.toast('🐚 Tu souffles dans la conque… Un chant grave lui répond, au loin.', 4500);
+    const t0 = this.elapsed;
+    const anim = () => {
+      const t = this.elapsed - t0;
+      const r = w.root;
+      if (t < 2.2) r.position.y = -5 + (t / 2.2) * 4.3;
+      else if (t < 6) {
+        r.position.y = -0.7 + Math.sin(t * 1.3) * 0.15;
+        r.position.addScaledVector(side, 0.02);
+        if (!w.spout) {
+          w.spout = true;
+          for (let k = 0; k < 4; k++) setTimeout(() => this.particles.emit('smoke', r.position.clone().add(new THREE.Vector3(0, 2.5, 0)), { count: 5, spread: 1, size: 1.4, rise: 2.5, life: 2 }), k * 250);
+        }
+      } else if (t < 9.5) {
+        const k = (t - 6) / 3.5;
+        r.rotation.x = Math.sin(k * Math.PI) * 0.5;
+        r.position.y = -0.7 - k * 4;
+        w.tail.rotation.x = -Math.sin(k * Math.PI) * 0.9;
+      }
+      for (const f of w.fins) f.pivot.rotation.z = Math.sin(t * 1.6) * 0.25 * f.sx;
+      if (t < 9.5) requestAnimationFrame(anim);
+      else {
+        this.particles.emit('sparkle', r.position.clone().setY(0.6), { count: 14, spread: 4, size: 1, life: 2 });
+        this.scene.remove(r);
+      }
+    };
+    requestAnimationFrame(anim);
+    setTimeout(() => this.ui.levelBanner('🐋 La baleine est revenue !'), 3500);
+    setTimeout(() => {
+      this.inFinale = false;
+      this.ui.showHUD(true);
+      this.cam.setMode('follow');
+      this.cam.yaw = this.player.rotY + Math.PI;
+      this.cam.snap = true;
+      const v = this.villagers.get('coralie');
+      if (v) setTimeout(() => this.ui.toast(`${v.def.emoji} Coralie : « Tu l'as entendue ? Elle reviendra chaque été, maintenant. Merci ! »`, 5000), 800);
+      done();
+    }, 10500);
+  }
+
   async adoptDialog(a) {
     const used = new Set(this.animals.companions().map((c) => c.name));
     const suggestions = PET_NAMES.filter((n) => !used.has(n)).sort(() => Math.random() - 0.5).slice(0, 5);
@@ -1188,10 +1315,10 @@ export class Game {
     this.timer.update(time);
     const rawDt = this.timer.getDelta();
     const dt = Math.min(rawDt, 0.05);
-    this.input.pollGamepad(dt);
+    this.input.pollGamepad(dt, this.navigator.update(dt));
     this.elapsed += dt;
     const playing = this.state === 'play';
-    const free = playing && !this.busy;
+    const free = playing && !this.busy && this.panel !== 'pause' && this.panel !== 'settings';
     if (playing && this.panel !== 'pause') this.playtime = (this.playtime || 0) + dt;
 
     if (free && this.input.hit('Space') && this.player.grounded && !this.player.frozen) this.audio.play('jump');
@@ -1240,6 +1367,7 @@ export class Game {
         if (z) {
           this.ui.zoneBanner(z);
           this.emit('zone', { zone: z.id });
+          if (z.id === 'bourg' || z.id === 'port') setTimeout(() => this.tips.show(z.id), 2500);
         } else this.ui.setZoneLabel(this.house.inside ? { emoji: '🏡', name: 'Ta maison' } : null);
         this.zone = z;
       }
@@ -1289,6 +1417,13 @@ export class Game {
       }
       this.atmo = { sea: wet / 8, altitude: w.heightAt(p.x, p.z), island };
       this.audio.setMood(sky.isNight ? 'nuit' : island === 'pins' ? 'pins' : island === 'corail' ? 'corail' : 'village');
+      // Astuces de première fois.
+      if (this.state === 'play' && !this.busy && !this.panel) {
+        if (!this.tips.seen.has('quete') && this.villagers.list.some((v) => v.root.visible && v.pos.distanceTo(p) < 14 && this.sideQuests.markerFor(v.def.id) === 'offer')) this.tips.show('quete');
+        if (sky.isNight && !this.house.inside && this.playtime > 60) this.tips.show('nuit');
+        if (this.playtime > 240) this.tips.show('pause');
+        this.ui.refreshBuffs();
+      }
     }
     const a = this.atmo || { sea: 0, altitude: 0 };
     this.audio.updateAmbience(dt, {
@@ -1342,6 +1477,7 @@ export class Game {
       jobs: this.jobs.serialize(),
       calendar: this.calendar.serialize(),
       archipelago: this.archipelago.serialize(),
+      tips: this.tips.serialize(),
       sideQuests: this.sideQuests.serialize(),
       stats: { playtime: Math.round(this.playtime || 0) },
     });
@@ -1374,6 +1510,7 @@ export class Game {
     this.jobs.restore(s.jobs);
     this.calendar.restore(s.calendar);
     this.archipelago.restore(s.archipelago);
+    this.tips.restore(s.tips);
     this.sideQuests.restore(s.sideQuests);
     this.playtime = s.stats?.playtime || 0;
   }

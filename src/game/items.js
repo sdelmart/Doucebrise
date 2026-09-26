@@ -32,6 +32,7 @@ export const ITEMS = {
   corail: { label: 'Corail', emoji: '🪸', cat: 'forage', price: 40 },
   'etoile-mer': { label: 'Étoiles de mer', emoji: '✴️', cat: 'forage', price: 26 },
   perle: { label: 'Perle', emoji: '🦪', cat: 'forage', price: 180, desc: 'Un trésor du lagon, rare et précieux.' },
+  conque: { label: 'Conque des pêcheurs', emoji: '🐚', cat: 'quest', price: 0, desc: 'Elle chante comme une baleine. À souffler au bout du ponton du lagon, la nuit.' },
   'fragment-etoile': { label: 'Fragment d\'étoile', emoji: '🌠', cat: 'forage', price: 220, desc: 'Tombé d\'une étoile filante, après un vœu.' },
 
   // Graines à planter

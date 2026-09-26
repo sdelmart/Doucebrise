@@ -47,9 +47,30 @@ export class World {
   }
 
   /** Hauteur du sol marchable (terrain ou ponton). */
+  /** Grille des plateformes (ponts, pontons, kiosque…) pour ne tester que les proches. */
+  platformGrid() {
+    if (this.platGrid) return this.platGrid;
+    const grid = new Map();
+    const C = 8;
+    for (const p of this.platforms) {
+      const r = Math.hypot(p.hw, p.hd);
+      for (let gx = Math.floor((p.x - r) / C); gx <= Math.floor((p.x + r) / C); gx++) {
+        for (let gz = Math.floor((p.z - r) / C); gz <= Math.floor((p.z + r) / C); gz++) {
+          const k = gx * 10007 + gz;
+          if (!grid.has(k)) grid.set(k, []);
+          grid.get(k).push(p);
+        }
+      }
+    }
+    this.platGrid = grid;
+    return grid;
+  }
+
   groundAt(x, z) {
     let h = this.terrain.heightAt(x, z);
-    for (const p of this.platforms) {
+    const cell = this.platformGrid().get(Math.floor(x / 8) * 10007 + Math.floor(z / 8));
+    if (!cell) return h;
+    for (const p of cell) {
       const dx = x - p.x;
       const dz = z - p.z;
       const lx = dx * p.cos - dz * p.sin;
@@ -70,6 +91,7 @@ export class World {
 
   addPlatform(x, z, hw, hd, rot, y) {
     this.platforms.push({ x, z, hw, hd, y, cos: Math.cos(rot), sin: Math.sin(rot) });
+    this.platGrid = null;
   }
 
   /** Volume qui bloque la caméra (maison, moulin…) : boîte orientée ou cylindre. */

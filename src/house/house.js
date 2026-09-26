@@ -232,6 +232,7 @@ export class House {
     if (this.platform) {
       this.platform.hw = w / 2 + 0.2;
       this.platform.hd = d / 2 + 0.2;
+      this.game.world.platGrid = null;
     }
     this.applySurfaces();
   }

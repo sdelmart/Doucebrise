@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ITEMS, RECIPES } from './items.js';
+import { ITEMS, RECIPES, countItem, takeItem } from './items.js';
 import { LANDMARKS, ZONES } from '../world/layout.js';
 import { createRng } from '../core/math.js';
 
@@ -47,6 +47,10 @@ export const T = {
       }
     }
     return best ? { x: best.pos.x, z: best.pos.z, y: best.pos.y, label: `${best.sp.emoji} ${best.sp.label}` } : null;
+  },
+  resourceOf: (item) => (g) => {
+    const r = g.resources.closestOf?.(item);
+    return r ? { x: r.x, z: r.z, y: r.y, label: `${ITEMS[item].emoji} ${ITEMS[item].label}` } : null;
   },
   resource: (g) => {
     const r = g.resources.closestAvailable?.();
@@ -98,7 +102,11 @@ export const CHAPTERS = [
     text: 'Les habitants s\'étaient éloignés les uns des autres. Et si c\'était toi, le lien qui les rassemble ?' },
   { id: 'coeur', n: 8, title: 'Le Cœur de Doucebrise', emoji: '🗼',
     text: 'Grâce à toi, l\'île a retrouvé le sourire. Il ne reste qu\'une chose à faire : rallumer le phare. Tout le monde t\'attendra au Cap du Phare, à la tombée de la nuit…' },
-  { id: 'epilogue', n: 9, title: 'Épilogue : la vie à Doucebrise', emoji: '🌈',
+  { id: 'pins', n: 9, title: 'Les veilleurs des Pins', emoji: '🏔️',
+    text: 'Depuis que le phare brille, on aperçoit de nouveau des lumières au nord-ouest : Bourg-Sapin, le village de l\'île des Pins. Mais là-haut, le grand sapin des Veilleurs s\'est éteint, comme le phare autrefois… Le Pont des Brumes t\'attend.' },
+  { id: 'lagon', n: 10, title: 'Le chant du lagon', emoji: '🐋',
+    text: 'Une mouette dépose un message de Port-Corail : le capitaine Nérée a vu le phare se rallumer et t\'invite sur l\'île Corail. On raconte qu\'une baleine chantait au large du lagon, les nuits d\'été… et qu\'elle ne revient plus.' },
+  { id: 'epilogue', n: 11, title: 'Épilogue : la vie dans l\'archipel', emoji: '🌈',
     text: 'Le phare brille à nouveau ! Doucebrise est ta maison, maintenant. Il reste mille choses à faire : agrandir ta maison, compléter tes collections, devenir le meilleur ami de chacun…' },
 ];
 
@@ -257,6 +265,93 @@ export const STORY = [
     hint: 'S\'il fait encore jour, fais une sieste dans ton lit ou attends le soir. Un véhicule t\'y emmène plus vite !',
     goals: [ev('finale', 1, 'Rallumer le phare, la nuit')],
     target: T.lighthouse, reward: { coins: 2000, furniture: { trophee: 1 }, stars: 20 } },
+  // 9 — Les veilleurs des Pins
+  { id: 'pont-brumes', chapter: 'pins', title: 'Le Pont des Brumes', giver: 'rose',
+    desc: 'Au nord-ouest de la place, le Pont des Brumes mène à l\'île des Pins. Traverse-le jusqu\'à Bourg-Sapin.',
+    hint: 'Prends le chemin qui part vers le nord-ouest depuis la place, passe sous l\'arche fleurie et traverse le grand pont de bois.',
+    goals: [ev('zone', 1, 'Arriver à Bourg-Sapin', (d) => d.zone === 'bourg')],
+    target: T.zone('bourg'), reward: { coins: 150 } },
+  { id: 'gardien', chapter: 'pins', title: 'Le gardien de la source', giver: 'aurele',
+    desc: 'Grand-père Aurèle veille sur la source chaude, au sud du bourg. Il a quelque chose à te dire.',
+    hint: 'La source chaude fume au sud de la place de Bourg-Sapin. Parle à Aurèle et choisis « 🌲 Le grand sapin… ».',
+    goals: [ev('story', 1, 'Écouter Aurèle', (d) => d.id === 'gardien')],
+    story: { villager: 'aurele', label: '🌲 Le grand sapin…', lines: [
+      'Te voilà enfin. J\'ai vu la lumière du phare traverser la brume, l\'autre nuit. Ça faisait des années.',
+      'Ici aussi, nous avions notre lumière : le grand sapin des Veilleurs, au milieu de la place. Ses guirlandes brillaient toutes les nuits.',
+      'Elles se sont éteintes une à une, quand les gens ont cessé de monter au Pic et de se retrouver le soir.',
+      'Les anciens disaient que les cristaux du Pic gardent un peu de lumière d\'étoile. Rapporte-m\'en trois, et nous verrons…',
+    ] },
+    target: T.villager('aurele'), reward: { coins: 100 } },
+  { id: 'cristaux-sapin', chapter: 'pins', title: 'La lumière des cristaux', giver: 'aurele',
+    desc: 'Détache 3 cristaux sur les flancs du Pic des Neiges, puis apporte-les à Aurèle.',
+    hint: 'Les cristaux violets et bleus poussent sur les pentes du Pic, au nord-ouest du bourg. Approche-toi et appuie sur E.',
+    goals: [ev('story', 1, 'Apporter 3 cristaux à Aurèle', (d) => d.id === 'cristaux-sapin')],
+    story: { villager: 'aurele', label: '💎 Voici les cristaux', take: { cristal: 3 }, lines: [
+      'Trois cristaux du Pic… Regarde comme ils scintillent, même en plein jour.',
+      'Je vais les tailler et les accrocher au grand sapin. Mais il manque encore quelque chose : les gens du bourg.',
+      'Une lumière, ça ne sert à rien si personne ne la regarde ensemble.',
+    ] },
+    target: (g) => (countItem(g.inventory, 'cristal') >= 3 ? T.villager('aurele')(g) : T.resourceOf('cristal')(g)), reward: { coins: 150 } },
+  { id: 'belvedere-nuit', chapter: 'pins', title: 'Le phare vu d\'en haut', giver: 'sacha',
+    desc: 'Sacha dit que, du belvédère du Pic, on voit le phare de Doucebrise briller la nuit. Observe le ciel à la longue-vue, de nuit.',
+    hint: 'La longue-vue est au belvédère, près du sommet du Pic. Viens après 20 h 30 et appuie sur E devant elle.',
+    goals: [ev('stargaze', 1, 'Observer le ciel de nuit au belvédère')],
+    target: (g) => ({ x: g.world.islands.telescope.x, z: g.world.islands.telescope.z, label: '🔭 Longue-vue' }), reward: { coins: 120, stars: 3 } },
+  { id: 'veillee', chapter: 'pins', title: 'Les gens du bourg', giver: 'elise',
+    desc: 'Pour la veillée, Élise veut que tout le monde se sente invité. Offre un cadeau à trois habitants de Bourg-Sapin (Aurèle, Élise, Hugo ou Sacha).',
+    hint: 'Parle aux habitants du bourg et choisis « Offrir un cadeau ». Myrtilles, champignons et chocolat chaud font toujours plaisir ici !',
+    goals: [ev('gift', 3, 'Cadeaux aux habitants du bourg', (d) => ['aurele', 'elise', 'hugo', 'sacha'].includes(d.villager?.def.id))],
+    target: T.villager('elise'), reward: { coins: 150, items: { chocolat: 2 } } },
+  { id: 'sapin-rallume', chapter: 'pins', title: 'La nuit des Veilleurs', giver: 'aurele',
+    desc: 'Tout le bourg se retrouve au pied du grand sapin, à la nuit tombée (après 19 h). C\'est toi qui allumeras les guirlandes !',
+    hint: 'Rends-toi sur la place de Bourg-Sapin entre 19 h et 5 h, près du grand sapin.',
+    goals: [ev('treeLit', 1, 'Rallumer le grand sapin, la nuit')],
+    target: T.zone('bourg'), reward: { coins: 800, stars: 15, furniture: { 'lanterne-chalet': 2 }, title: 'Veilleur·se des Pins' } },
+  // 10 — Le chant du lagon
+  { id: 'pont-soleil', chapter: 'lagon', title: 'Le Pont du Soleil', giver: 'neree',
+    desc: 'À l\'est de la Prairie aux Fleurs, le Pont du Soleil mène à l\'île Corail. Rejoins Port-Corail.',
+    hint: 'Traverse la prairie vers le nord-est, passe l\'arche fleurie, puis le long pont. Tu peux aussi voyager depuis un panneau 🧭.',
+    goals: [ev('zone', 1, 'Arriver à Port-Corail', (d) => d.zone === 'port')],
+    target: T.zone('port'), reward: { coins: 150 } },
+  { id: 'capitaine', chapter: 'lagon', title: 'Le message du capitaine', giver: 'neree',
+    desc: 'Le capitaine Nérée t\'attend à la capitainerie du port.',
+    hint: 'La capitainerie est la maison violette avec une bouée, près des pontons. Parle à Nérée et choisis « 🐋 La baleine ? ».',
+    goals: [ev('story', 1, 'Écouter Nérée', (d) => d.id === 'capitaine')],
+    story: { villager: 'neree', label: '🐋 La baleine ?', lines: [
+      'Ah, te voilà, matelot ! C\'est toi qui as rallumé le phare ? Tout l\'archipel en parle.',
+      'Autrefois, une baleine venait chanter au large du lagon, les nuits d\'été. Les pêcheurs se guidaient à son chant.',
+      'Depuis que le phare s\'était éteint, elle ne vient plus. Elle doit croire qu\'il n\'y a plus personne ici…',
+      'Coralie, au club de plongée, connaît une vieille légende à ce sujet. Va la voir !',
+    ] },
+    target: T.villager('neree'), reward: { coins: 100 } },
+  { id: 'conque', chapter: 'lagon', title: 'La conque des pêcheurs', giver: 'coralie',
+    desc: 'Coralie peut fabriquer une conque qui imite le chant de la baleine, avec 2 morceaux de corail et 2 étoiles de mer.',
+    hint: 'Le corail se ramasse au bord du Lagon Turquoise ; les étoiles de mer sur les plages de l\'île Corail. Rapporte-les à Coralie.',
+    goals: [ev('story', 1, 'Apporter corail et étoiles de mer à Coralie', (d) => d.id === 'conque')],
+    story: { villager: 'coralie', label: '🐚 Voici le corail et les étoiles', take: { corail: 2, 'etoile-mer': 2 }, lines: [
+      'Parfait ! Le corail pour la voix, les étoiles de mer pour la mémoire… c\'est ce que dit la légende.',
+      'Et voilà : une conque des pêcheurs. Quand on souffle dedans, elle chante comme une baleine.',
+      'Il faudra souffler au bout du ponton du lagon, une nuit. Mais d\'abord, il faut que l\'île entière soit en fête !',
+    ], reward: { items: { conque: 1 } } },
+    target: (g) => (countItem(g.inventory, 'corail') >= 2 && countItem(g.inventory, 'etoile-mer') >= 2 ? T.villager('coralie')(g) : countItem(g.inventory, 'corail') < 2 ? T.zone('lagon')() : T.resourceOf('etoile-mer')(g)), reward: { coins: 150 } },
+  { id: 'fete-paillote', chapter: 'lagon', title: 'La fête de la paillote', giver: 'paco',
+    desc: 'Paco organise une fête pour le retour de la baleine. Mets l\'ambiance : danse au bord du lagon !',
+    hint: 'Va sur la plage du Lagon Turquoise ou dans la Palmeraie et appuie sur 2 pour danser.',
+    goals: [ev('emote', 1, 'Danser au bord du lagon', (d) => d.name === 'dance' && ['lagon', 'palmeraie', 'corail'].includes(d.zone))],
+    target: T.zone('lagon'), reward: { coins: 120, items: { cocktail: 2 } } },
+  { id: 'souvenir-archipel', chapter: 'lagon', title: 'Un souvenir pour Maëlys', giver: 'maelys',
+    desc: 'Maëlys veut peindre l\'archipel entier. Prends une photo depuis la Colline aux Mouettes, là où se dresse la gloriette.',
+    hint: 'La gloriette blanche au toit turquoise est au sommet de la colline, au sud-est du port. Appuie sur O pour le mode photo.',
+    goals: [ev('photo', 1, 'Photo depuis la Colline aux Mouettes', (d) => d.zone === 'belvedere')],
+    target: T.zone('belvedere'), reward: { coins: 150, furniture: { 'tableau-lagon': 1 } } },
+  { id: 'chant-baleine', chapter: 'lagon', title: 'Le chant de la baleine', giver: 'coralie',
+    desc: 'La nuit (après 20 h), souffle dans la conque au bout du ponton du Lagon Turquoise.',
+    hint: 'Le ponton du lagon part de la plage, près de la paillote. Va tout au bout, de nuit : la conque sonnera toute seule.',
+    goals: [ev('whale', 1, 'Appeler la baleine, la nuit')],
+    target: (g) => {
+      const s = g.world.fishingSpots.find((f) => f.habitat === 'lagon');
+      return s ? { x: s.x, z: s.z, y: s.y, label: '🐚 Bout du ponton du lagon' } : T.zone('lagon')();
+    }, reward: { coins: 1500, stars: 20, furniture: { 'aquarium-geant': 1 }, title: 'Ami·e des baleines' } },
   // Épilogue
   { id: 'citrouille', chapter: 'epilogue', title: 'La citrouille géante', giver: 'rose',
     desc: 'Les citrouilles demandent de la patience… Mamie Rose vend les semis.',
@@ -291,6 +386,8 @@ export const STORY = [
 ];
 
 const CHAPTER_REWARDS = {
+  pins: { coins: 600, furniture: { 'lit-chalet': 1 } },
+  lagon: { coins: 800, furniture: { 'bar-tiki': 1 } },
   arrivee: { coins: 100 },
   amis: { coins: 150, furniture: { gamelle: 1 } },
   tresors: { coins: 200 },
@@ -322,7 +419,7 @@ export class Quests {
     this.lighthouseLit = false;
     this.seenChapters = [];
     this.stats = { cooked: 0, fish: 0, sold: 0, earned: 0 };
-    const events = ['talk', 'plant', 'water', 'harvest', 'pet', 'feed', 'gather', 'sell', 'catch', 'adopt', 'buy', 'place', 'cook', 'gift', 'request', 'enter', 'insect', 'story', 'zone', 'facade', 'ride', 'job', 'heartEvent', 'finale'];
+    const events = ['talk', 'plant', 'water', 'harvest', 'pet', 'feed', 'gather', 'sell', 'catch', 'adopt', 'buy', 'place', 'cook', 'gift', 'request', 'enter', 'insect', 'story', 'zone', 'facade', 'ride', 'job', 'heartEvent', 'finale', 'stargaze', 'emote', 'photo', 'treeLit', 'whale'];
     for (const e of events) game.on(e, (d) => this.onEvent(e, d));
     game.on('friendship', () => this.check());
     game.on('sell', (d) => {
@@ -388,9 +485,10 @@ export class Quests {
     if (!next || next.chapter !== q.chapter) {
       const chap = CHAPTERS.find((c) => c.id === q.chapter);
       if (CHAPTER_REWARDS[q.chapter]) {
-        this.sparks = Math.min(7, this.sparks + 1);
+        if (chap.n <= 7) this.sparks = Math.min(7, this.sparks + 1);
         g.world.village.setLighthouseLevel?.(this.sparks / 7, this.lighthouseLit);
-        setTimeout(() => g.grantReward({ ...CHAPTER_REWARDS[q.chapter], stars: 10 }, null, `✨ Chapitre ${chap.n} terminé ! Étincelle du Cœur ${this.sparks}/7 —`), 1800);
+        const sparkTxt = chap.n <= 7 ? ` Étincelle du Cœur ${this.sparks}/7 —` : '';
+        setTimeout(() => g.grantReward({ ...CHAPTER_REWARDS[q.chapter], stars: 10 }, null, `✨ Chapitre ${chap.n} terminé !${sparkTxt}`), 1800);
       }
       if (next) setTimeout(() => this.showChapter(), 4200);
     } else {
@@ -431,10 +529,19 @@ export class Quests {
   dialogueChoices(v, dialogue) {
     const q = this.current;
     if (!q?.story || q.story.villager !== v.def.id) return [];
+    const g = this.game;
+    const take = q.story.take || {};
+    const missing = Object.entries(take).filter(([id, n]) => countItem(g.inventory, id) < n);
+    if (missing.length) {
+      const need = Object.entries(take).map(([id, n]) => `${ITEMS[id].emoji} ${countItem(g.inventory, id)}/${n}`).join(' · ');
+      return [{ label: `${q.story.label} (${need})`, disabled: true, action: () => {} }];
+    }
     return [{ label: q.story.label, primary: true, story: true, action: () => {
+      for (const [id, n] of Object.entries(take)) takeItem(g.inventory, id, n);
+      if (Object.keys(take).length) g.ui.refreshInventory();
       dialogue.sequence(q.story.lines, () => {
-        if (q.story.reward) this.game.grantReward(q.story.reward, v);
-        this.game.emit('story', { id: q.id, villager: v });
+        if (q.story.reward) g.grantReward(q.story.reward, v);
+        g.emit('story', { id: q.id, villager: v });
       });
     } }];
   }
@@ -444,7 +551,12 @@ export class Quests {
   /** Vérifie si le joueur est au pied du phare, la nuit, pendant la dernière quête. */
   update() {
     const q = this.current;
-    if (!q || q.id !== 'rallumer' || this.finaleRunning) return;
+    if (!q || this.finaleRunning) return;
+    if (q.id === 'sapin-rallume' || q.id === 'chant-baleine') {
+      this.updateArchipelago(q);
+      return;
+    }
+    if (q.id !== 'rallumer') return;
     const g = this.game;
     const h = g.world.sky.hour;
     const L = LANDMARKS.lighthouse;
@@ -460,6 +572,42 @@ export class Quests {
     } else if (d < 9 && !this.warned) {
       this.warned = true;
       g.ui.toast('🗼 Tout le monde viendra à la tombée de la nuit (19 h). Fais une sieste ou reviens plus tard !', 4000);
+    }
+  }
+
+  /** Scènes des chapitres de l'archipel : le grand sapin et la baleine. */
+  updateArchipelago(q) {
+    const g = this.game;
+    if (g.busy || g.state !== 'play') return;
+    const h = g.world.sky.hour;
+    const p = g.player.pos;
+    if (q.id === 'sapin-rallume') {
+      const B = LANDMARKS.bourg;
+      const d = Math.hypot(p.x - B.x, p.z - B.z);
+      if (d < 10 && (h >= 19 || h < 5)) {
+        this.finaleRunning = true;
+        g.treeCeremony(() => {
+          this.finaleRunning = false;
+          g.emit('treeLit', {});
+        });
+      } else if (d < 10 && this.warned !== q.id) {
+        this.warned = q.id;
+        g.ui.toast('🌲 Les habitants du bourg se retrouveront ici à la nuit tombée (19 h). Reviens ce soir !', 4500);
+      }
+    } else {
+      const s = g.world.fishingSpots.find((f) => f.habitat === 'lagon');
+      if (!s) return;
+      const d = Math.hypot(p.x - s.x, p.z - s.z);
+      if (d < 3.2 && (h >= 20 || h < 5)) {
+        this.finaleRunning = true;
+        g.whaleEvent(s, () => {
+          this.finaleRunning = false;
+          g.emit('whale', {});
+        });
+      } else if (d < 3.2 && this.warned !== q.id) {
+        this.warned = q.id;
+        g.ui.toast('🐚 La baleine ne chante que la nuit. Reviens au bout du ponton après 20 h !', 4500);
+      }
     }
   }
 
@@ -518,6 +666,7 @@ export class Quests {
     this.sparks = d.sp ?? Math.min(7, chapIdx);
     if (d.ch === undefined) this.seenChapters = CHAPTERS.slice(0, chapIdx + 1).map((c) => c.id);
     this.game.world.village.setLighthouseLevel?.(this.sparks / 7, this.lighthouseLit);
+    this.game.world.islands.setFirLit?.(this.completed.includes('sapin-rallume'));
   }
 }
 

@@ -167,7 +167,7 @@ export class UI {
       const p = qs.goalProgress(q, Math.max(i, 0));
       const chap = CHAPTERS.find((c) => c.id === q.chapter);
       const inChap = qs.chapterQuests(q.chapter);
-      html = `<div class="qt-chap">${chap.emoji} ${chap.n <= 8 ? `Chapitre ${chap.n}` : 'Épilogue'} · ${inChap.indexOf(q) + 1}/${inChap.length}</div>
+      html = `<div class="qt-chap">${chap.emoji} ${chap.id === 'epilogue' ? 'Épilogue' : `Chapitre ${chap.n}`} · ${inChap.indexOf(q) + 1}/${inChap.length}</div>
         <div class="qt-title">📜 ${escapeHtml(q.title)}</div><div class="qt-goal">${escapeHtml(goal.label)} — ${p}/${goal.count}</div>`;
     }
     const job = g.jobs?.active;
@@ -199,6 +199,24 @@ export class UI {
     const next = list.find((c) => !c.done);
     const def = next ? g.progress.challengeDef(next.id) : null;
     el.innerHTML = `<span class="ct-count">🎯 ${done}/${list.length}</span>${def ? `<span class="ct-next">${def.emoji} ${escapeHtml(def.label)} ${next.progress}/${def.count}</span>` : '<span class="ct-next">Défis du jour réussis ! 🌟</span>'}`;
+  }
+
+  /** Bonus actifs (source chaude…) sous les défis. */
+  refreshBuffs() {
+    const g = this.game;
+    const el = $('#buffs');
+    if (!el) return;
+    const a = g.archipelago;
+    let html = '';
+    if (a?.relaxed) {
+      const left = Math.max(0, a.relaxUntil - a.now());
+      const h = Math.floor(left);
+      const m = Math.floor((left - h) * 6) * 10;
+      html += `<span class="buff" title="Bain à la source chaude">♨️ Bien-être · +20 % XP · ${h} h ${String(m).padStart(2, '0')}</span>`;
+    }
+    const f = g.calendar.festival;
+    if (f) html += `<span class="buff fest" title="${escapeHtml(f.desc)}">${f.emoji} ${escapeHtml(f.label)}</span>`;
+    if (el.innerHTML !== html) el.innerHTML = html;
   }
 
   refreshName() {
@@ -264,7 +282,7 @@ export class UI {
     const g = this.game;
     const el = $('#chapter');
     el.innerHTML = `<div class="chapter-card"><div class="chap-emoji">${chap.emoji}</div>
-      <div class="chap-num">${chap.n <= 8 ? `Chapitre ${chap.n}` : 'Épilogue'}</div><h2>${escapeHtml(chap.title)}</h2>
+      <div class="chap-num">${chap.id === 'epilogue' ? 'Épilogue' : `Chapitre ${chap.n}`}</div><h2>${escapeHtml(chap.title)}</h2>
       <p>${escapeHtml(chap.text)}</p><div class="chap-sparks">${'✨'.repeat(g.quests.sparks)}${'·'.repeat(Math.max(0, 7 - g.quests.sparks))}</div>
       <button class="btn big primary" data-chap-ok>C'est parti !</button></div>`;
     el.classList.remove('hidden');

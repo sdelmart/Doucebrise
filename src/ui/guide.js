@@ -94,7 +94,7 @@ export class Guide {
   update(dt) {
     const g = this.game;
     this.t += dt;
-    const playing = g.state === 'play' && this.enabled && !g.photo.active;
+    const playing = g.state === 'play' && this.enabled && !g.photo.active && !g.inFinale;
     const story = playing ? this.resolve(g.quests.target()) : null;
     const job = playing ? this.resolve(g.jobs.target()) : null;
     let side = null;

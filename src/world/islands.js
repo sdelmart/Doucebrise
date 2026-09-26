@@ -305,6 +305,46 @@ function gazebo() {
   return s.build();
 }
 
+/** Baleine à bosse, en trois morceaux (corps, nageoires, queue) pour l'animer. */
+export function whaleModel() {
+  const root = new THREE.Group();
+  const body = new Shape();
+  const blue = '#3d5a98';
+  const belly = '#dfe8f5';
+  body.add(G.sphere(1, 20, 14), blue, { pos: [0, 0, 0], scale: [2.1, 1.7, 5.6] });
+  body.add(G.sphere(1, 16, 10), belly, { pos: [0, -0.55, 0.6], scale: [1.8, 1.25, 4.6] });
+  for (let i = 0; i < 7; i++) body.add(G.box(0.12, 0.05, 3.2), '#c5d2ea', { pos: [-0.9 + i * 0.3, -1.45, 1.6], rot: [0.15, 0, 0] });
+  for (const sx of [-1, 1]) {
+    body.add(G.sphere(0.18, 10, 8), '#ffffff', { pos: [sx * 1.45, 0.45, 3.3] });
+    body.add(G.sphere(0.1, 8, 6), '#1f2a44', { pos: [sx * 1.55, 0.47, 3.38] });
+    for (let k = 0; k < 4; k++) body.add(G.sphere(0.13, 6, 5), '#8da3cf', { pos: [sx * (0.5 + k * 0.25), 1.35 - k * 0.08, 3.6 - k * 0.5] });
+  }
+  body.add(G.sphere(1, 10, 8), blue, { pos: [0, 1.5, -2.4], scale: [0.25, 0.6, 0.9], rot: [-0.5, 0, 0] });
+  const mat = vertexColorToon();
+  const bodyMesh = new THREE.Mesh(body.build(), mat);
+  root.add(bodyMesh);
+  const fins = [];
+  for (const sx of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(sx * 1.8, -0.6, 1.8);
+    const f = new Shape().add(G.sphere(1, 12, 8), blue, { pos: [sx * 1.6, 0, -0.4], scale: [1.8, 0.18, 0.6], rot: [0, sx * 0.4, sx * -0.3] });
+    pivot.add(new THREE.Mesh(f.build(), mat));
+    root.add(pivot);
+    fins.push({ pivot, sx });
+  }
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.2, -5.2);
+  const t = new Shape();
+  t.add(G.sphere(1, 12, 8), blue, { pos: [0, 0, -1.2], scale: [0.7, 0.6, 1.6] });
+  for (const sx of [-1, 1]) t.add(G.sphere(1, 12, 8), blue, { pos: [sx * 1.3, 0.1, -2.6], scale: [1.6, 0.16, 0.8], rot: [0, sx * -0.5, 0] });
+  tail.add(new THREE.Mesh(t.build(), mat));
+  root.add(tail);
+  root.traverse((o) => {
+    if (o.isMesh) o.castShadow = true;
+  });
+  return { root, fins, tail };
+}
+
 // --- Petits éléments --------------------------------------------------------------------
 
 function lanternPost() {
@@ -497,6 +537,12 @@ export class IslandVillages {
     return this.world.heightAt(x, z);
   }
 
+  setFirLit(on) {
+    if (!this.firOn) return;
+    this.firOn.visible = on;
+    this.firOff.visible = !on;
+  }
+
   add(id, geo, x, y, z, rot = 0, scale = 1) {
     this.shapes[id].static.addRaw(place(geo, x, y, z, rot, scale));
   }
@@ -656,7 +702,12 @@ export class IslandVillages {
     // Grand sapin illuminé au centre de la place.
     const fir = bigFirWithLights();
     this.add(id, fir.geo, B.x, y0 - 0.05, B.z);
-    this.addGlow(id, fir.glow, B.x, y0 - 0.05, B.z);
+    // Guirlandes : éteintes jusqu'à la Nuit des Veilleurs (chapitre 9).
+    const bulbs = place(fir.glow, B.x, y0 - 0.05, B.z);
+    this.firOn = new THREE.Mesh(bulbs, this.glowMat);
+    this.firOff = new THREE.Mesh(bulbs, toon('#6d7a70'));
+    (this.extraMeshes ||= []).push({ island: id, mesh: this.firOn }, { island: id, mesh: this.firOff });
+    this.setFirLit(false);
     this.world.colliders.addCircle(B.x, B.z, 1.4);
     this.world.addCamBlocker({ x: B.x, z: B.z, r: 1.2, top: y0 + 11 });
     // Anneau de pavés et bancs.

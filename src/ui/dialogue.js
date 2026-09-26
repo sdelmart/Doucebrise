@@ -195,6 +195,7 @@ export class Dialogue {
 
   openShop() {
     const v = this.villager;
+    if (!v) return;
     this.close();
     this.game.shop.open(v.def.shop, v);
   }

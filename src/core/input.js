@@ -192,9 +192,22 @@ export class Input {
   }
 
   /** Manette : sticks (déplacement, caméra) et boutons (traduits en touches). */
-  pollGamepad(dt) {
+  pollGamepad(dt, uiMode = false) {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const gp = [...pads].find((p) => p && p.connected);
+    if (gp && uiMode) {
+      // Un menu est ouvert : la manette le pilote (voir UINavigator), pas le personnage.
+      gp.buttons.forEach((b, i) => {
+        this.pad.buttons[i] = b.pressed;
+      });
+      if (this.pad.stick) {
+        this.pad.stick = false;
+        this.joystick.active = false;
+        this.joystick.x = 0;
+        this.joystick.y = 0;
+      }
+      return;
+    }
     if (!gp) {
       if (this.pad.stick) {
         this.pad.stick = false;

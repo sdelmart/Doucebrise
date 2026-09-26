@@ -727,3 +727,27 @@ body.no-keyhints #keyhints { display: none; }
 .credits-list p { margin: 10px 0; line-height: 1.45; }
 /* Paramètres, crédits et aide s'ouvrent aussi depuis l'écran titre : au-dessus de lui. */
 #settings, #credits, #help { z-index: 60; }
+
+/* Bonus actifs */
+.buffs { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
+.buffs:empty { display: none; }
+.buff { background: #e9fbf4; border: 2px solid #9fe0c6; color: #2f7f6a; border-radius: 99px; padding: 3px 10px; font-weight: 800; font-size: 12px; }
+.buff.fest { background: #fff6d6; border-color: #f5d77a; color: #9a6a00; }
+
+/* Astuces */
+.tip {
+  position: fixed; left: 14px; bottom: 150px; z-index: 35; width: min(360px, calc(100vw - 28px));
+  display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 2px solid var(--line);
+  border-radius: 18px; padding: 12px 34px 12px 12px; box-shadow: var(--shadow); cursor: pointer; animation: tipIn 0.35s ease-out; zoom: var(--ui-scale, 1);
+}
+.tip-emoji { font-size: 30px; line-height: 1; }
+.tip-body b { font-size: 15px; }
+.tip-body p { margin: 4px 0 0; font-size: 13px; font-weight: 700; color: var(--ink-soft); line-height: 1.4; }
+.tip-close { position: absolute; top: 6px; right: 6px; border: 0; background: transparent; font-size: 14px; color: var(--ink-soft); }
+@keyframes tipIn { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .tip, .wish, .modal-card { animation: none; } }
+
+/* Sélection à la manette / aux flèches */
+.nav-focus, button:focus-visible, .btn:focus-visible, .keybtn:focus-visible {
+  outline: 3px solid #8a6cff !important; outline-offset: 3px; box-shadow: 0 0 0 6px rgba(138, 108, 255, 0.22) !important;
+}

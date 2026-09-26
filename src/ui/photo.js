@@ -126,7 +126,7 @@ export class PhotoMode {
     void this.flash.offsetWidth;
     this.flash.classList.add('go');
     g.audio.play('cast');
-    g.emit('photo', {});
+    g.emit('photo', { zone: g.zone?.id });
     this.render();
   }
 
