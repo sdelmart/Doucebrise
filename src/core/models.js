@@ -37,10 +37,31 @@ export function modelsIn(dir) {
   return MODEL_FILES.filter((m) => m.dir === dir || m.dir.startsWith(`${dir}/`));
 }
 
+// Paquet de modèles : certains hébergeurs ne servent pas les fichiers .glb / .gltf / .bin ;
+// la version publiée en ligne les regroupe alors dans un seul .json (nom → base64).
+let packed = null;
+
+/** Charge un paquet de modèles (URL d'un .json { "fichier.glb": "base64…" }). */
+export async function loadModelPack(url) {
+  try {
+    const pack = await (await fetch(url)).json();
+    packed = new Map();
+    for (const [name, b64] of Object.entries(pack)) {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      packed.set(name, URL.createObjectURL(new Blob([bytes])));
+    }
+  } catch (e) {
+    console.warn('Paquet de modèles illisible', e?.message || e);
+  }
+}
+
 const manager = new THREE.LoadingManager();
 manager.setURLModifier((url) => {
   if (url.startsWith('data:') || url.startsWith('blob:')) return url;
-  return BY_NAME.get(baseName(url)) || url;
+  const found = BY_NAME.get(baseName(url)) || url;
+  return packed?.get(baseName(found)) || found;
 });
 const loader = new GLTFLoader(manager);
 const cache = new Map(); // id → gltf
