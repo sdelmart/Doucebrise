@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World } from './world/world.js';
-import { zoneAt, LANDMARKS, islandAt } from './world/layout.js';
+import { zoneAt, LANDMARKS, islandAt, ZONES } from './world/layout.js';
 import { whaleModel } from './world/islands.js';
 import { Avatar } from './player/avatar.js';
 import { Player } from './player/player.js';
@@ -9,18 +9,18 @@ import { DEFAULT_APPEARANCE, normalizeAppearance, randomAppearance, isLocked, sh
 import { AnimalManager } from './animals/manager.js';
 import { VillagerManager } from './npc/villagers.js';
 import { ITEMS, RECIPES, createInventory } from './game/items.js';
-import { Fishing } from './game/fish.js';
-import { Insects } from './game/insects.js';
+import { Fishing, FISH, fishWhere } from './game/fish.js';
+import { Insects, INSECTS } from './game/insects.js';
 import { Resources } from './game/activities.js';
 import { Progress } from './game/progress.js';
 import { Vehicles, VEHICLES } from './game/vehicles.js';
 import { Jobs } from './game/jobs.js';
 import { Calendar } from './game/calendar.js';
 import { Garden } from './game/garden.js';
-import { Quests } from './game/quests.js';
+import { Quests, STORY, CHAPTERS } from './game/quests.js';
 import { Cooking } from './game/cooking.js';
 import { Archipelago } from './game/travel.js';
-import { SideQuests } from './game/sidequests.js';
+import { SideQuests, SIDE_QUESTS } from './game/sidequests.js';
 import { SledRace } from './game/sled.js';
 import { House } from './house/house.js';
 import { DecorMode } from './house/decor.js';
@@ -1444,6 +1444,7 @@ export class Game {
     this.house.update(sdt, this.elapsed, this.camera);
     this.decor.update();
     this.music.update(dt, this.musicMood());
+    this.audio.setMusicDuck(!!this.dialogue.open);
     this.particles.update(sdt);
     this.cam.update(dt, this.player, this.input, this.elapsed);
     this.guide.update(dt);
@@ -1487,6 +1488,11 @@ export class Game {
     this.updateDynamicResolution(rawDt);
     this.perf.update(rawDt);
     this.input.endFrame();
+  }
+
+  /** Données du jeu, pour les tests automatiques (scripts/quests-test.mjs). */
+  debugData() {
+    return { STORY, CHAPTERS, SIDE_QUESTS, ZONES, LANDMARKS, ITEMS, RECIPES, FURNITURE, VEHICLES, FISH, INSECTS, fishWhere };
   }
 
   /** Rapport de pixels voulu par les réglages (écran × netteté max × résolution de rendu). */

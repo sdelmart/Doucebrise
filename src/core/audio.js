@@ -13,6 +13,10 @@ const MOODS = {
   nuit: { scale: [NOTES.A4 / 2, NOTES.C4, NOTES.D4, NOTES.E4, NOTES.G4, NOTES.A4, NOTES.C5, NOTES.D5, NOTES.E5], chords: [[0, 2, 4], [1, 3, 5], [2, 4, 6], [0, 3, 5]], bar: 3.4, lead: 'sine', leadVol: 0.04, density: 0.45 },
 };
 
+// Musique de fond : nettement plus bas que les bruitages et l'ambiance (≈ −8 dB), et
+// adoucie (voix des chansons en retrait) pour rester un fond sonore.
+export const MUSIC_BED = 0.4;
+
 export class Audio {
   constructor() {
     this.ctx = null;
@@ -41,8 +45,22 @@ export class Audio {
       this.buses = {};
       for (const b of ['music', 'sfx', 'ambience']) {
         this.buses[b] = this.ctx.createGain();
-        this.buses[b].connect(this.master);
+        if (b !== 'music') this.buses[b].connect(this.master);
       }
+      // Musique : creux dans les médiums (présence des voix), aigus adoucis, puis un
+      // atténuateur pour la baisser encore pendant les dialogues.
+      const ctx = this.ctx;
+      const presence = ctx.createBiquadFilter();
+      presence.type = 'peaking';
+      presence.frequency.value = 2800;
+      presence.Q.value = 0.9;
+      presence.gain.value = -5;
+      const air = ctx.createBiquadFilter();
+      air.type = 'highshelf';
+      air.frequency.value = 7000;
+      air.gain.value = -4;
+      this.musicDuck = ctx.createGain();
+      this.buses.music.connect(presence).connect(air).connect(this.musicDuck).connect(this.master);
       this.applyLevels();
     } catch {
       this.ctx = null;
@@ -58,9 +76,16 @@ export class Audio {
   applyLevels() {
     if (!this.ctx) return;
     this.master.gain.value = this.levels.master;
-    this.buses.music.gain.value = this.levels.music;
+    this.buses.music.gain.value = this.levels.music * MUSIC_BED;
     this.buses.sfx.gain.value = this.levels.sfx;
     this.buses.ambience.gain.value = this.levels.ambience;
+  }
+
+  /** Musique encore un peu plus bas (dialogues, scènes) ; en douceur. */
+  setMusicDuck(on) {
+    if (!this.ctx || this.ducked === on) return;
+    this.ducked = on;
+    this.musicDuck.gain.setTargetAtTime(on ? 0.6 : 1, this.ctx.currentTime, 0.5);
   }
 
   /** Ancien réglage unique (compatibilité). */

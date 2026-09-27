@@ -81,18 +81,18 @@ export const SIDE_QUESTS = [
   }),
   S('pomme-marche', 'pomme', 'Le grand marché', {
     req: { after: 'pomme-coco', f: 40 },
-    offer: ['J\'ai un pari avec Nérée : il dit que personne ne peut vendre pour 1 000 pièces en une semaine.', 'Montre-lui qu\'il a tort ! Vends tes récoltes, tes poissons, tes plats…'],
-    desc: 'Gagne 1 000 🪙 en vendant des objets (chez Pomme, Hugo ou Nérée).',
-    goals: [on('sell', 1000, 'Pièces gagnées en vendant', null, (d) => d.total || 0)],
+    offer: ['J\'ai un pari avec Nérée : il dit que personne ne peut vendre pour 500 pièces en une semaine.', 'Montre-lui qu\'il a tort ! Vends tes récoltes, tes poissons, tes plats…'],
+    desc: 'Gagne 500 🪙 en vendant des objets (chez Pomme, Hugo ou Nérée).',
+    goals: [on('sell', 500, 'Pièces gagnées en vendant', null, (d) => d.total || 0)],
     thanks: 'Ha ! Nérée me doit un gâteau ! Tu es un·e vrai·e commerçant·e. Tiens, un souvenir de notre victoire.',
     reward: { coins: 400, furniture: { 'caisse-fruits': 1 }, stars: 5, title: 'Roi·ne du marché' },
   }),
 
   // --- Bruno ---------------------------------------------------------------------------------
   S('bruno-pin', 'bruno', 'Du bois qui sent bon', {
-    offer: ['Hmm. Je voudrais essayer une essence de bois que je ne connais pas.', 'Les pins de l\'île des Pins, au nord-ouest. Rapporte-moi huit pommes de pin, que je sache si le bois est bon.'],
-    desc: 'Ramasse 8 pommes de pin sur l\'île des Pins et rapporte-les à Bruno.',
-    goals: [have('pomme-pin', 8)],
+    offer: ['Hmm. Je voudrais essayer une essence de bois que je ne connais pas.', 'Les pins de l\'île des Pins, au nord-ouest. Rapporte-moi cinq pommes de pin, que je sache si le bois est bon.'],
+    desc: 'Ramasse 5 pommes de pin sur l\'île des Pins et rapporte-les à Bruno.',
+    goals: [have('pomme-pin', 5)],
     thanks: 'Ça sent la résine… Bon bois. Très bon bois. Tiens, un banc que j\'ai fait avec.',
     reward: { coins: 200, furniture: { 'banc-rondins': 1 } },
   }),
@@ -109,9 +109,9 @@ export const SIDE_QUESTS = [
   }),
   S('bruno-deco', 'bruno', 'Une maison qui me ressemble', {
     req: { after: 'bruno-hugo', f: 40 },
-    offer: ['Une maison, ce n\'est pas quatre murs. C\'est ce qu\'on met dedans.', 'Pose vingt meubles chez toi ou dans ton jardin. Après, on en reparle.'],
-    desc: 'Pose 20 meubles chez toi ou dans ton jardin (B pour décorer).',
-    goals: [state((g) => g.house.placed.length, 20, 'Meubles posés')],
+    offer: ['Une maison, ce n\'est pas quatre murs. C\'est ce qu\'on met dedans.', 'Pose quatorze meubles chez toi ou dans ton jardin. Après, on en reparle.'],
+    desc: 'Pose 14 meubles chez toi ou dans ton jardin (B pour décorer).',
+    goals: [state((g) => g.house.placed.length, 14, 'Meubles posés')],
     thanks: '… C\'est beau. Vraiment. Tu as l\'œil. Prends cette horloge, elle vient de mon grand-père.',
     reward: { coins: 400, furniture: { 'horloge-comtoise': 1 }, stars: 5 },
   }),
@@ -192,9 +192,9 @@ export const SIDE_QUESTS = [
     reward: { coins: 300, furniture: { coffre: 1 } },
   }),
   S('noe-hercule', 'noe', 'Le scarabée géant', {
-    req: { after: 'noe-cristaux', f: 60 },
-    offer: ['Dans mon livre, ils parlent du scarabée Hercule. Il est ÉNORME ! Il vivrait dans la Palmeraie, la nuit, en été.', 'Si tu en attrapes un, tu deviens officiellement le plus grand explorateur du monde !'],
-    desc: 'Attrape un scarabée Hercule (Palmeraie, la nuit, printemps-été).',
+    req: { after: 'noe-cristaux', f: 60, seasons: [1, 2] },
+    offer: ['Dans mon livre, ils parlent du scarabée Hercule. Il est ÉNORME ! Il vivrait dans la Palmeraie, la nuit, en été et en automne.', 'Si tu en attrapes un, tu deviens officiellement le plus grand explorateur du monde !'],
+    desc: 'Attrape un scarabée Hercule (Palmeraie, la nuit, en été ou en automne).',
     goals: [on('insect', 1, 'Scarabée Hercule', (d) => d.id === 'hercule')],
     thanks: 'IL EST GÉANT ! C\'est le plus beau jour de ma vie ! Tu es le plus grand explorateur du monde !',
     reward: { coins: 1000, stars: 10, title: 'Grand explorateur' },
@@ -281,9 +281,9 @@ export const SIDE_QUESTS = [
 
   // --- Élise ---------------------------------------------------------------------------------
   S('elise-myrtilles', 'elise', 'La cueillette de myrtilles', {
-    offer: ['Bonjour ! Ma tarte aux myrtilles est célèbre dans tout le bourg… mais je n\'ai plus une seule myrtille !', 'Les buissons de la Grande Pinède en sont pleins. Huit, et je t\'apprends la recette !'],
-    desc: 'Cueille 8 myrtilles dans la Grande Pinède pour Élise.',
-    goals: [have('myrtille', 8)],
+    offer: ['Bonjour ! Ma tarte aux myrtilles est célèbre dans tout le bourg… mais je n\'ai plus une seule myrtille !', 'Les buissons de la Grande Pinède en sont pleins. Cinq, et je t\'apprends la recette !'],
+    desc: 'Cueille 5 myrtilles dans la Grande Pinède pour Élise.',
+    goals: [have('myrtille', 5)],
     thanks: 'Qu\'elles sont belles ! Comme promis, voici ma recette secrète. Ne la répète à personne… sauf à Rose !',
     reward: { coins: 150, recipe: 'tarte-myrtille' },
   }),
@@ -357,7 +357,7 @@ export const SIDE_QUESTS = [
     reward: { coins: 300, furniture: { 'etoile-murale': 1 }, stars: 5 },
   }),
   S('sacha-aurore', 'sacha', 'Le papillon des aurores', {
-    req: { after: 'sacha-voeu', f: 60 },
+    req: { after: 'sacha-voeu', f: 60, seasons: [3] },
     offer: ['Les nuits d\'hiver, un papillon qui brille comme une aurore danse près du Pic et du Lac Miroir.', 'Personne ne l\'a jamais attrapé. Tu veux essayer ?'],
     desc: 'Attrape un papillon aurore (Pic ou Lac Miroir, les nuits d\'hiver).',
     goals: [on('insect', 1, 'Papillon aurore', (d) => d.id === 'papillon-aurore')],
@@ -420,9 +420,9 @@ export const SIDE_QUESTS = [
 
   // --- Paco ----------------------------------------------------------------------------------
   S('paco-coco', 'paco', 'Pénurie de coco', {
-    offer: ['Hola ! Grosse journée à la paillote, et plus une seule noix de coco pour mes jus !', 'Secoue les cocotiers de la Palmeraie et rapporte-m\'en cinq. Je te paierai en glaces !'],
-    desc: 'Récolte 5 noix de coco pour Paco.',
-    goals: [have('noix-coco', 5)],
+    offer: ['Hola ! Grosse journée à la paillote, et plus une seule noix de coco pour mes jus !', 'Secoue les cocotiers de la Palmeraie et rapporte-m\'en trois. Je te paierai en glaces !'],
+    desc: 'Récolte 3 noix de coco pour Paco.',
+    goals: [have('noix-coco', 3)],
     thanks: '¡ Perfecto ! Voilà ta paie… et deux glaces à la noix de coco, mes meilleures !',
     reward: { coins: 200, items: { glace: 2 }, recipe: 'jus-coco' },
   }),
@@ -516,6 +516,8 @@ export class SideQuests {
     if (r.f && (g.villagers.get(q.giver)?.friendship || 0) < r.f) return false;
     if (r.chapter && g.quests.chapterIndex < r.chapter) return false;
     if (r.unlock && !g.unlocks.has(r.unlock)) return false;
+    // Quêtes de saison : proposées seulement quand c'est faisable.
+    if (r.seasons && !r.seasons.includes(g.world.weather.seasonIndex)) return false;
     // Une seule quête proposée à la fois par habitant.
     return !SIDE_QUESTS.some((o) => o.giver === q.giver && this.active[o.id]);
   }

@@ -1,3 +1,5 @@
+import { MUSIC_BED } from './audio.js';
+
 // Musiques du jeu : une ambiance par moment (nuit, fêtes, village, pluie, maison…).
 // Les chansons viennent du dossier music/<ambiance>/ (intégrées au jeu) et de
 // « Ma musique » (fichiers ajoutés depuis les paramètres, gardés dans le navigateur).
@@ -249,7 +251,7 @@ export class MusicPlayer {
 
   start(deck) {
     const ctx = this.audio.ctx;
-    const target = deck.track.gain * (deck.node ? 1 : this.audio.levels.music * this.audio.levels.master);
+    const target = deck.track.gain * (deck.node ? 1 : this.audio.levels.music * MUSIC_BED * this.audio.levels.master);
     deck.blocked = false;
     const p = deck.el.play();
     p?.then(() => {

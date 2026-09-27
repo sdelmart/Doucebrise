@@ -1,7 +1,7 @@
 {
   "name": "doucebrise",
   "private": true,
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Doucebrise — un jeu 3D cosy : un archipel à explorer, des animaux à apprivoiser, une maison à construire, des villages et une histoire.",
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "dist:win": "vite build && electron-builder --win --x64",
     "dist:mac": "vite build && electron-builder --mac --universal",
     "test:smoke": "node scripts/smoke.mjs",
+    "test:quests": "node scripts/quests-test.mjs",
     "music:levels": "node scripts/music-levels.mjs"
   },
   "devDependencies": {

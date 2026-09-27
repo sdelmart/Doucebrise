@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { ITEMS, RECIPES, countItem, takeItem } from './items.js';
 import { Animal } from '../animals/animal.js';
 import { SPECIES } from '../animals/species.js';
-import { ZONES, LANDMARKS } from '../world/layout.js';
+import { ZONES, LANDMARKS, islandAt } from '../world/layout.js';
+import { villageReachable } from './quests.js';
 import { createRng } from '../core/math.js';
 import { Shape, G, vertexColorToon } from '../core/materials.js';
 import { escapeHtml } from '../ui/ui.js';
@@ -70,16 +71,24 @@ export class Jobs {
     const g = this.game;
     const day = g.world.sky.day;
     if (this.offerDay === day) return;
+    const yesterday = new Set((this.offers || []).map((o) => o.type));
     this.offerDay = day;
     const rng = createRng(day * 4441 + 9);
-    const villagers = g.villagers.list;
+    // Missions proches : habitants des villages déjà visités (l'île principale d'abord).
+    const reachable = g.villagers.list.filter((v) => villageReachable(g, v.villageId));
+    const villagers = reachable.length >= 2 ? reachable : g.villagers.list;
     const pick = (arr) => arr[Math.floor(rng() * arr.length)];
     const bonus = 1 + g.progress.perk('service') * 0.08;
-    const types = ['livraison', 'courrier', 'promenade', 'chat', 'plage', 'commande'].sort(() => rng() - 0.5).slice(0, 4);
+    // Quatre missions sur six, en privilégiant celles qu'il n'y avait pas hier.
+    const types = ['livraison', 'courrier', 'promenade', 'chat', 'plage', 'commande']
+      .map((t) => ({ t, k: (yesterday.has(t) ? 1 : 0) + rng() }))
+      .sort((a, b) => a.k - b.k)
+      .slice(0, 4)
+      .map((x) => x.t);
     this.offers = types.map((type) => {
       const from = pick(villagers).def.id;
       let to = pick(villagers).def.id;
-      if (to === from) to = villagers[(villagers.findIndex((v) => v.def.id === from) + 3) % villagers.length].def.id;
+      if (to === from) to = villagers[(villagers.findIndex((v) => v.def.id === from) + 1) % villagers.length].def.id;
       const o = { type, from, to, id: `${day}-${type}` };
       switch (type) {
         case 'livraison':
@@ -101,7 +110,8 @@ export class Jobs {
           o.from = 'mimi';
           o.pet = pick(CAT_NAMES);
           o.variant = Math.floor(rng() * 19);
-          const zones = ZONES.filter((z) => z.id !== 'village');
+          // Un endroit connu : l'île principale ou un lieu déjà visité.
+          const zones = ZONES.filter((z) => z.id !== 'village' && (islandAt(z.x, z.z) === 'main' || g.progress.zones.has(z.id)));
           const z = pick(zones);
           o.zone = z.id;
           o.reward = 180 + Math.floor(rng() * 4) * 20;

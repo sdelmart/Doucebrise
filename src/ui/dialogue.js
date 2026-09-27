@@ -51,7 +51,10 @@ export class Dialogue {
     const birthday = g.calendar.isBirthday(v.def.id);
     if (!v.met) {
       v.met = true;
-      text = `Bonjour ! Je suis ${v.def.name}, ${v.def.job.toLowerCase()} de Doucebrise. Toi, tu dois être ${g.character.appearance.name} ! Bienvenue sur l'île !`;
+      const place = { pins: 'de Bourg-Sapin', corail: 'de Port-Corail' }[v.villageId] || 'de Doucebrise';
+      text = `Bonjour ! Je suis ${v.def.name}, ${v.def.job.toLowerCase()} ${place}. Toi, tu dois être ${g.character.appearance.name} ! Bienvenue ${v.villageId === 'main' || !v.villageId ? 'sur l\'île' : 'chez nous'} !`;
+      // Première rencontre : cet habitant peut désormais avoir une demande du jour.
+      g.quests.refreshRequests();
     } else if (birthday && v.talkedDay !== day) {
       text = 'Tu sais quel jour on est ? C\'est mon anniversaire ! 🎂 Hi hi, merci d\'être passé·e !';
     } else {

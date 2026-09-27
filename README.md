@@ -29,6 +29,8 @@ Version de production (fichiers statiques dans `dist/`, déployables sur n'impor
 
 `npm run build && npm run test:smoke` lance le jeu dans Chromium sans écran : écran titre, nouvelle partie, fenêtres principales, déplacement, course de luge, sauvegarde et reprise. Le test échoue à la moindre erreur JavaScript. Il tourne aussi sur GitHub à chaque envoi (workflow **Test du jeu**, captures d'écran en *Artifacts*).
 
+`npm run build && npm run test:quests` **joue toute l'histoire** (les 45 quêtes des 11 chapitres, avec les vraies actions du jeu : parler, planter, pêcher, cuisiner, acheter, décorer, adopter, cérémonies de nuit…), puis **les 51 quêtes des habitants** (proposition, objectifs, remise, récompenses), les **six petits boulots**, deux semaines de demandes et de défis (aucune répétition d'un jour à l'autre), et vérifie la cohérence des données (objets, meubles, recettes, habitants, prérequis) et la sauvegarde. Il tourne aussi sur GitHub à chaque envoi.
+
 ## Commandes
 
 Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôles). Les claviers AZERTY et QWERTY sont détectés : l'aide et le HUD affichent les bonnes lettres.
@@ -75,6 +77,7 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 - **Quêtes des habitants** : un « ! » doré au-dessus de la tête = une quête à proposer, un « ? » = une quête à rendre. Cueillettes, pêche au lac ou au lagon, insectes rares, photos, concerts, livraisons de lettres et de colis d'un village à l'autre, amitiés à renouer… avec meubles, recettes, titres et étoiles en récompense. Journal → onglet **Quêtes** pour suivre ou abandonner.
 - **Visites** : frappe à la porte d'un habitant le soir ou tôt le matin (quand il est chez lui) et découvre son intérieur, décoré à son image — 16 maisons toutes différentes.
 - Emplois du temps, scènes d'amitié à 2 et 4 cœurs, anniversaires, courrier chaque matin, bavardages (qui parlent de la météo, des aurores, des fêtes…), demandes du jour (petit « ! » bleu).
+- **Quêtes courtes et variées** : les demandes du jour viennent des habitants déjà rencontrés, dans les villages déjà visités, souvent pour un objet qu'ils aiment, jamais le même habitant ni le même objet deux jours de suite ; les défis du jour ne proposent que ce qui est faisable à ce stade ; les petits boulots restent près de chez toi et changent d'un jour à l'autre. Les quêtes « va voir… », « adopte… », « vis une scène d'amitié » sont validées si c'est déjà fait.
 
 ### 🐾 Animaux
 - **16 espèces, 73 pelages** : chat (19 races), chien, lapin, renard, canard, mouton, faon, hérisson, panda roux, poule, oiseau, tortue, et sur les îles **écureuil**, **chèvre des neiges**, **loutre** (qui nage) et **perroquet**.
@@ -89,6 +92,7 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 
 ### 🎵 Musique
 - **Une ambiance musicale par moment du jeu**, avec fondus enchaînés : la chanson reprend là où elle s'était arrêtée quand on revient dans une ambiance.
+- **Musique de fond** : bien plus basse que les bruitages et l'ambiance (oiseaux, vagues…), voix des chansons adoucies, et encore un peu plus discrète pendant les dialogues.
 
   | Ambiance (dossier) | Quand |
   | --- | --- |
@@ -166,6 +170,7 @@ assets/models/
 
 ```
 scripts/smoke.mjs        Test de fumée (Chromium sans écran)
+scripts/quests-test.mjs  Test de toutes les quêtes (histoire complète, habitants, boulots)
 scripts/music-levels.mjs Égalise le volume des musiques (music/levels.json)
 music/<ambiance>/        Les chansons du jeu, rangées par ambiance
 assets/models/           Modèles 3D importés (personnages, animations, végétation)

@@ -39,6 +39,23 @@ export function levelFor(xp) {
 
 // --- Défis du jour ------------------------------------------------------------------
 
+// Défi proposé seulement quand il est faisable à ce stade (outil obtenu, activité découverte).
+const done = (id) => (g) => g.quests.completed.includes(id);
+const CAN = {
+  feed: done('amis'),
+  catch: done('peche'),
+  rare: done('peche'),
+  harvest: (g) => g.garden.plots.some((p) => p.crop) || done('recolte')(g),
+  water: done('potager'),
+  gift: (g) => g.villagers.list.filter((v) => v.met).length >= 2,
+  talk: (g) => g.villagers.list.filter((v) => v.met).length >= 4,
+  cook: done('cuisine'),
+  sell: done('marche'),
+  insect: (g) => g.unlocks.has('tool:filet'),
+  job: done('boulot'),
+  play: (g) => g.unlocks.has('tool:plumeau'),
+};
+
 export const CHALLENGES = [
   { id: 'pet', event: 'pet', count: 5, label: 'Caresse 5 animaux', emoji: '🤲' },
   { id: 'feed', event: 'feed', count: 3, label: 'Nourris 3 animaux', emoji: '🥕' },
@@ -292,7 +309,12 @@ export class Progress {
     const day = this.game.world.sky.day;
     if (this.daily.day === day) return;
     const rng = createRng(day * 7919 + 5);
-    const pool = [...CHALLENGES];
+    // Faisables maintenant, et pas ceux d'hier (sauf s'il n'y a pas assez de choix).
+    const g = this.game;
+    const yesterday = new Set((this.daily.list || []).map((c) => c.id));
+    const feasible = CHALLENGES.filter((c) => !CAN[c.id] || CAN[c.id](g));
+    const fresh = feasible.filter((c) => !yesterday.has(c.id));
+    const pool = [...(fresh.length >= 3 ? fresh : feasible)];
     const list = [];
     while (list.length < 3 && pool.length) {
       const c = pool.splice(Math.floor(rng() * pool.length), 1)[0];

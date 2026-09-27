@@ -9,6 +9,8 @@ import { createRng } from '../core/math.js';
 
 const ev = (event, count, label, filter = null) => ({ event, count, label, filter });
 const st = (check, count, label) => ({ check, count, label });
+// Lieu déjà visité (une quête « va voir… » est validée même si on y est déjà allé).
+const visited = (zone) => (g) => (g.progress.zones.has(zone) || g.zone?.id === zone ? 1 : 0);
 
 // --- Cibles du guide ------------------------------------------------------------------
 
@@ -152,7 +154,7 @@ export const STORY = [
   { id: 'cueillette', chapter: 'tresors', title: 'Cueillette', giver: null,
     desc: 'Baies, pommes, champignons, coquillages, fleurs… L\'île regorge de trésors.',
     hint: 'Cherche les buissons à baies, les pommiers du verger, les champignons en forêt et les coquillages sur la plage. E pour ramasser.',
-    goals: [ev('gather', 8, 'Cueillir ou ramasser des objets')],
+    goals: [ev('gather', 5, 'Cueillir ou ramasser des objets')],
     target: T.resource, reward: { coins: 50 } },
   { id: 'marche', chapter: 'tresors', title: 'Au marché', giver: 'pomme',
     desc: 'Pomme, au stand rayé de la place, achète tout ce que tu trouves.',
@@ -183,7 +185,7 @@ export const STORY = [
   { id: 'peche', chapter: 'grandbleu', title: 'Graine de pêcheur', giver: 'marin',
     desc: 'Au bout du ponton de la plage ou à l\'étang : attends que le flotteur plonge, puis ferre dans la zone verte !',
     hint: 'Appuie sur E au coin de pêche. Quand « Ça mord ! » s\'affiche, appuie sur E, puis encore sur E quand le curseur passe dans la zone verte.',
-    goals: [ev('catch', 3, 'Pêcher des poissons')],
+    goals: [ev('catch', 2, 'Pêcher des poissons')],
     target: T.fishing, reward: { coins: 80, items: { appat: 5 } } },
   { id: 'cuisine', chapter: 'grandbleu', title: 'Petit chef', giver: 'marin',
     desc: 'Utilise la cuisinière de ta maison pour préparer un plat.',
@@ -193,7 +195,7 @@ export const STORY = [
   { id: 'phare', chapter: 'grandbleu', title: 'Le vieux phare', giver: 'marin',
     desc: 'Marin dit que le phare veille sur l\'île depuis cent ans. Va le voir de près, au Cap du Phare.',
     hint: 'Le phare rayé rouge et blanc se trouve au nord-est. Prends le chemin qui passe par le verger.',
-    goals: [ev('zone', 1, 'Visiter le Cap du Phare', (d) => d.zone === 'phare')],
+    goals: [st(visited('phare'), 1, 'Visiter le Cap du Phare')],
     target: T.lighthouse, reward: { coins: 80 } },
   // 5 — Un nid douillet
   { id: 'chezsoi', chapter: 'nid', title: 'Chez soi', giver: 'bruno',
@@ -236,17 +238,17 @@ export const STORY = [
   { id: 'adoption', chapter: 'famille', title: 'Une nouvelle famille', giver: 'mimi',
     desc: 'Remplis les 5 cœurs d\'un animal pour pouvoir l\'adopter (R).',
     hint: 'Caresse le même animal chaque jour et donne-lui son plat préféré : ses cœurs montent vite. À 5 cœurs, appuie sur R !',
-    goals: [ev('adopt', 1, 'Adopter un animal')],
+    goals: [st((g) => g.animals.companions().length, 1, 'Adopter un animal')],
     target: T.animal(), reward: { coins: 100, furniture: { panier: 1 } } },
   { id: 'amitie', chapter: 'famille', title: 'Tisser des liens', giver: null,
-    desc: 'Discute chaque jour avec les habitants et offre-leur ce qu\'ils aiment : deviens ami·e avec trois d\'entre eux.',
+    desc: 'Discute chaque jour avec les habitants et offre-leur ce qu\'ils aiment : deviens ami·e avec deux d\'entre eux.',
     hint: 'Chaque discussion quotidienne et chaque cadeau aimé font monter l\'amitié. Leurs goûts sont notés dans le journal une fois découverts.',
-    goals: [st((g) => g.villagers.list.filter((v) => v.friendship >= 40).length, 3, 'Habitants à 2 cœurs')],
+    goals: [st((g) => g.villagers.list.filter((v) => v.friendship >= 40).length, 2, 'Habitants à 2 cœurs')],
     target: null, reward: { coins: 200 } },
   { id: 'confidence', chapter: 'famille', title: 'Une confidence', giver: null,
     desc: 'Quand un habitant te fait assez confiance (2 cœurs), il te confie un souvenir. Écoute-le !',
     hint: 'Parle à un habitant avec qui tu as au moins 2 cœurs : une scène spéciale se déclenche.',
-    goals: [ev('heartEvent', 1, 'Vivre une scène d\'amitié')],
+    goals: [st((g) => (g.villagers.list.some((v) => v.seenEvents.length) ? 1 : 0), 1, 'Vivre une scène d\'amitié')],
     target: null, reward: { coins: 150 } },
   // 8 — Le Cœur de Doucebrise
   { id: 'rassemblement', chapter: 'coeur', title: 'Le secret du phare', giver: 'rose',
@@ -269,7 +271,7 @@ export const STORY = [
   { id: 'pont-brumes', chapter: 'pins', title: 'Le Pont des Brumes', giver: 'rose',
     desc: 'Au nord-ouest de la place, le Pont des Brumes mène à l\'île des Pins. Traverse-le jusqu\'à Bourg-Sapin.',
     hint: 'Prends le chemin qui part vers le nord-ouest depuis la place, passe sous l\'arche fleurie et traverse le grand pont de bois.',
-    goals: [ev('zone', 1, 'Arriver à Bourg-Sapin', (d) => d.zone === 'bourg')],
+    goals: [st(visited('bourg'), 1, 'Arriver à Bourg-Sapin')],
     target: T.zone('bourg'), reward: { coins: 150 } },
   { id: 'gardien', chapter: 'pins', title: 'Le gardien de la source', giver: 'aurele',
     desc: 'Grand-père Aurèle veille sur la source chaude, au sud du bourg. Il a quelque chose à te dire.',
@@ -311,7 +313,7 @@ export const STORY = [
   { id: 'pont-soleil', chapter: 'lagon', title: 'Le Pont du Soleil', giver: 'neree',
     desc: 'À l\'est de la Prairie aux Fleurs, le Pont du Soleil mène à l\'île Corail. Rejoins Port-Corail.',
     hint: 'Traverse la prairie vers le nord-est, passe l\'arche fleurie, puis le long pont. Tu peux aussi voyager depuis un panneau 🧭.',
-    goals: [ev('zone', 1, 'Arriver à Port-Corail', (d) => d.zone === 'port')],
+    goals: [st(visited('port'), 1, 'Arriver à Port-Corail')],
     target: T.zone('port'), reward: { coins: 150 } },
   { id: 'capitaine', chapter: 'lagon', title: 'Le message du capitaine', giver: 'neree',
     desc: 'Le capitaine Nérée t\'attend à la capitainerie du port.',
@@ -366,22 +368,22 @@ export const STORY = [
   { id: 'carnet', chapter: 'epilogue', title: 'Naturaliste', giver: 'noe',
     desc: 'Noé veut connaître tous les animaux de l\'île ! Caresse-les pour remplir ton carnet.',
     hint: 'Chaque pelage différent compte. Les chats, à eux seuls, en ont dix-neuf !',
-    goals: [st((g) => Object.values(g.animals.discovered).reduce((s, d) => s + d.variants.length, 0), 20, 'Découvrir des pelages')],
+    goals: [st((g) => Object.values(g.animals.discovered).reduce((s, d) => s + d.variants.length, 0), 12, 'Découvrir des pelages')],
     target: null, reward: { coins: 250, furniture: { 'arbre-chat': 1 } } },
   { id: 'collection', chapter: 'epilogue', title: 'Petites bêtes', giver: 'noe',
-    desc: 'Attrape 8 espèces d\'insectes différentes. Certaines ne sortent que la nuit ou sous la pluie !',
+    desc: 'Attrape 6 espèces d\'insectes différentes. Certaines ne sortent que la nuit ou sous la pluie !',
     hint: 'Le journal (J) → Collections indique les insectes déjà trouvés.',
-    goals: [st((g) => Object.keys(g.insects.caught).length, 8, 'Espèces d\'insectes')],
+    goals: [st((g) => Object.keys(g.insects.caught).length, 6, 'Espèces d\'insectes')],
     target: null, reward: { coins: 300 } },
   { id: 'famille', chapter: 'epilogue', title: 'Grande famille', giver: null,
-    desc: 'Un chat, un chien, un lapin… Et pourquoi pas tous ?',
+    desc: 'Un chat, un chien, un lapin… Adopte un deuxième compagnon !',
     hint: 'Tu peux avoir autant de compagnons que tu veux ; trois peuvent te suivre en même temps.',
-    goals: [st((g) => g.animals.companions().length, 3, 'Adopter des animaux')],
+    goals: [st((g) => g.animals.companions().length, 2, 'Adopter des animaux')],
     target: null, reward: { coins: 300, unlock: 'hat:etoile' } },
   { id: 'coeur', chapter: 'epilogue', title: 'Meilleur·e ami·e', giver: null,
-    desc: 'Deviens le meilleur ami ou la meilleure amie d\'un habitant de l\'île.',
-    hint: 'À 4 cœurs, une deuxième scène d\'amitié se débloque.',
-    goals: [st((g) => Math.max(...g.villagers.list.map((v) => v.friendship)), 100, 'Atteindre 5 cœurs avec un habitant')],
+    desc: 'Deviens le meilleur ami ou la meilleure amie d\'un habitant de l\'île (4 cœurs).',
+    hint: 'À 4 cœurs, une deuxième scène d\'amitié se débloque. Discute, offre ses cadeaux préférés et rends-lui service.',
+    goals: [st((g) => Math.max(0, ...g.villagers.list.map((v) => v.friendship)), 80, 'Atteindre 4 cœurs avec un habitant')],
     target: null, reward: { coins: 500, furniture: { 'statue-chat': 1 } } },
 ];
 
@@ -399,12 +401,31 @@ const CHAPTER_REWARDS = {
 
 const INTROS = [
   'Tu pourrais m\'aider ?',
-  'J\'ai une petite faim…',
-  'C\'est pour une recette secrète !',
-  'Je prépare une surprise pour quelqu\'un.',
   'J\'en rêve depuis ce matin !',
-  'C\'est pour décorer ma maison.',
+  'C\'est pour une surprise… chut !',
+  'Ça me rendrait un fier service.',
 ];
+// Phrases propres à l'objet demandé (plus vivant qu'une formule générique).
+const ITEM_INTROS = {
+  baie: ['Je voudrais faire des confitures pour tout l\'hiver !', 'Les baies, c\'est mon goûter préféré.'],
+  pomme: ['Une tarte aux pommes, ça te tente ? Il me manque juste les pommes…', 'Croquer une pomme bien juteuse… j\'en salive déjà !'],
+  carotte: ['Les lapins de l\'île me font les yeux doux…', 'Une bonne soupe de carottes, ce soir !'],
+  poisson: ['J\'ai promis un bon dîner à des amis.', 'Mon chat réclame du poisson depuis ce matin…'],
+  champignon: ['Une omelette aux champignons, rien de tel !', 'Je sèche des champignons pour l\'hiver.'],
+  coquillage: ['Je fabrique un mobile qui tinte avec le vent.', 'Je veux décorer le rebord de ma fenêtre.'],
+  fleur: ['Un bouquet égayerait tellement ma table !', 'C\'est bientôt l\'anniversaire de quelqu\'un que j\'aime…'],
+  fraise: ['Des fraises à la crème… le paradis !'],
+  tomate: ['Une salade de tomates bien fraîches, voilà mon rêve.'],
+  mais: ['J\'ai envie de pop-corn pour la soirée cinéma !'],
+  citrouille: ['Je prépare une lanterne pour la fête d\'automne.'],
+};
+
+/** Le village de cet habitant est-il déjà accessible (visité) ? */
+export function villageReachable(g, villageId) {
+  if (!villageId || villageId === 'main') return true;
+  const zones = g.progress?.zones;
+  return villageId === 'pins' ? !!zones?.has('bourg') : villageId === 'corail' ? !!zones?.has('port') : true;
+}
 
 export class Quests {
   constructor(game) {
@@ -422,6 +443,8 @@ export class Quests {
     const events = ['talk', 'plant', 'water', 'harvest', 'pet', 'feed', 'gather', 'sell', 'catch', 'adopt', 'buy', 'place', 'cook', 'gift', 'request', 'enter', 'insect', 'story', 'zone', 'facade', 'ride', 'job', 'heartEvent', 'finale', 'stargaze', 'emote', 'photo', 'treeLit', 'whale'];
     for (const e of events) game.on(e, (d) => this.onEvent(e, d));
     game.on('friendship', () => this.check());
+    // Lieux visités : l'état est mis à jour par d'autres écouteurs du même événement.
+    game.on('zone', () => setTimeout(() => this.check(), 0));
     game.on('sell', (d) => {
       this.stats.sold += d.count;
       this.stats.earned += d.total;
@@ -616,26 +639,44 @@ export class Quests {
   refreshRequests() {
     const g = this.game;
     const day = g.world.sky.day;
-    if (this.requestDay === day) return;
+    // Déjà tirées aujourd'hui (sauf si personne n'était encore rencontré : on retente).
+    if (this.requestDay === day && (this.requests.length || !g.villagers.list.some((v) => v.met))) return;
+    const previous = this.requestDay === day ? [] : this.requests || [];
     this.requestDay = day;
     const rng = createRng(day * 977 + 13);
-    const pool = ['baie', 'pomme', 'carotte', 'poisson', 'champignon', 'coquillage', 'fleur', 'graine'];
+    // Objets qu'on sait déjà trouver à ce stade (pas de poisson avant d'avoir appris à pêcher…).
+    const pool = ['baie', 'pomme', 'champignon', 'coquillage', 'fleur'];
+    if (this.completed.includes('potager')) pool.push('carotte');
+    if (this.completed.includes('peche') || this.stats.fish > 0) pool.push('poisson');
     if (day >= 3) pool.push('fraise', 'tomate', 'mais');
     if (day >= 5) pool.push('citrouille');
     const known = g.cooking ? g.cooking.known : new Set();
     for (const r of RECIPES) if (known.has(r.id) && r.id !== 'friandise') pool.push(r.id);
-    const villagers = [...g.villagers.list].sort(() => rng() - 0.5).slice(0, 3);
-    this.requests = villagers.map((v) => {
-      let item = rng.pick(pool);
-      if (v.def.dislikes.includes(item)) item = rng.pick(pool);
+    // Des habitants déjà rencontrés, dans les villages déjà visités, pas les mêmes qu'hier.
+    const yesterday = new Set(previous.map((r) => r.villager));
+    const lastItems = new Set(previous.map((r) => r.item));
+    const candidates = g.villagers.list.filter((v) => v.met && villageReachable(g, v.villageId));
+    const fresh = candidates.filter((v) => !yesterday.has(v.def.id));
+    const list = (fresh.length >= 2 ? fresh : candidates).sort(() => rng() - 0.5);
+    const count = candidates.length >= 6 ? 3 : candidates.length >= 2 ? 2 : candidates.length;
+    const used = new Set();
+    this.requests = list.slice(0, count).map((v) => {
+      // De préférence quelque chose que l'habitant aime, jamais ce qu'il déteste,
+      // ni deux fois le même objet dans la journée, ni celui d'hier.
+      const ok = (it) => !used.has(it) && !(v.def.dislikes || []).includes(it) && !lastItems.has(it);
+      const liked = pool.filter((it) => ok(it) && ((v.def.loves || []).includes(it) || (v.def.likes || []).includes(it)));
+      const others = pool.filter(ok);
+      const item = liked.length && rng() < 0.6 ? rng.pick(liked) : others.length ? rng.pick(others) : rng.pick(pool);
+      used.add(item);
       const price = ITEMS[item].price;
-      const count = price >= 60 ? 1 : price >= 20 ? rng.int(1, 3) : rng.int(2, 5);
+      const n = price >= 60 ? 1 : price >= 20 ? rng.int(1, 2) : rng.int(2, 4);
+      const lines = ITEM_INTROS[item] || [];
       return {
         villager: v.def.id,
         item,
-        count,
-        reward: Math.round((price * count * 1.8 + 25) / 5) * 5,
-        text: rng.pick(INTROS),
+        count: n,
+        reward: Math.round((price * n * 1.8 + 25) / 5) * 5,
+        text: lines.length && rng() < 0.75 ? rng.pick(lines) : rng.pick(INTROS),
         done: false,
       };
     });
