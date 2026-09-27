@@ -24,13 +24,12 @@ function tuftGeometry() {
     const cx = Math.cos(a);
     const cz = Math.sin(a);
     const base = pos.length / 3;
-    const levels = [0, 0.35, 0.7];
-    for (const y of levels) {
+    for (const y of [0, 0.5]) {
       const w = 0.028 * (1 - y) ** 0.7;
       pos.push(ox - cx * w, y, oz - cz * w, ox + cx * w, y, oz + cz * w);
     }
     pos.push(ox, 1, oz);
-    idx.push(base, base + 1, base + 2, base + 2, base + 1, base + 3, base + 2, base + 3, base + 4, base + 4, base + 3, base + 5, base + 4, base + 5, base + 6);
+    idx.push(base, base + 1, base + 2, base + 2, base + 1, base + 3, base + 2, base + 3, base + 4);
   }
   const geo = new THREE.InstancedBufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -181,8 +180,11 @@ float grassGround(vec2 p) {
 ${shader.vertexShader}`
         .replace(
           '#include <beginnormal_vertex>',
-          `vec3 grassPos;
-          vec3 objectNormal;
+          `// Touffe écartée (hors du rayon, chemin, obstacle…) : réduite à un point, sans calcul.
+          vec3 grassPos = vec3(0.0, -500.0, 0.0);
+          vec3 objectNormal = vec3(0.0, 1.0, 0.0);
+          vGrassColor = vec3(0.0);
+          vGrassY = 0.0;
           {
             float grid = uGrassGrid;
             float id = float(gl_InstanceID);
@@ -190,33 +192,38 @@ ${shader.vertexShader}`
             vec2 cell = uGrassOrigin + cellI - floor(grid * 0.5);
             vec2 jitter = vec2(grassHash(cell), grassHash(cell + 19.7));
             vec2 wp = (cell + jitter) * ${SPACING.toFixed(3)};
-            vec2 muv = ((wp + uGrassTerrain.x) / uGrassTerrain.y + 0.5) / (uGrassTerrain.z + 1.0);
-            vec4 m = texture(tGrassMap, muv);
-            float mask = texture(tGrassMask, (wp + uGrassMaskInfo.x) / (uGrassMaskInfo.y * uGrassMaskInfo.z)).r;
-            float dens = m.a * smoothstep(0.35, 0.9, mask);
             float dist = length(wp - uGrassFocus.xz);
-            float r = grassHash(cell + 7.3);
-            // Densité : les touffes disparaissent une à une (pas de bord net), plus clairsemées au loin.
-            float thin = mix(1.0, 0.45, smoothstep(uGrassRadius * 0.45, uGrassRadius, dist));
-            float keep = step(r, smoothstep(0.25, 0.75, dens) * thin) * smoothstep(uGrassRadius, uGrassRadius * 0.82, dist);
-            // Sous la neige, l'herbe est tassée.
-            float h = keep * mix(0.26, 0.5, grassHash(cell + 3.1)) * (0.75 + 0.35 * dens) * (1.0 - uSnow * 0.55);
-            float ang = grassHash(cell + 11.9) * 6.2832;
-            vec2 cs = vec2(cos(ang), sin(ang));
-            vec3 p = position;
-            p.xz = vec2(p.x * cs.x - p.z * cs.y, p.x * cs.y + p.z * cs.x) * keep * (0.85 + 0.4 * grassHash(cell + 5.3));
-            float y = p.y;
-            // Vent (rafales qui traversent le pré) et passage du joueur.
-            float gust = sin(uTime * 1.6 + wp.x * 0.32 + wp.y * 0.21) * 0.5 + sin(uTime * 2.7 + wp.x * 0.9 - wp.y * 0.6) * 0.22;
-            vec2 bend = vec2(0.55, 0.3) * (0.35 + gust) * 0.45 + (jitter - 0.5) * 0.5;
-            vec2 away = wp - uGrassPush.xz;
-            float pd = length(away);
-            bend += (pd > 0.001 ? away / pd : vec2(0.0)) * smoothstep(1.1, 0.2, pd) * 1.4;
-            vec2 off = bend * y * y * h;
-            grassPos = vec3(wp.x + p.x + off.x, grassGround(wp) - 0.02 + y * h * (1.0 - 0.35 * dot(bend, bend) * y), wp.y + p.z + off.y);
-            objectNormal = normalize(vec3(off.x * 0.6, 1.0, off.y * 0.6));
-            vGrassColor = m.rgb * m.rgb;
-            vGrassY = y;
+            vec4 m = vec4(0.0);
+            if (dist < uGrassRadius) m = texture(tGrassMap, ((wp + uGrassTerrain.x) / uGrassTerrain.y + 0.5) / (uGrassTerrain.z + 1.0));
+            float keep = 0.0;
+            float dens = 0.0;
+            if (m.a > 0.1) {
+              float mask = texture(tGrassMask, (wp + uGrassMaskInfo.x) / (uGrassMaskInfo.y * uGrassMaskInfo.z)).r;
+              dens = m.a * smoothstep(0.35, 0.9, mask);
+              // Densité : les touffes disparaissent une à une (pas de bord net), plus clairsemées au loin.
+              float thin = mix(1.0, 0.45, smoothstep(uGrassRadius * 0.45, uGrassRadius, dist));
+              keep = step(grassHash(cell + 7.3), smoothstep(0.25, 0.75, dens) * thin) * step(dist, uGrassRadius * 0.82 + grassHash(cell + 2.9) * uGrassRadius * 0.18);
+            }
+            if (keep > 0.0) {
+              // Sous la neige, l'herbe est tassée.
+              float h = mix(0.26, 0.5, grassHash(cell + 3.1)) * (0.75 + 0.35 * dens) * (1.0 - uSnow * 0.55);
+              float ang = grassHash(cell + 11.9) * 6.2832;
+              vec2 cs = vec2(cos(ang), sin(ang));
+              vec3 p = position;
+              p.xz = vec2(p.x * cs.x - p.z * cs.y, p.x * cs.y + p.z * cs.x) * (0.85 + 0.4 * grassHash(cell + 5.3));
+              float y = p.y;
+              // Vent (rafales qui traversent le pré) et passage du joueur.
+              float gust = sin(uTime * 1.6 + wp.x * 0.32 + wp.y * 0.21) * 0.5 + sin(uTime * 2.7 + wp.x * 0.9 - wp.y * 0.6) * 0.22;
+              vec2 bend = vec2(0.55, 0.3) * (0.35 + gust) * 0.45 + (jitter - 0.5) * 0.5;
+              vec2 away = wp - uGrassPush.xz;
+              float pd = length(away);
+              bend += (pd > 0.001 ? away / pd : vec2(0.0)) * smoothstep(1.1, 0.2, pd) * 1.4;
+              vec2 off = bend * y * y * h;
+              grassPos = vec3(wp.x + p.x + off.x, grassGround(wp) - 0.02 + y * h * (1.0 - 0.35 * dot(bend, bend) * y), wp.y + p.z + off.y);
+              objectNormal = normalize(vec3(off.x * 0.6, 1.0, off.y * 0.6));
+              vGrassColor = m.rgb * m.rgb;
+              vGrassY = y;
+            }
           }`,
         )
         .replace('#include <begin_vertex>', 'vec3 transformed = grassPos;');

@@ -15,6 +15,9 @@ const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// Rendu logiciel (SwiftShader) sur une petite machine de CI : une image peut prendre
+// plusieurs secondes ; clics et captures attendent donc plus longtemps que par défaut.
+page.setDefaultTimeout(120000);
 // SMOKE_SLOW=4 : processeur 4× plus lent, pour reproduire une machine de CI chargée.
 if (process.env.SMOKE_SLOW) {
   const cdp = await page.context().newCDPSession(page);
@@ -133,7 +136,7 @@ try {
     await settle();
     const before = await page.evaluate(() => ({ x: window.game.player.pos.x, z: window.game.player.pos.z }));
     await page.keyboard.down('KeyW');
-    await page.waitForFunction((b) => Math.hypot(window.game.player.pos.x - b.x, window.game.player.pos.z - b.z) > 0.5, before, { timeout: 30000 });
+    await page.waitForFunction((b) => Math.hypot(window.game.player.pos.x - b.x, window.game.player.pos.z - b.z) > 0.5, before, { timeout: 120000 });
     await page.keyboard.up('KeyW');
   });
   await step('Course de luge', async () => {
