@@ -5,6 +5,19 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // Rendu « toon » doux : quelques paliers de lumière pour un look cartoon pastel.
 // ---------------------------------------------------------------------------
 
+// Lampes (lampadaires, lumières de la maison) : une lampe éteinte ou trop loin n'est
+// pas calculée. Sans ce test, chaque pixel du jeu calculait toutes les lampes, même
+// en plein jour, alors qu'elles n'éclairent que la nuit et de près.
+{
+  const chunk = THREE.ShaderChunk.lights_fragment_begin;
+  const cut = chunk.indexOf('#if ( NUM_SPOT_LIGHTS > 0 )');
+  const head = chunk.slice(0, cut);
+  const at = head.lastIndexOf('RE_Direct( directLight');
+  if (cut > 0 && at > head.indexOf('NUM_POINT_LIGHTS > 0')) {
+    THREE.ShaderChunk.lights_fragment_begin = `${head.slice(0, at)}if ( directLight.visible ) ${head.slice(at)}${chunk.slice(cut)}`;
+  }
+}
+
 let gradientMap = null;
 export function getGradientMap() {
   if (gradientMap) return gradientMap;
@@ -55,6 +68,7 @@ export const globalUniforms = {
   uSnow: { value: 0 },
   uAutumn: { value: 0 },
   uWet: { value: 0 },
+  uBare: { value: 0 }, // arbres feuillus dénudés (hiver)
 };
 
 // ---------------------------------------------------------------------------
@@ -62,7 +76,7 @@ export const globalUniforms = {
 // sol assombri par la pluie. S'ajoute à un éventuel onBeforeCompile existant.
 // ---------------------------------------------------------------------------
 
-export function addSeason(material, { leaf = 0, ground = false, snowLo = 0.45, snowHi = 0.8, snow = 1, key = 'season' } = {}) {
+export function addSeason(material, { leaf = 0, ground = false, snowLo = 0.45, snowHi = 0.8, snow = 1, key = 'season', autumnExpr = '1.0', snowExpr = '0.0' } = {}) {
   const prev = material.onBeforeCompile;
   const prevKey = material.customProgramCacheKey ? material.customProgramCacheKey() : '';
   material.onBeforeCompile = (shader, renderer) => {
@@ -80,6 +94,10 @@ export function addSeason(material, { leaf = 0, ground = false, snowLo = 0.45, s
           sp = instanceMatrix * sp;
           sn = mat3(instanceMatrix) * sn;
         #endif
+        #ifdef USE_BATCHING
+          sp = batchingMatrix * sp;
+          sn = mat3(batchingMatrix) * sn;
+        #endif
         vSeasonPos = (modelMatrix * sp).xyz;
         vSeasonNormal = normalize(mat3(modelMatrix) * sn);
       }`,
@@ -93,15 +111,16 @@ export function addSeason(material, { leaf = 0, ground = false, snowLo = 0.45, s
         float hh = fract(sin(dot(floor(vSeasonPos.xz * 0.3), vec2(12.9898, 78.233))) * 43758.5453);
         vec3 autumn = mix(vec3(0.92, 0.28, 0.04), vec3(0.72, 0.08, 0.05), step(0.55, hh));
         autumn = mix(autumn, vec3(0.93, 0.62, 0.08), step(0.8, hh));
-        diffuseColor.rgb = mix(diffuseColor.rgb, autumn * (0.55 + diffuseColor.g * 0.9), green * uAutumn * ${leaf.toFixed(2)});` : ''}
+        diffuseColor.rgb = mix(diffuseColor.rgb, autumn * (0.55 + diffuseColor.g * 0.9), green * uAutumn * ${leaf.toFixed(2)} * (${autumnExpr}));` : ''}
         ${ground ? `diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.45, 0.12) * (0.5 + diffuseColor.g), green * uAutumn * 0.55);` : ''}
         float up = smoothstep(${snowLo.toFixed(2)}, ${snowHi.toFixed(2)}, vSeasonNormal.y);
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.94, 1.0), up * uSnow * ${snow.toFixed(2)});
-        diffuseColor.rgb *= 1.0 - uWet * 0.16 * (1.0 - up * uSnow);
+        float snowAmt = max(uSnow * ${snow.toFixed(2)}, ${snowExpr});
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.94, 1.0), up * snowAmt);
+        diffuseColor.rgb *= 1.0 - uWet * 0.16 * (1.0 - up * snowAmt);
       }`,
     );
   };
-  material.customProgramCacheKey = () => `${prevKey}|${key}-${leaf}-${ground}-${snowLo}-${snowHi}-${snow}`;
+  material.customProgramCacheKey = () => `${prevKey}|${key}-${leaf}-${ground}-${snowLo}-${snowHi}-${snow}-${autumnExpr}-${snowExpr}`;
   return material;
 }
 
@@ -116,6 +135,9 @@ export function addWind(material, { strength = 0.04, base = 0, key = 'wind' } = 
         vec3 wp = vec3(0.0);
         #ifdef USE_INSTANCING
           wp = instanceMatrix[3].xyz;
+        #endif
+        #ifdef USE_BATCHING
+          wp = batchingMatrix[3].xyz;
         #endif
         float ph = wp.x * 0.21 + wp.z * 0.17;
         float sw = sin(uTime * 1.7 + ph) * 0.6 + sin(uTime * 3.1 + ph * 1.9) * 0.25;

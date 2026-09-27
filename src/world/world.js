@@ -135,7 +135,7 @@ export class World {
     return true;
   }
 
-  update(dt, elapsed, focus, grassRadius = 80) {
+  update(dt, elapsed, focus, grassRadius = 80, camera = null) {
     globalUniforms.uTime.value = elapsed;
     this.sky.update(dt, focus, elapsed);
     this.weather.update(dt, focus);
@@ -153,6 +153,7 @@ export class World {
     this.village.update(dt, elapsed, night);
     this.islands.update(dt, elapsed, night, focus, this.particles, this.renderDistance);
     this.vegetation.updateIslands(focus, this.renderDistance);
+    this.vegetation.updateTrees(camera ? camera.position : focus, this.renderDistance / 300, focus);
     this.ambient.update(dt, elapsed, night, focus, this.weather);
   }
 }

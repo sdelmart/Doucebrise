@@ -96,20 +96,24 @@ try {
     if (!r.avatar) throw new Error('le personnage importé n\'est pas chargé');
     if (r.models < 5) throw new Error(`végétation importée incomplète (${r.models} types)`);
   });
-  await step('Rendu réaliste (sol détaillé, herbe dense)', async () => {
+  await step('Rendu réaliste (sol détaillé, herbe dense, arbres)', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;
+      const f = g.world.vegetation.forests || {};
       return {
         style: g.renderStyle,
         env: !!g.scene.environment,
         ground: !!g.world.terrainMesh.geometry.attributes.splatA,
         grass: g.world.grassField.geometry.instanceCount,
+        trees: Object.values(f).reduce((n, x) => n + (x.bark ? x.trees.length : 0), 0),
+        pins: f.pins?.leaves?.instanceCount || 0,
       };
     });
     if (r.style !== 'realiste') throw new Error(`style de rendu : ${r.style}`);
     if (!r.env) throw new Error('pas de lumière du ciel (environnement)');
     if (!r.ground) throw new Error('textures du sol non chargées');
     if (!(r.grass > 1000)) throw new Error(`tapis d'herbe vide (${r.grass})`);
+    if (!(r.trees > 500 && r.pins > 300)) throw new Error(`arbres générés absents (${r.trees}, île des Pins : ${r.pins})`);
   });
   await step('Paramètres : redémarrage proposé', async () => {
     await settle();

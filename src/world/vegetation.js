@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { Shape, G, toon, addWind, addSeason, paintGradientY } from '../core/materials.js';
+import { Shape, G, toon, addWind, addSeason, paintGradientY, isRealistic } from '../core/materials.js';
 import { createRng, smoothstep } from '../core/math.js';
 import { ISLANDS, LANDMARKS, SLED_COURSE } from './layout.js';
 import { natureGeometries, kindOffset, flowerColors, surfaceSpots } from './natureModels.js';
 import { crownOf } from '../core/models.js';
+import { TREE_KINDS, TreeForest, treeTextures, clearTreeCache, treeFocus, updateLeafLighting } from './trees.js';
 
 // Végétation instanciée : arbres, buissons à baies, fleurs, herbe, rochers,
 // champignons, tournesols et carottes sauvages (les trois derniers sont récoltables).
@@ -462,6 +463,7 @@ export class Vegetation {
     const staticMat = addSeason(vc(), { snowLo: 0.4, snowHi: 0.8 });
     this.pineMat = pineMat;
     this.flowerMat = flowerMat;
+    this.forests = {};
 
     this.placeTrees(rng, leafMat);
     this.placeBushes(rng, bushMat);
@@ -475,13 +477,31 @@ export class Vegetation {
     this.islandGroups = {};
     this.placePins(createRng(9191));
     this.placeCorail(createRng(7373));
+    for (const f of Object.values(this.forests)) f.build();
+    clearTreeCache();
+  }
+
+  /** Arbres générés d'une île (rendu réaliste), dessinés en deux lots. */
+  forest(where) {
+    return (this.forests[where] ||= new TreeForest(where));
+  }
+
+  /** Niveau de détail des arbres selon la caméra ; scale : distances (qualité). */
+  updateTrees(cam, scale = 1, focus = null) {
+    if (focus) treeFocus.value.set(focus.x, focus.y + 1, focus.z);
+    if (Object.keys(this.forests).length) updateLeafLighting(this.world.sky, this.world.scene);
+    for (const f of Object.values(this.forests)) {
+      f.lodScale = scale;
+      if (!f.parent || f.parent.visible) f.update(cam);
+    }
   }
 
   /**
    * Maillage instancié d'un type de plante : modèles importés s'il y en a (plusieurs
    * variantes, ou un seul si single), sinon la géométrie construite en code.
    */
-  kind(kind, fallback, material, count, opts = {}, { single = false, extra = null, key = '' } = {}) {
+  kind(kind, fallback, material, count, opts = {}, { single = false, extra = null, key = '', where = 'main' } = {}) {
+    if (TREE_KINDS[kind] && isRealistic() && treeTextures()) return this.forest(where).kind(kind, count);
     const geos = natureGeometries(kind, { extra, key });
     if (!geos) {
       const mesh = makeInstanced(fallback(), material, count, opts);
@@ -509,6 +529,10 @@ export class Vegetation {
   }
 
   addTo(id, mesh) {
+    if (mesh.isTreeKind) {
+      if (!mesh.forest.parent) this.islandGroup(id).add(mesh.forest);
+      return mesh;
+    }
     if (mesh.isVariants) {
       mesh.finish();
       this.islandGroup(id).add(mesh);
@@ -525,10 +549,11 @@ export class Vegetation {
     const I = ISLANDS.pins;
     const { pineMat, leafMat, staticMat, flowerMat, bushMat } = this.mats;
     const area = { area: I.r + 12, center: [I.x, I.z] };
-    const pines = this.kind('pine', treePine, pineMat, 520);
-    const firs = this.kind('fir', treeFir, pineMat, 260);
-    const snowy = this.kind('pineSnow', treePineSnow, pineMat, 200);
-    const golden = this.kind('treeGolden', () => treeRound('#f0a45a', '#ffd98a', '#8a5a43'), leafMat, 40);
+    const where = { where: 'pins' };
+    const pines = this.kind('pine', treePine, pineMat, 520, {}, where);
+    const firs = this.kind('fir', treeFir, pineMat, 260, {}, where);
+    const snowy = this.kind('pineSnow', treePineSnow, pineMat, 200, {}, where);
+    const golden = this.kind('treeGolden', () => treeRound('#f0a45a', '#ffd98a', '#8a5a43'), leafMat, 40, {}, where);
     const tint = () => _c.setScalar(rng.range(0.9, 1.08));
     this.scatter(rng, 900, 12000, { ...area, pad: 1.9, pathPad: 2.6, minH: 0.8, maxSlope: 0.5 }, (x, z, h) => {
       const B = LANDMARKS.bourg;
@@ -646,7 +671,7 @@ export class Vegetation {
     const crown = cocoPalms.userData?.model ? crownOf(cocoPalms.geometry) : null;
     const coconuts = makeInstanced(coconutsGeo(crown ? [crown.x, crown.y + 0.1, crown.z] : (palm ||= palmGeo()).top), toon('#ffffff', { vertexColors: true }), 40);
     const palmCount = () => palms.count + (cocoPalms === palms ? 0 : cocoPalms.count);
-    const round = this.kind('treeTropical', () => treeRound('#5fb35a', '#b5e07a'), leafMat, 40);
+    const round = this.kind('treeTropical', () => treeRound('#5fb35a', '#b5e07a'), leafMat, 40, {}, { where: 'corail' });
     const tint = () => _c.setScalar(rng.range(0.92, 1.08));
     let k = 0;
     this.scatter(rng, 150, 6000, { ...area, pad: 2.6, pathPad: 2.5, minH: 0.5, maxSlope: 0.4 }, (x, z, h) => {
@@ -772,6 +797,10 @@ export class Vegetation {
   }
 
   add(mesh) {
+    if (mesh.isTreeKind) {
+      if (!mesh.forest.parent) this.group.add(mesh.forest);
+      return mesh;
+    }
     if (mesh.isVariants) {
       mesh.finish();
       this.group.add(mesh);
@@ -837,7 +866,9 @@ export class Vegetation {
 
     // Verger : pommiers récoltables.
     // Pommes posées sur le feuillage (celui du modèle importé s'il y en a un).
-    const appleShape = types.apple.userData.model ? fruitsGeo(surfaceSpots(types.apple.geometry, 8, { minY: 0.42, out: 0.1, seed: 3 }), '#e5484d', 0.2, '#6b4a2a') : appleGeo();
+    const appleShape = types.apple.isTreeKind
+      ? fruitsGeo(types.apple.spots(8, { minY: 0.4, out: 0.02 }), '#d8343c', 0.15, '#6b4a2a')
+      : types.apple.userData.model ? fruitsGeo(surfaceSpots(types.apple.geometry, 8, { minY: 0.42, out: 0.1, seed: 3 }), '#e5484d', 0.2, '#6b4a2a') : appleGeo();
     const apples = makeInstanced(appleShape, toon('#ffffff', { vertexColors: true }), 16);
     this.apples = apples;
     const o = { x: 30, z: -26 };

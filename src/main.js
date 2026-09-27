@@ -10,6 +10,7 @@ import { loadModels } from './core/models.js';
 import { NATURE_MODEL_IDS } from './world/natureModels.js';
 import { CHARACTER_MODEL_IDS } from './player/avatar.js';
 import { loadGroundTextures } from './world/terrainTextures.js';
+import { loadTreeTextures } from './world/trees.js';
 import { loadSettings } from './core/settings.js';
 import { loadSave } from './core/save.js';
 
@@ -35,18 +36,18 @@ async function modelsReady() {
   if (p) p.textContent = label;
 }
 
-// Sol détaillé (textures du terrain), si le réglage est activé.
-async function groundReady() {
-  let on = true;
+// Sol détaillé (textures du terrain) et arbres réalistes, selon les réglages.
+async function texturesReady() {
+  let g = {};
   try {
-    on = loadSettings(loadSave()?.settings).graphics.ground !== false;
+    g = loadSettings(loadSave()?.settings).graphics;
   } catch {
     /* réglages illisibles : valeurs par défaut */
   }
-  if (on) await loadGroundTextures();
+  await Promise.all([g.ground !== false && loadGroundTextures(), g.style !== 'cartoon' && loadTreeTextures()]);
 }
 
-Promise.all([fontsReady(), modelsReady(), groundReady()]).then(() =>
+Promise.all([fontsReady(), modelsReady(), texturesReady()]).then(() =>
   requestAnimationFrame(() =>
     setTimeout(() => {
       try {

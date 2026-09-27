@@ -22,7 +22,7 @@ export const LAYER = { grass: 0, forest: 1, dirt: 2, sand: 3, rock: 4, paving: 5
 
 let textures = null;
 
-async function loadImage(url) {
+export async function loadImage(url) {
   const img = new Image();
   img.decoding = 'async';
   img.src = url;
@@ -31,7 +31,7 @@ async function loadImage(url) {
 }
 
 /** Image empilée (couches les unes sous les autres) → texture tableau pour le GPU. */
-function arrayTexture(img, layers, srgb) {
+export function arrayTexture(img, layers, srgb) {
   const w = img.naturalWidth;
   const h = img.naturalHeight;
   const canvas = document.createElement('canvas');

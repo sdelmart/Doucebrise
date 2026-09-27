@@ -1426,7 +1426,7 @@ export class Game {
     const paused = playing && (this.panel === 'pause' || this.panel === 'settings');
     const sdt = paused ? 0 : dt;
     const worldDt = this.state === 'title' ? 0 : sdt;
-    this.world.update(worldDt, this.elapsed, this.player.pos, this.grassRadius);
+    this.world.update(worldDt, this.elapsed, this.player.pos, this.grassRadius, this.camera);
     this.world.sky.updateEnvironment(this.renderer);
     this.audio.setRain(this.state === 'play' && !this.indoors ? this.world.weather.rainAmt : 0);
     this.world.weather.indoors = this.indoors;

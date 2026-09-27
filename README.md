@@ -2,7 +2,7 @@
 
 Un jeu 3D **cosy** dans l'esprit de *Heartopia* : un archipel de trois îles et trois villages à explorer, des animaux à apprivoiser, 16 habitants avec leurs histoires et leurs quêtes, une maison à construire et décorer, des véhicules, des métiers, une météo vivante, un ciel étoilé… et une histoire à suivre, « Le Cœur de Doucebrise ».
 
-Le jeu est écrit avec Three.js. Il se joue **dans le navigateur** ou comme **application de bureau Windows et macOS**. Le personnage, les arbres, les fleurs et les rochers viennent de packs de modèles 3D libres (KayKit, Kenney) ; les maisons, les animaux, les habitants, les meubles, le ciel, l'eau et les bruitages sont générés par le code ; les musiques viennent du dossier `music/`.
+Le jeu est écrit avec Three.js. Il se joue **dans le navigateur** ou comme **application de bureau Windows et macOS**. Le personnage, les fleurs et les rochers viennent de packs de modèles 3D libres (KayKit, Kenney) ; les arbres réalistes sont générés au lancement, avec des écorces et des rameaux photographiés ; les maisons, les animaux, les habitants, les meubles, le ciel, l'eau et les bruitages sont générés par le code ; les musiques viennent du dossier `music/`.
 
 ## Télécharger l'application (Windows / macOS)
 
@@ -116,14 +116,18 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 - **Sol détaillé** : textures photographiques (Poly Haven, CC0) mélangées selon le terrain — herbe, sous-bois, terre des chemins, sable, roche des falaises, pavés des places, neige des sommets — avec relief (normales) et transitions par la hauteur (les cailloux dépassent de l'herbe). Les couleurs des biomes et des saisons sont gardées.
 - **Tapis d'herbe dense** autour du joueur : des dizaines de milliers de brins animés par le vent, qui s'écartent à ton passage, dorés en automne et tassés sous la neige (réglage « Herbe »).
 - **Personnage 3D animé** (KayKit Adventurers) : Mage, Chevalier, Barbare, Rôdeur, Voleur, Voleur à capuche — ou le style **Classique** entièrement personnalisable (onglet Style du créateur). Marche, course, saut, cueillette, caresses via les animations KayKit ; s'asseoir, saluer, danser, applaudir, pêcher sont posés en code.
-- **Arbres, buissons, fleurs, champignons et rochers** importés (KayKit Forest, Kenney Nature Kit), recolorés dans la palette du jeu : cerisiers roses, arbres dorés, sapins enneigés, palmiers ; ils gardent le vent, les feuilles d'automne et la neige de l'hiver.
+- **Arbres réalistes** (rendu réaliste) : chênes, bouleaux, cerisiers, pommiers, arbres dorés, pins, sapins et arbres tropicaux, **générés au lancement** (tronc et branches qui poussent selon l'essence, `src/world/treeGen.js`, d'après EZ-Tree) avec des **écorces** et des **rameaux photographiés**. Plusieurs variantes par essence ; le vent fait bouger l'arbre et frémir les feuilles.
+  - **Saisons** : feuilles rousses à l'automne (quelques-unes tombent), **branches nues** l'hiver avec la neige posée dessus, feuillage revenu au printemps ; les cerisiers sont roses, les sapins d'altitude gardent leur neige.
+  - **Vue dégagée** : les branches entre la caméra et le personnage s'effacent, la vue n'est jamais bouchée en forêt.
+- **Buissons, fleurs, champignons et rochers** importés (KayKit Forest, Kenney Nature Kit), recolorés dans la palette du jeu. En style Cartoon, les arbres sont aussi ceux de ces packs (plus légers).
 - **Eau** : houle et vaguelettes, reflet du ciel selon l'angle (Fresnel), éclat du soleil, écume en dentelle sur les rivages, lagon turquoise.
 - **Halo lumineux** (lanternes, fenêtres et étoiles qui brillent la nuit), étalonnage et vignette.
 - Ombres jusqu'à 4096 px, anticrénelage FXAA / SMAA / MSAA.
 
-### 🧱 Textures du sol (dossier `assets/textures/`)
+### 🧱 Textures du sol et des arbres (dossier `assets/textures/`)
 - `terrain-albedo.jpg` (couleurs) et `terrain-normal-height.jpg` (rouge/vert : normale, bleu : hauteur) : sept textures de 1024 px (normales en 512 px) empilées de haut en bas, dans l'ordre de `GROUND_LAYERS` (`src/world/terrainTextures.js`) : herbe (*leafy_grass*), sous-bois (*forrest_ground_01*), terre (*park_dirt*), sable (*sand_01*), roche (*rock_face*), pavés (*cobblestone_floor_01*), neige (*snow_02*). Toutes viennent de [Poly Haven](https://polyhaven.com/textures) (CC0) ; crédits : `assets/textures/CREDITS.md`.
 - Sans ces fichiers (ou avec « Sol détaillé » désactivé), le terrain garde ses couleurs unies.
+- `trees-bark.jpg` / `trees-bark-normal.jpg` : écorces de chêne, bouleau et pin (Poly Haven, TextureCan — CC0) ; `trees-leaves.jpg` + `trees-leaves-alpha.png` : huit rameaux (chêne, frêne, tremble, pin, et des variantes recolorées : cerisier, bouleau, pommier, tropical) du projet EZ-Tree (MIT). Sans eux, le jeu reprend les arbres des packs de modèles.
 
 ### 🧱 Modèles 3D (dossier `assets/models/`)
 ```
@@ -141,6 +145,7 @@ assets/models/
 - **Peu d'appels de dessin** : chaque animal et chaque habitant se dessine en un ou deux maillages « skinnés » (leurs pièces articulées servent d'os, `src/core/rig.js`) au lieu d'une dizaine ; les ombres du soleil sont calculées une seule fois par image ; l'occlusion ambiante relit la profondeur de l'image au lieu de redessiner la scène. Environ 4 fois moins d'appels de dessin qu'en 0.7.0 (≈ 370 au lieu de ≈ 1 470 au village).
 - **Netteté adaptative** (écrans Retina / 4K) : si la carte graphique ne suit plus, la netteté baisse par petits paliers, jamais sous la résolution normale de l'écran, puis remonte ; le temps réel de la carte graphique est mesuré quand le navigateur le permet (`src/core/dynres.js`). Le compteur FPS détaillé affiche la netteté du moment.
 - Occlusion ambiante à demi-résolution sur ces écrans ; éclairage du ciel mis à jour sur place (pas d'à-coup) ; sol et herbe sans calcul inutile au loin.
+- **Arbres** : toute une île se dessine en **deux lots** (écorces, feuillages) où chaque arbre est trié et écarté s'il est hors champ ; **trois niveaux de détail** selon la distance (moins de rameaux, plus grands, au loin) ; les ombres utilisent la version la plus légère ; chaque rameau est découpé au plus près de sa forme (deux fois moins de pixels transparents) ; l'éclairage des feuilles est calculé par sommet. Les lampes éteintes (le jour) ou lointaines ne sont plus calculées pour chaque pixel du jeu.
 
 ### ⚙️ Paramètres complets
 - **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (style de rendu réaliste ou cartoon, résolution de rendu, netteté Retina, netteté adaptative, ombres, ombres de contact, sol détaillé, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages). Le style et le sol détaillé demandent un redémarrage : un bouton le propose aussitôt.
@@ -174,7 +179,7 @@ scripts/quests-test.mjs  Test de toutes les quêtes (histoire complète, habitan
 scripts/music-levels.mjs Égalise le volume des musiques (music/levels.json)
 music/<ambiance>/        Les chansons du jeu, rangées par ambiance
 assets/models/           Modèles 3D importés (personnages, animations, végétation)
-assets/textures/         Textures du sol (Poly Haven)
+assets/textures/         Textures du sol (Poly Haven) et des arbres (écorces, rameaux)
 electron/                Application de bureau (fenêtre, protocole interne app://, plein écran)
 src/
   main.js, game.js       Démarrage, boucle, états, interactions, récompenses, sauvegarde
@@ -183,7 +188,8 @@ src/
                          post-traitement, particules, sons et musique, sauvegarde (profils), mises à jour,
                          chargement des modèles 3D (models.js)
   world/                 Terrain de l'archipel (et sol détaillé : terrainTextures.js), ciel, météo,
-                         eau, villages, îles, végétation (modèles importés : natureModels.js),
+                         eau, villages, îles, végétation (modèles importés : natureModels.js ;
+                         arbres générés : treeGen.js, trees.js),
                          tapis d'herbe (grassField.js), collisions
   player/                Personnage classique, personnage importé animé (avatar.js), visage,
                          apparence, déplacement, caméra

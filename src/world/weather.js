@@ -238,6 +238,12 @@ export class Weather {
     globalUniforms.uAutumn.value = autumn;
     globalUniforms.uSnow.value = Math.max(snow, this.snowAmt * 0.6);
     globalUniforms.uWet.value = this.rainAmt;
+    // Feuillus : quelques feuilles tombent en fin d'automne, branches nues l'hiver,
+    // bourgeons à la fin de l'hiver : le printemps commence feuillu.
+    let bare = 0;
+    if (si === 2) bare = smoothstep(0.55, 1, t) * 0.3;
+    if (si === 3) bare = (0.3 + 0.7 * smoothstep(0, 0.12, t)) * (1 - smoothstep(0.82, 1, t));
+    globalUniforms.uBare.value = bare;
 
     // Ciel plus gris quand c'est couvert.
     const c = this.cloud;
