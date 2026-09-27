@@ -770,3 +770,18 @@ body.no-keyhints #keyhints { display: none; }
   color: #9a6a00; font-weight: 800; font-size: 13px; text-decoration: none;
 }
 .update-link:hover { background: #ffefb3; }
+
+/* Ma musique (paramètres → audio) */
+.mm-title-main { margin-top: 16px; }
+.mm-mood { border: 2px solid var(--line); border-radius: 14px; padding: 8px 10px; margin: 8px 0; background: rgba(255, 255, 255, 0.45); }
+.mm-mood.playing { border-color: #8a6cff; box-shadow: 0 0 0 3px rgba(138, 108, 255, 0.15); }
+.mm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.mm-name { display: grid; font-size: 14px; }
+.mm-name small { font-weight: 700; color: var(--ink-soft); font-size: 12px; }
+.mm-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.mm-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.mm-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; padding: 3px 4px 3px 8px; border-radius: 10px; background: rgba(255, 255, 255, 0.6); }
+.mm-list li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.mm-list li.now { background: #efeaff; }
+.mm-list li.off span { opacity: 0.45; text-decoration: line-through; }
+.mm-empty { margin: 6px 0 2px; font-size: 12px; font-weight: 700; color: var(--ink-soft); }

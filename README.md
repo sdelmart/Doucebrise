@@ -2,7 +2,7 @@
 
 Un jeu 3D **cosy** dans l'esprit de *Heartopia* : un archipel de trois îles et trois villages à explorer, des animaux à apprivoiser, 16 habitants avec leurs histoires et leurs quêtes, une maison à construire et décorer, des véhicules, des métiers, une météo vivante, un ciel étoilé… et une histoire à suivre, « Le Cœur de Doucebrise ».
 
-Le jeu est écrit avec Three.js. Il se joue **dans le navigateur** ou comme **application de bureau Windows et macOS**. Aucun fichier externe : les modèles 3D, les visages, les motifs, les meubles, le ciel, l'eau, la musique et les sons sont tous générés par le code.
+Le jeu est écrit avec Three.js. Il se joue **dans le navigateur** ou comme **application de bureau Windows et macOS**. Les modèles 3D, les visages, les motifs, les meubles, le ciel, l'eau et les bruitages sont tous générés par le code ; les musiques viennent du dossier `music/`.
 
 ## Télécharger l'application (Windows / macOS)
 
@@ -85,6 +85,26 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 - **Météo** : soleil, nuages, pluie, **orages** (éclairs et tonnerre), **brouillard** matinal, neige, arc-en-ciel ; **pétales** de cerisier au printemps, **feuilles** qui tombent en automne. Prévisions du lendemain au survol de l'horloge.
 - **4 saisons** de 3 jours et **8 fêtes** : Fête des Fleurs, Concours de pêche, Fête des Récoltes et Nuit des Étoiles à Doucebrise ; Pique-nique des cerisiers, **Fête du Port** (voiliers dans la baie, poissons plus chers, boutiques en promo), **Fête des Lanternes** (lanternes flottantes sur le Lac Miroir) et **Marché d'hiver de Bourg-Sapin** dans les îles.
 
+### 🎵 Musique
+- **Une ambiance musicale par moment du jeu**, avec fondus enchaînés : la chanson reprend là où elle s'était arrêtée quand on revient dans une ambiance.
+
+  | Ambiance (dossier) | Quand |
+  | --- | --- |
+  | `leger` | Le village de Doucebrise en journée |
+  | `nature` | Forêt, prairie, plage, étang, île Corail |
+  | `montagnard` | Bourg-Sapin et le Pic des Neiges |
+  | `nuit` | Dehors, la nuit |
+  | `melancolique` | Pluie et orage |
+  | `festif` | Fêtes des villages, course de luge |
+  | `cozy` | À la maison et chez les habitants |
+  | `mignon` | Boutiques et Café des Chats |
+  | `tendre` | Scènes d'amitié, cérémonies de l'histoire |
+  | `magique` | Écran titre, longue-vue, vœux sous les étoiles filantes |
+
+- **Ajouter des chansons au jeu** : les mettre dans `music/<ambiance>/` (MP3, M4A, OGG…), puis `npm run music:levels` (avec ffmpeg installé) pour égaliser leurs volumes. Plusieurs chansons par ambiance : elles tournent. Une ambiance vide reprend les chansons d'une ambiance proche.
+- **Ma musique** (Paramètres → Audio) : écouter chaque ambiance, y ajouter des fichiers depuis l'ordinateur (gardés dans le jeu, sur cet ordinateur), masquer une chanson, afficher ou non le titre de la chanson qui commence.
+- Sans aucune chanson, le jeu joue sa petite musique générée.
+
 ### 🎨 Graphismes
 - Style cartoon doux, **halo lumineux** (lanternes, fenêtres et étoiles qui brillent la nuit), étalonnage et vignette, **eau** avec reflets du ciel, éclat du soleil et lagon turquoise.
 - Ombres jusqu'à 4096 px, anticrénelage FXAA / SMAA / MSAA.
@@ -117,6 +137,8 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 
 ```
 scripts/smoke.mjs        Test de fumée (Chromium sans écran)
+scripts/music-levels.mjs Égalise le volume des musiques (music/levels.json)
+music/<ambiance>/        Les chansons du jeu, rangées par ambiance
 electron/                Application de bureau (fenêtre, protocole interne app://, plein écran)
 src/
   main.js, game.js       Démarrage, boucle, états, interactions, récompenses, sauvegarde

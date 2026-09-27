@@ -4,6 +4,8 @@
 
 const { app, BrowserWindow, protocol, net, Menu, ipcMain, shell } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
+const { Readable } = require('node:stream');
 const { pathToFileURL } = require('node:url');
 
 protocol.registerSchemesAsPrivileged([
@@ -16,6 +18,31 @@ app.commandLine.appendSwitch('enable-gpu-rasterization');
 
 const ROOT = path.join(__dirname, '..', 'dist');
 let win = null;
+
+// Musiques : servies par morceaux (en-tête Range) pour pouvoir reprendre une chanson
+// en plein milieu ; sans cela, le lecteur audio repartirait toujours du début.
+const MEDIA = { '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.opus': 'audio/ogg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.wav': 'audio/wav', '.flac': 'audio/flac', '.webm': 'audio/webm' };
+
+function serveMedia(request, file, type) {
+  let size;
+  try {
+    size = fs.statSync(file).size;
+  } catch {
+    return new Response('Introuvable', { status: 404 });
+  }
+  const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes' };
+  const m = /bytes=(\d*)-(\d*)/.exec(request.headers.get('range') || '');
+  if (!m || (!m[1] && !m[2])) {
+    return new Response(Readable.toWeb(fs.createReadStream(file)), { status: 200, headers: { ...headers, 'Content-Length': String(size) } });
+  }
+  let start = m[1] ? parseInt(m[1], 10) : Math.max(0, size - parseInt(m[2], 10));
+  let end = m[1] && m[2] ? Math.min(parseInt(m[2], 10), size - 1) : size - 1;
+  if (start >= size || start > end) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+  return new Response(Readable.toWeb(fs.createReadStream(file, { start, end })), {
+    status: 206,
+    headers: { ...headers, 'Content-Length': String(end - start + 1), 'Content-Range': `bytes ${start}-${end}/${size}` },
+  });
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -71,6 +98,8 @@ app.whenReady().then(() => {
     const { pathname } = new URL(request.url);
     const file = path.normalize(path.join(ROOT, decodeURIComponent(pathname)));
     if (!file.startsWith(ROOT)) return new Response('Introuvable', { status: 404 });
+    const type = MEDIA[path.extname(file).toLowerCase()];
+    if (type) return serveMedia(request, file, type);
     return net.fetch(pathToFileURL(file).toString());
   });
   buildMenu();

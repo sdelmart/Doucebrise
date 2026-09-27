@@ -32,6 +32,7 @@ import { loadSettings, saveSettings, SHADOW_SIZES, DAY_SPEEDS } from './core/set
 import { PostFX } from './core/postfx.js';
 import { Particles } from './core/particles.js';
 import { Audio } from './core/audio.js';
+import { MusicPlayer } from './core/music.js';
 import { loadSave, writeSave, clearSave, getSlot } from './core/save.js';
 import { UI } from './ui/ui.js';
 import { Creator } from './ui/creator.js';
@@ -75,6 +76,7 @@ export class Game {
     initKeyboardLayout().then(() => this.ui?.refreshKeyHints?.());
     this.input.onRebuild = () => this.ui?.refreshKeyHints?.();
     this.audio = new Audio();
+    this.music = new MusicPlayer(this.audio, () => this.settings);
     this.world = new World(this.scene);
     this.particles = new Particles(this.scene);
     this.postfx = new PostFX(this.renderer, this.scene, this.camera);
@@ -157,6 +159,18 @@ export class Game {
     this.cam.snap = true;
 
     window.addEventListener('resize', () => this.resize());
+    // Premier clic ou première touche : le navigateur autorise alors le son (musique du titre).
+    const unlockAudio = () => {
+      this.audio.ensure();
+      this.audio.ctx?.resume?.();
+      window.removeEventListener('pointerdown', unlockAudio, true);
+      window.removeEventListener('keydown', unlockAudio, true);
+    };
+    window.addEventListener('pointerdown', unlockAudio, true);
+    window.addEventListener('keydown', unlockAudio, true);
+    this.music.onTrack = (t) => {
+      if (this.state === 'play' && this.settings.musicTitles !== false) this.ui.toast(`🎵 ${t.name}`, 2600);
+    };
     // Avant les autres écouteurs : Échap qui ferme une fenêtre ne doit pas ouvrir la pause.
     window.addEventListener('keydown', (e) => {
       this.escWasBusy = this.busy || !!this.panel || this.state !== 'play';
@@ -460,6 +474,7 @@ export class Game {
   }
 
   makeWish() {
+    this.musicMoment = { mood: 'magique', until: this.elapsed + 30 };
     this.wishT = 0;
     this.ui.wishPrompt?.(false);
     this.audio.play('wish');
@@ -1410,6 +1425,7 @@ export class Game {
     this.calendar.update(sdt);
     this.house.update(sdt, this.elapsed, this.camera);
     this.decor.update();
+    this.music.update(dt, this.musicMood());
     this.particles.update(sdt);
     this.cam.update(dt, this.player, this.input, this.elapsed);
     this.guide.update(dt);
@@ -1450,6 +1466,31 @@ export class Game {
     this.postfx.render(dt);
     this.perf.update(rawDt);
     this.input.endFrame();
+  }
+
+  /** Ambiance musicale voulue à cet instant (voir core/music.js). */
+  musicMood() {
+    if (this.state !== 'play') return 'magique';
+    if (this.musicMoment && this.elapsed < this.musicMoment.until) return this.musicMoment.mood;
+    if (this.inFinale || (this.dialogue.open && this.dialogue.el?.classList.contains('heart-scene'))) return 'tendre';
+    if (this.archipelago.gazing) return 'magique';
+    if (this.sled.active) return 'festif';
+    if (this.shop.isOpen) return 'mignon';
+    if (this.indoors) return 'cozy';
+    const sky = this.world.sky;
+    const p = this.player.pos;
+    const island = islandAt(p.x, p.z);
+    if (this.world.weather.rainAmt > 0.35) return 'melancolique';
+    const fest = this.calendar.festival?.id;
+    if (fest === 'etoiles' && sky.isNight) return 'magique';
+    const festIsland = { port: 'corail', lanternes: 'pins', hiver: 'pins' }[fest] || (fest ? 'main' : null);
+    if (festIsland === island && sky.hour >= 7 && sky.hour < 22) return 'festif';
+    if (sky.isNight) return 'nuit';
+    const cafe = this.world.village.shopSpots.cafe;
+    if (cafe && Math.hypot(cafe.x - p.x, cafe.z - p.z) < 9) return 'mignon';
+    if (island === 'pins') return 'montagnard';
+    if (island === 'main' && (!this.zone || this.zone.id === 'village')) return 'leger';
+    return 'nature';
   }
 
   /** Ambiance : lumière du post-traitement, sons, musique, étoiles filantes, aurores. */

@@ -11,7 +11,8 @@
     "app": "vite build && electron .",
     "dist:win": "vite build && electron-builder --win --x64",
     "dist:mac": "vite build && electron-builder --mac --universal",
-    "test:smoke": "node scripts/smoke.mjs"
+    "test:smoke": "node scripts/smoke.mjs",
+    "music:levels": "node scripts/music-levels.mjs"
   },
   "devDependencies": {
     "@fontsource/nunito": "^5.3.0",

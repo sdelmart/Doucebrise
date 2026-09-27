@@ -81,6 +81,17 @@ try {
       await page.evaluate(() => window.game.closePanels());
     }
   });
+  await step('Musique', async () => {
+    const r = await page.evaluate(() => new Promise((resolve) => {
+      const m = window.game.music;
+      if (!m.tracks.length) return resolve({ skip: true });
+      const t0 = m.deck?.el.currentTime ?? -1;
+      setTimeout(() => resolve({ mood: m.mood, track: m.playing?.name, t0, t1: m.deck?.el.currentTime ?? -1 }), 2500);
+    }));
+    if (r.skip) return;
+    if (!r.track) throw new Error('aucune chanson ne joue');
+    if (!(r.t1 > r.t0)) throw new Error(`la chanson « ${r.track} » ne se lit pas`);
+  });
   await step('Se déplacer', async () => {
     await settle();
     const before = await page.evaluate(() => ({ x: window.game.player.pos.x, z: window.game.player.pos.z }));

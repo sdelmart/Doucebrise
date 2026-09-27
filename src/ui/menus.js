@@ -4,6 +4,7 @@ import { slotSummaries, getSlot, setSlot, clearSave, exportSave, importSave } fr
 import { SEASONS } from '../world/weather.js';
 import { escapeHtml } from './ui.js';
 import { VERSION, checkForUpdate } from '../core/updates.js';
+import { MUSIC_MOODS } from '../core/music.js';
 
 // Menus : écran titre (3 profils), menu pause (Échap), paramètres complets
 // (graphismes, affichage, contrôles, audio, jeu) et crédits.
@@ -424,8 +425,39 @@ export class SettingsPanel {
       this.row('Musique', this.range('audio.music', a.music, 0, 1, 0.05, pct(a.music))),
       this.row('Effets sonores', this.range('audio.sfx', a.sfx, 0, 1, 0.05, pct(a.sfx))),
       this.row('Ambiance (oiseaux, vagues, pluie…)', this.range('audio.ambience', a.ambience, 0, 1, 0.05, pct(a.ambience))),
-      this.row('Musique douce', this.toggle('musicOn', this.game.audio.musicOn), 'Elle change selon l\'île et la nuit'),
-    ].join('');
+      this.row('Musique', this.toggle('musicOn', this.game.audio.musicOn), 'Elle change selon l\'endroit, l\'heure, la météo et les fêtes'),
+      this.row('Titre de la chanson', this.toggle('musicTitles', this.s.musicTitles !== false), 'Un petit message quand une chanson commence'),
+    ].join('') + this.myMusic();
+  }
+
+  /** Ma musique : les chansons de chaque ambiance, à écouter, ajouter ou retirer. */
+  myMusic() {
+    const m = this.game.music;
+    const playing = m.playing;
+    const hidden = m.hidden;
+    const moodLabel = (id) => MUSIC_MOODS.find((x) => x.id === id)?.label || id;
+    let html = `<div class="field-title mm-title-main">🎵 Ma musique</div>
+      <p class="note">Une ou plusieurs chansons par ambiance ; le jeu passe de l'une à l'autre en fondu. « Ajouter » prend des fichiers audio de ton ordinateur (MP3, M4A, OGG, WAV…) : ils restent dans le jeu, sur cet ordinateur.${playing ? `<br>En ce moment : <b>${escapeHtml(playing.name)}</b> (${escapeHtml(moodLabel(playing.mood))}).` : ''}</p>`;
+    for (const mood of MUSIC_MOODS) {
+      const list = m.tracks.filter((t) => t.mood === mood.id);
+      const fallback = m.resolve(mood.id);
+      html += `<div class="mm-mood${playing?.mood === mood.id ? ' playing' : ''}"><div class="mm-head"><div class="mm-name"><b>${mood.emoji} ${mood.label}</b><small>${escapeHtml(mood.when)}</small></div>
+        <div class="mm-actions"><button class="btn small" data-mm-play="${mood.id}"${fallback ? '' : ' disabled'}>▶ Écouter</button>
+        <label class="btn small">➕ Ajouter<input type="file" accept="audio/*,.mp3,.m4a,.ogg,.wav,.flac,.aac,.opus" multiple data-mm-add="${mood.id}" hidden /></label></div></div>`;
+      if (list.length) {
+        html += `<ul class="mm-list">${list.map((t) => {
+          const off = hidden.has(t.id);
+          const btn = t.source === 'user'
+            ? `<button class="btn small" data-mm-del="${escapeHtml(t.id)}" title="Retirer cette chanson">🗑️</button>`
+            : `<button class="btn small" data-mm-hide="${escapeHtml(t.id)}">${off ? 'Réactiver' : 'Masquer'}</button>`;
+          return `<li class="${off ? 'off' : ''}${playing?.id === t.id ? ' now' : ''}"><span>${playing?.id === t.id ? '🔊' : t.source === 'user' ? '🎧' : '📁'} ${escapeHtml(t.name)}</span>${btn}</li>`;
+        }).join('')}</ul>`;
+      } else {
+        html += `<p class="mm-empty">Pas encore de chanson : ${fallback ? `le jeu joue celles de « ${escapeHtml(moodLabel(fallback))} »` : 'la petite musique du jeu'}.</p>`;
+      }
+      html += '</div>';
+    }
+    return html;
   }
 
   jeu() {
@@ -532,6 +564,43 @@ export class SettingsPanel {
       this.render();
     });
     this.el.querySelector('[data-export]')?.addEventListener('click', () => downloadSave(getSlot()));
+    // Ma musique.
+    const m = g.music;
+    this.el.querySelectorAll('[data-mm-play]').forEach((b) => {
+      b.onclick = () => {
+        g.audio.ensure();
+        if (!g.audio.musicOn) g.toggleMusic();
+        m.preview(b.dataset.mmPlay);
+        setTimeout(() => this.tab === 'audio' && this.render(), 400);
+      };
+    });
+    this.el.querySelectorAll('[data-mm-add]').forEach((input) => {
+      input.onchange = async () => {
+        const files = [...input.files];
+        if (!files.length) return;
+        g.ui.toast(`⏳ Ajout de ${files.length} chanson${files.length > 1 ? 's' : ''}…`, 2000);
+        try {
+          const n = await m.addFiles(input.dataset.mmAdd, files);
+          g.ui.toast(n ? `✅ ${n} chanson${n > 1 ? 's ajoutées' : ' ajoutée'}` : '⚠️ Ce ne sont pas des fichiers audio', 2500);
+        } catch {
+          g.ui.toast('⚠️ Impossible d\'enregistrer ces chansons ici', 3000);
+        }
+        if (this.tab === 'audio') this.render();
+      };
+    });
+    this.el.querySelectorAll('[data-mm-del]').forEach((b) => {
+      b.onclick = async () => {
+        await m.removeUser(b.dataset.mmDel);
+        this.render();
+      };
+    });
+    this.el.querySelectorAll('[data-mm-hide]').forEach((b) => {
+      b.onclick = () => {
+        m.setHidden(b.dataset.mmHide, !m.hidden.has(b.dataset.mmHide));
+        saveSettings(s);
+        this.render();
+      };
+    });
     this.el.querySelector('[data-reset]')?.addEventListener('click', () => {
       if (!this.confirmReset) {
         this.confirmReset = true;
@@ -564,9 +633,10 @@ export class Credits {
       <p class="tagline">L'archipel des cœurs doux</p>
       <div class="credits-list">
         <p><b>Un jeu fait avec ♥</b><br>pour les soirées douces, les amis à poils et les grandes balades.</p>
-        <p><b>Conception, programmation, graphismes, musique</b><br>Tout est fabriqué dans le jeu, sans image ni son externe : modèles 3D, ciel, eau, mélodies et ambiances sont générés en direct.</p>
+        <p><b>Conception, programmation, graphismes, sons</b><br>Tout est fabriqué dans le jeu, sans image externe : modèles 3D, ciel, eau, bruitages et ambiances sont générés en direct.</p>
         <p><b>Technologies</b><br>Three.js (moteur 3D) · Vite · Electron (applications Windows et macOS)</p>
         <p><b>Police</b><br>Nunito — SIL Open Font License</p>
+        ${game.music.tracks.some((t) => t.source === 'bundled') ? `<p><b>Musiques choisies avec amour</b><br>${[...new Set(game.music.tracks.filter((t) => t.source === 'bundled').map((t) => t.name))].map(escapeHtml).join('<br>')}</p>` : ''}
         <p><b>Développé avec l'aide de Claude</b></p>
         <p class="note">Version ${VERSION}</p>
         <p class="note">Merci d'avoir joué ! 🌸🐱🌊</p>

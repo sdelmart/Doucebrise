@@ -1,5 +1,6 @@
 // Sons synthétisés (aucun fichier audio) : effets doux, ambiances (oiseaux, grillons,
-// vagues, vent, pluie, tonnerre) et musique générative qui change selon l'île et l'heure.
+// vagues, vent, pluie, tonnerre) et musique générative qui change selon l'île et l'heure
+// (jouée seulement quand aucune chanson n'est disponible, voir music.js).
 // Trois bus réglables séparément : musique, effets, ambiance (plus un volume général).
 
 const NOTES = { C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392, A4: 440, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880, B5: 987.77, C6: 1046.5, E6: 1318.5 };
@@ -288,6 +289,11 @@ export class Audio {
     const playBar = () => {
       if (!this.musicOn) return;
       const m = MOODS[this.mood] || MOODS.village;
+      // Une chanson (dossier music/ ou « Ma musique ») joue : la musique générée se tait.
+      if (this.proceduralMuted) {
+        this.musicTimer = setTimeout(playBar, m.bar * 1000);
+        return;
+      }
       const scale = m.scale;
       const chord = m.chords[bar % m.chords.length];
       chord.forEach((n, i) => this.tone(scale[n] / 2, { t: i * 0.02, dur: m.bar, type: 'sine', vol: 0.035, bus: 'music', attack: 0.2 }));

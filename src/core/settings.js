@@ -78,6 +78,8 @@ export function defaultSettings() {
     camAuto: true,
     audio: { master: 0.8, music: 0.6, sfx: 0.9, ambience: 0.7 },
     musicOn: true,
+    musicHidden: [], // chansons intégrées masquées (Ma musique)
+    musicTitles: true, // afficher le titre de la chanson qui commence
     keys: {}, // action → code physique (absent = défaut)
     daySpeed: 'normale',
     fullscreen: false,
