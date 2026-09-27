@@ -34,6 +34,7 @@ import { Particles } from './core/particles.js';
 import { Audio } from './core/audio.js';
 import { MusicPlayer } from './core/music.js';
 import { setRenderStyle } from './core/materials.js';
+import { DynamicResolution } from './core/dynres.js';
 import { loadSave, writeSave, clearSave, getSlot } from './core/save.js';
 import { UI } from './ui/ui.js';
 import { Creator } from './ui/creator.js';
@@ -78,6 +79,9 @@ export class Game {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
     this.renderer.shadowMap.enabled = true;
+    // Mise à jour explicite, une fois par image (PostFX.render) : sinon chaque rendu de
+    // la scène (passes supplémentaires) recalculerait toutes les ombres.
+    this.renderer.shadowMap.autoUpdate = false;
     // PCFSoftShadowMap a été retiré de Three.js (r186) : PCF + rayon de flou (voir sky.js).
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.scene = new THREE.Scene();
@@ -91,6 +95,7 @@ export class Game {
     this.world = new World(this.scene);
     this.particles = new Particles(this.scene);
     this.postfx = new PostFX(this.renderer, this.scene, this.camera);
+    this.dynres = new DynamicResolution(this.renderer);
     this.renderer.info.autoReset = false;
     this.perf = new PerfOverlay(this);
     this.wishT = 0;
@@ -226,7 +231,8 @@ export class Game {
   applySettings(save = true) {
     const st = this.settings;
     const gs = st.graphics;
-    const ratio = Math.min(window.devicePixelRatio || 1, gs.maxRatio) * gs.renderScale;
+    const ratio = this.fullPixelRatio();
+    this.dynres.reset();
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     const sun = this.world.sky.sun;
@@ -1475,9 +1481,34 @@ export class Game {
     if (this.state === 'creator') this.ui.update(dt);
 
     this.renderer.info.reset();
+    this.dynres.begin();
     this.postfx.render(dt);
+    this.dynres.end();
+    this.updateDynamicResolution(rawDt);
     this.perf.update(rawDt);
     this.input.endFrame();
+  }
+
+  /** Rapport de pixels voulu par les réglages (écran × netteté max × résolution de rendu). */
+  fullPixelRatio() {
+    const gs = this.settings.graphics;
+    return Math.min(window.devicePixelRatio || 1, gs.maxRatio) * gs.renderScale;
+  }
+
+  /**
+   * Netteté adaptative (écrans haute définition) : baisse la netteté quand la carte
+   * graphique ne suit plus, jamais en dessous de la résolution normale de l'écran.
+   */
+  updateDynamicResolution(dt) {
+    const gs = this.settings.graphics;
+    const full = this.fullPixelRatio();
+    const floor = gs.dynres ? Math.min(full, Math.max(1, gs.renderScale)) : full;
+    const target = 1000 / (this.settings.fpsLimit || 60);
+    const r = this.dynres.update(dt, full, floor, target);
+    if (Math.abs(r - this.renderer.getPixelRatio()) < 0.01) return;
+    this.renderer.setPixelRatio(r);
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.postfx.setSize(window.innerWidth, window.innerHeight);
   }
 
   /** Ambiance musicale voulue à cet instant (voir core/music.js). */

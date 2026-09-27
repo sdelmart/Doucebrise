@@ -301,7 +301,9 @@ export class Animal {
       }
       if (this.state === 'sleep') target = leg.pivot.position.z > 0 ? -1.2 : 1.2;
       leg.pivot.rotation.x = damp(leg.pivot.rotation.x, target, 14, dt);
-      leg.pivot.visible = !this.swimming;
+      // Pattes rentrées dans l'eau (les pièces sont des os du maillage fusionné : on les
+      // réduit au lieu de les masquer).
+      leg.pivot.scale.setScalar(this.swimming ? 0.001 : 1);
     }
 
     if (moving) {

@@ -74,6 +74,8 @@ export class PostFX {
     const rt = new THREE.WebGLRenderTarget(size.x * r.getPixelRatio(), size.y * r.getPixelRatio(), {
       type: THREE.HalfFloatType,
       samples: this.opts.aa === 'msaa' ? 4 : 0,
+      // Profondeur de l'image, relue par l'occlusion ambiante (pas de second rendu de la scène).
+      depthTexture: this.opts.ao ? new THREE.DepthTexture(size.x * r.getPixelRatio(), size.y * r.getPixelRatio()) : null,
     });
     const composer = new EffectComposer(r, rt);
     composer.addPass(new RenderPass(this.scene, this.camera));
@@ -85,16 +87,22 @@ export class PostFX {
       this.ao.blendIntensity = 0.85;
       this.ao.updateGtaoMaterial({ radius: 0.9, distanceExponent: 1.4, thickness: 1.2, scale: 1, samples: 12 });
       this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, rings: 2, samples: 12 });
-      // Objets placés par le shader (tapis d'herbe) : exclus de l'occlusion.
-      const hide = this.ao._overrideVisibility.bind(this.ao);
-      this.ao._overrideVisibility = () => {
-        hide();
-        this.scene.traverse((o) => {
-          if (o.userData.noAO && o.visible) {
-            o.visible = false;
-            this.ao._visibilityCache.push(o);
+      // L'occlusion lit la profondeur de l'image qui vient d'être dessinée (normales
+      // recalculées à partir d'elle) au lieu de redessiner toute la scène une seconde
+      // fois : environ deux fois moins d'appels de dessin. (setGBuffer est appelé
+      // après la construction : la passe crée alors ses cibles internes normalement.)
+      const aoRender = this.ao.render.bind(this.ao);
+      this.ao.render = (renderer, writeBuffer, readBuffer, ...rest) => {
+        const depth = readBuffer.depthTexture;
+        if (depth && this.ao.depthTexture !== depth) {
+          this.ao.setGBuffer(depth);
+          if (!this.aoFromDepth) {
+            this.aoFromDepth = true;
+            this.ao.gtaoMaterial.needsUpdate = true;
+            this.ao.pdMaterial.needsUpdate = true;
           }
-        });
+        }
+        return aoRender(renderer, writeBuffer, readBuffer, ...rest);
       };
       composer.addPass(this.ao);
     }
@@ -122,6 +130,9 @@ export class PostFX {
     const pr = this.renderer.getPixelRatio();
     this.composer.setPixelRatio(pr);
     this.composer.setSize(w, h);
+    // Écrans haute définition : l'occlusion ambiante (très floue par nature) est calculée
+    // à demi-résolution, soit encore au moins la résolution normale de l'écran.
+    if (this.ao && pr >= 1.5) this.ao.setSize(Math.round(w * pr * 0.5), Math.round(h * pr * 0.5));
     if (this.fxaa) this.fxaa.material.uniforms.resolution.value.set(1 / (w * pr), 1 / (h * pr));
   }
 
@@ -146,6 +157,8 @@ export class PostFX {
   }
 
   render(dt) {
+    // Ombres du soleil : calculées une seule fois par image (voir game.js).
+    this.renderer.shadowMap.needsUpdate = true;
     if (this.active) this.composer.render(dt);
     else this.renderer.render(this.scene, this.camera);
   }
@@ -160,5 +173,6 @@ export class PostFX {
     this.grade = null;
     this.fxaa = null;
     this.ao = null;
+    this.aoFromDepth = false;
   }
 }

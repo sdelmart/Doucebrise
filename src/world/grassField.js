@@ -82,8 +82,6 @@ export class GrassField {
     this.mesh.receiveShadow = true;
     this.mesh.castShadow = false;
     this.mesh.name = 'grass-field';
-    // Placé par le shader : exclu du calcul d'occlusion (qui le verrait à l'origine).
-    this.mesh.userData.noAO = true;
     this.setRadius(20);
   }
 

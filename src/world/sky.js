@@ -397,16 +397,20 @@ export class DayNight {
       const ground = new THREE.SphereGeometry(400, 32, 12, 0, Math.PI * 2, Math.PI / 2 + 0.03, Math.PI / 2 - 0.03);
       this.envGround = new THREE.Mesh(ground, new THREE.MeshBasicMaterial({ color: '#56703e', side: THREE.BackSide, fog: false }));
       this.envScene.add(this.envGround);
+      this.envCube = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+      this.envCamera = new THREE.CubeCamera(1, 1000, this.envCube);
+      this.envGroundTint = new THREE.Color('#4a6a36');
     }
     if (!force && this.envHour !== undefined && Math.abs(this.hour - this.envHour) < 0.12 && Math.abs((this.cloudCover || 0) - this.envCover) < 0.1) return;
     this.envHour = this.hour;
     this.envCover = this.cloudCover || 0;
     const day = 1 - this.nightFactor;
-    this.envGround.material.color.copy(this.hemi.groundColor).lerp(new THREE.Color('#4a6a36'), 0.5).multiplyScalar(0.18 + 0.3 * day);
-    const rt = this.pmrem.fromScene(this.envScene, 0, 1, 1000);
-    this.scene.environment = rt.texture;
-    this.envRT?.dispose();
-    this.envRT = rt;
+    this.envGround.material.color.copy(this.hemi.groundColor).lerp(this.envGroundTint, 0.5).multiplyScalar(0.18 + 0.3 * day);
+    // Toujours la même texture d'environnement, mise à jour sur place : les matériaux
+    // n'ont pas à se reconfigurer (pas de petit à-coup toutes les quelques secondes).
+    this.envCamera.update(renderer, this.envScene);
+    this.envRT = this.pmrem.fromCubemap(this.envCube.texture, this.envRT || null);
+    this.scene.environment = this.envRT.texture;
   }
 
   interpolate(h) {

@@ -65,7 +65,7 @@ export class PerfOverlay {
     this.detailEl.innerHTML = `${avg.toFixed(1)} ms · pire ${worst.toFixed(1)} ms<br>
       ${info.render.calls} dessins · ${(info.render.triangles / 1000).toFixed(0)} k triangles<br>
       ${info.memory.geometries} géométries · ${info.memory.textures} textures<br>
-      ${w}×${h} · ombres ${gs.shadows} · ${gs.aa.toUpperCase()}${gs.bloom ? ' · bloom' : ''}<br>
+      ${w}×${h} (×${r.getPixelRatio().toFixed(2).replace(/\.?0+$/, '')}${gs.dynres && r.getPixelRatio() < g.fullPixelRatio() - 0.01 ? ' adaptée' : ''}) · ombres ${gs.shadows} · ${gs.aa.toUpperCase()}${gs.bloom ? ' · bloom' : ''}<br>
       <span class="perf-gpu">${this.gpu}</span>`;
     this.drawGraph();
   }

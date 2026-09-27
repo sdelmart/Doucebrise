@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Shape, G, toon, withOutline, paintGradientY, vertexColorToon, getGradientMap, shadedMaterial } from '../core/materials.js';
+import { mergeRig } from '../core/rig.js';
 import { createFaceTextures, createPatternTexture, FACE_PHI, FACE_THETA0, FACE_THETA_LEN } from './face.js';
 import { clamp, damp } from '../core/math.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -81,6 +82,7 @@ export class Character {
       p.removeFromParent();
       p.traverse((o) => {
         if (o.isMesh && o.name !== 'outline') o.geometry.dispose();
+        if (o.isSkinnedMesh) o.skeleton.dispose();
       });
     }
     for (const t of this.textures) t.dispose();
@@ -161,6 +163,11 @@ export class Character {
     this.buildBack(a, b);
     this.flushParts();
     if (this.rod) this.armR.add(this.rod);
+    // Une pièce par matériau (les pièces d'origine servent d'os) : quelques appels de
+    // dessin par personnage au lieu d'une quinzaine.
+    const own = new Set();
+    for (const p of this.parts) p.traverse((o) => o.isMesh && own.add(o));
+    for (const m of mergeRig(this.root, { only: own })) this.parts.push(m);
   }
 
   buildTorso(a, b, isDress, isOveralls) {
@@ -1100,6 +1107,7 @@ export class Character {
       s.add(G.torus(0.05, 0.014, 5, 10, Math.PI), '#6b4a3a', { pos: [-0.25, 0.08, 0.14], rot: [0, 0, Math.PI] });
       const mat = shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
       this.umbrella = new THREE.Mesh(s.build(), mat);
+      this.umbrella.userData.noMerge = true;
       this.umbrella.castShadow = true;
       this.torso.add(this.umbrella);
     }

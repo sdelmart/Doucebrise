@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Shape, G, vertexColorToon, withOutline } from '../core/materials.js';
+import { mergeRig } from '../core/rig.js';
 
 // Espèces d'animaux : fiche (nom, nourriture préférée, caractère) + modèle 3D
 // construit à partir de primitives. Chaque animal regarde vers +Z, pieds à y = 0.
@@ -278,6 +279,8 @@ export function buildAnimal(speciesId, variantIndex) {
   }
   m.root.scale.setScalar(m.scale);
   m.material = mat;
+  // Un seul maillage (et une seule ombre) par animal au lieu d'un par pièce.
+  mergeRig(m.root);
   return m;
 }
 

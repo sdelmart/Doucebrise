@@ -133,8 +133,13 @@ assets/models/
 - Tout est détecté automatiquement : un nouveau personnage déposé dans `characters/` apparaît dans le créateur (il doit utiliser le squelette KayKit « Rig_Medium »). Quels modèles remplacent quelles plantes : `src/world/natureModels.js`.
 - Sans ces fichiers, le jeu reprend ses modèles construits en code. Crédits et licences (CC0) : `assets/models/CREDITS.md`.
 
+### ⚡ Fluidité
+- **Peu d'appels de dessin** : chaque animal et chaque habitant se dessine en un ou deux maillages « skinnés » (leurs pièces articulées servent d'os, `src/core/rig.js`) au lieu d'une dizaine ; les ombres du soleil sont calculées une seule fois par image ; l'occlusion ambiante relit la profondeur de l'image au lieu de redessiner la scène. Environ 4 fois moins d'appels de dessin qu'en 0.7.0 (≈ 370 au lieu de ≈ 1 470 au village).
+- **Netteté adaptative** (écrans Retina / 4K) : si la carte graphique ne suit plus, la netteté baisse par petits paliers, jamais sous la résolution normale de l'écran, puis remonte ; le temps réel de la carte graphique est mesuré quand le navigateur le permet (`src/core/dynres.js`). Le compteur FPS détaillé affiche la netteté du moment.
+- Occlusion ambiante à demi-résolution sur ces écrans ; éclairage du ciel mis à jour sur place (pas d'à-coup) ; sol et herbe sans calcul inutile au loin.
+
 ### ⚙️ Paramètres complets
-- **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (style de rendu réaliste ou cartoon, résolution de rendu, netteté Retina, ombres, ombres de contact, sol détaillé, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages). Le style et le sol détaillé demandent un redémarrage : un bouton le propose aussitôt.
+- **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (style de rendu réaliste ou cartoon, résolution de rendu, netteté Retina, netteté adaptative, ombres, ombres de contact, sol détaillé, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages). Le style et le sol détaillé demandent un redémarrage : un bouton le propose aussitôt.
 - **Affichage** : plein écran, compteur FPS (simple ou détaillé avec graphique, appels de dessin, triangles, carte graphique), limite d'images par seconde (30 à 144), champ de vision, taille de l'interface, barre d'aide des touches, mini-carte, flèche du guide.
 - **Contrôles** : touches réassignables, sensibilité et inversion de la caméra, caméra qui suit, manette.
 - **Audio** : volumes général, musique, effets et ambiance séparés. La musique change selon l'île et la nuit ; ambiances d'oiseaux, de grillons, de vagues, de vent et de pluie.
@@ -168,7 +173,8 @@ assets/textures/         Textures du sol (Poly Haven)
 electron/                Application de bureau (fenêtre, protocole interne app://, plein écran)
 src/
   main.js, game.js       Démarrage, boucle, états, interactions, récompenses, sauvegarde
-  core/                  Maths, matériaux (réaliste ou cartoon), entrées (touches, manette), paramètres,
+  core/                  Maths, matériaux (réaliste ou cartoon), fusion des modèles articulés (rig.js),
+                         netteté adaptative (dynres.js), entrées (touches, manette), paramètres,
                          post-traitement, particules, sons et musique, sauvegarde (profils), mises à jour,
                          chargement des modèles 3D (models.js)
   world/                 Terrain de l'archipel (et sol détaillé : terrainTextures.js), ciel, météo,
