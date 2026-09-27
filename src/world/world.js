@@ -36,6 +36,8 @@ export class World {
     scene.add(this.village.group);
     this.islands = new IslandVillages(this);
     this.renderDistance = 300;
+    this.treeLod = 1; // distances de détail des arbres (qualité automatique)
+    this.grassFieldK = 1; // rayon du tapis d'herbe dense (qualité automatique)
     this.particles = null;
     this.vegetation = new Vegetation(this);
     scene.add(this.vegetation.group);
@@ -135,6 +137,13 @@ export class World {
     return true;
   }
 
+  /** Sol détaillé (textures) ou simples couleurs des biomes, sans redémarrer. */
+  setGroundDetail(on) {
+    const u = this.terrainMesh.userData;
+    const m = on && u.detailed ? u.detailed : u.plain;
+    if (m && this.terrainMesh.material !== m) this.terrainMesh.material = m;
+  }
+
   update(dt, elapsed, focus, grassRadius = 80, camera = null) {
     globalUniforms.uTime.value = elapsed;
     this.sky.update(dt, focus, elapsed);
@@ -142,7 +151,8 @@ export class World {
     const night = this.sky.nightFactor;
     this.vegetation.updateGrass(focus, grassRadius);
     // Tapis d'herbe dense : environ un tiers du rayon de l'herbe (réglage « Herbe »).
-    const field = Math.min(34, grassRadius * 0.3);
+    let field = Math.min(34, grassRadius * 0.3) * this.grassFieldK;
+    if (field < 4) field = 0;
     if (field !== this.grassField.radius) this.grassField.setRadius(field);
     this.grassField.update(focus);
     const winter = this.weather.seasonIndex === 3;
@@ -153,7 +163,7 @@ export class World {
     this.village.update(dt, elapsed, night);
     this.islands.update(dt, elapsed, night, focus, this.particles, this.renderDistance);
     this.vegetation.updateIslands(focus, this.renderDistance);
-    this.vegetation.updateTrees(camera ? camera.position : focus, this.renderDistance / 300, focus);
+    this.vegetation.updateTrees(camera ? camera.position : focus, (this.renderDistance / 300) * this.treeLod, focus);
     this.ambient.update(dt, elapsed, night, focus, this.weather);
   }
 }

@@ -115,6 +115,27 @@ try {
     if (!(r.grass > 1000)) throw new Error(`tapis d'herbe vide (${r.grass})`);
     if (!(r.trees > 500 && r.pins > 300)) throw new Error(`arbres générés absents (${r.trees}, île des Pins : ${r.pins})`);
   });
+  await step('Qualité automatique (tous les paliers)', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const off = g.autoOff;
+      g.autoOff = false;
+      const seen = [];
+      for (let level = 0; level <= 9; level++) {
+        g.settings.autoLevel = level;
+        g.applyGraphics();
+        g.postfx.render(0.016);
+        seen.push({ ratio: g.renderer.getPixelRatio(), detail: g.world.terrainMesh.material === g.world.terrainMesh.userData.detailed, ao: !!g.postfx.ao });
+      }
+      g.settings.autoLevel = 0;
+      g.applyGraphics();
+      g.autoOff = off;
+      return seen;
+    });
+    const last = r[r.length - 1];
+    if (!(r[0].ratio >= 1 && r[0].detail && r[0].ao)) throw new Error(`palier 0 incomplet : ${JSON.stringify(r[0])}`);
+    if (!(last.ratio < 0.6 && !last.detail && !last.ao)) throw new Error(`palier 9 pas allégé : ${JSON.stringify(last)}`);
+  });
   await step('Paramètres : redémarrage proposé', async () => {
     await settle();
     await page.evaluate(() => window.game.openPanel('settings'));

@@ -333,10 +333,17 @@ export class Terrain {
     }
     this.vertexColors = colors;
 
-    let material = addSeason(toon('#ffffff', { vertexColors: true }), { ground: true, snowLo: 0.55, snowHi: 0.85 });
-    if (material.isMeshStandardMaterial) material.roughness = 0.92;
-    if (detailed) material = addGroundDetail(material);
+    const plain = () => {
+      const m = addSeason(toon('#ffffff', { vertexColors: true }), { ground: true, snowLo: 0.55, snowHi: 0.85 });
+      if (m.isMeshStandardMaterial) m.roughness = 0.92;
+      return m;
+    };
+    const material = detailed ? addGroundDetail(plain()) : plain();
     const mesh = new THREE.Mesh(geo, material);
+    // Sol détaillé désactivable en cours de jeu (qualité automatique) : même géométrie,
+    // simples couleurs des biomes.
+    mesh.userData.detailed = detailed ? material : null;
+    mesh.userData.plain = detailed ? plain() : material;
     mesh.receiveShadow = true;
     mesh.name = 'terrain';
     return mesh;

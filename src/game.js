@@ -34,7 +34,7 @@ import { Particles } from './core/particles.js';
 import { Audio } from './core/audio.js';
 import { MusicPlayer } from './core/music.js';
 import { setRenderStyle } from './core/materials.js';
-import { DynamicResolution } from './core/dynres.js';
+import { AutoQuality, effectiveGraphics, initialLevel } from './core/autoquality.js';
 import { loadSave, writeSave, clearSave, getSlot } from './core/save.js';
 import { UI } from './ui/ui.js';
 import { Creator } from './ui/creator.js';
@@ -95,7 +95,12 @@ export class Game {
     this.world = new World(this.scene);
     this.particles = new Particles(this.scene);
     this.postfx = new PostFX(this.renderer, this.scene, this.camera);
-    this.dynres = new DynamicResolution(this.renderer);
+    this.autoQuality = new AutoQuality(this.renderer);
+    // Qualité automatique : palier retenu de la dernière fois, sinon selon la carte
+    // graphique. Désactivée sous pilotage automatique (tests) pour un rendu constant.
+    this.autoOff = typeof navigator !== 'undefined' && navigator.webdriver;
+    if (!Number.isInteger(this.settings.autoLevel)) this.settings.autoLevel = this.autoOff ? 0 : initialLevel(this.renderer);
+    this.autoQuality.restart(this.settings.autoLevel);
     this.renderer.info.autoReset = false;
     this.perf = new PerfOverlay(this);
     this.wishT = 0;
@@ -230,10 +235,41 @@ export class Game {
 
   applySettings(save = true) {
     const st = this.settings;
-    const gs = st.graphics;
-    const ratio = this.fullPixelRatio();
-    this.dynres.reset();
-    this.renderer.setPixelRatio(ratio);
+    // Réglages graphiques changés à la main : la qualité automatique repart de zéro.
+    const sig = JSON.stringify(st.graphics);
+    if (this.graphicsSig !== undefined && sig !== this.graphicsSig) {
+      st.autoLevel = 0;
+      this.autoQuality.restart(0);
+    }
+    this.graphicsSig = sig;
+    this.applyGraphics();
+    this.camera.fov = st.fov;
+    this.camera.updateProjectionMatrix();
+    this.world.sky.speed = (DAY_SPEEDS[st.daySpeed] || DAY_SPEEDS.normale).k;
+    this.input.sensitivity = st.camSensitivity;
+    this.input.invertY = st.invertY;
+    this.input.setBindings(st.keys);
+    this.cam.autoFollow = st.camAuto;
+    this.audio.setLevels(st.audio);
+    this.guide.enabled = st.guideArrow;
+    document.documentElement.style.setProperty('--ui-scale', st.uiScale);
+    document.body.classList.toggle('no-minimap', !st.minimap);
+    document.body.classList.toggle('no-keyhints', !st.keyHints);
+    this.perf.setMode(st.showFps);
+    this.ui.refreshKeyHints?.();
+    if (save) saveSettings(st);
+  }
+
+  /** Réglages graphiques effectivement utilisés (choisis, allégés par la qualité automatique). */
+  graphics() {
+    const gs = this.settings.graphics;
+    return effectiveGraphics(gs, gs.auto && !this.autoOff ? this.settings.autoLevel || 0 : 0);
+  }
+
+  /** Applique les réglages graphiques (au démarrage, et quand la qualité automatique change). */
+  applyGraphics() {
+    const gs = this.graphics();
+    this.renderer.setPixelRatio(this.fullPixelRatio());
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     const sun = this.world.sky.sun;
     const size = SHADOW_SIZES[gs.shadows] || 0;
@@ -253,29 +289,18 @@ export class Game {
         cam.updateProjectionMatrix();
       }
     }
-    this.grassRadius = gs.grass;
+    this.grassRadius = gs.grass * gs.grassK;
+    this.world.grassFieldK = gs.fieldK;
     this.world.renderDistance = gs.renderDistance;
+    this.world.treeLod = gs.treeK;
+    this.world.setGroundDetail(gs.ground && this.bootGraphics.ground !== false);
+    this.postfx.shadowEvery = gs.shadowEvery;
     this.world.weather.fogScale = gs.renderDistance / 300;
     this.world.sky.cloudQuality = { low: 0.35, medium: 0.6, high: 1 }[gs.clouds] ?? 0.6;
     const wu = this.world.water.userData.uniforms;
     if (wu) wu.uReflect.value = gs.water === 'reflets' ? 1 : 0;
     this.postfx.configure({ aa: gs.aa, bloom: gs.bloom, grading: gs.grading, ao: gs.ao });
     this.postfx.setSize(window.innerWidth, window.innerHeight);
-    this.camera.fov = st.fov;
-    this.camera.updateProjectionMatrix();
-    this.world.sky.speed = (DAY_SPEEDS[st.daySpeed] || DAY_SPEEDS.normale).k;
-    this.input.sensitivity = st.camSensitivity;
-    this.input.invertY = st.invertY;
-    this.input.setBindings(st.keys);
-    this.cam.autoFollow = st.camAuto;
-    this.audio.setLevels(st.audio);
-    this.guide.enabled = st.guideArrow;
-    document.documentElement.style.setProperty('--ui-scale', st.uiScale);
-    document.body.classList.toggle('no-minimap', !st.minimap);
-    document.body.classList.toggle('no-keyhints', !st.keyHints);
-    this.perf.setMode(st.showFps);
-    this.ui.refreshKeyHints?.();
-    if (save) saveSettings(st);
   }
 
   // --- États -------------------------------------------------------------------
@@ -1482,10 +1507,10 @@ export class Game {
     if (this.state === 'creator') this.ui.update(dt);
 
     this.renderer.info.reset();
-    this.dynres.begin();
+    this.autoQuality.begin();
     this.postfx.render(dt);
-    this.dynres.end();
-    this.updateDynamicResolution(rawDt);
+    this.autoQuality.end();
+    this.updateAutoQuality(rawDt);
     this.perf.update(rawDt);
     this.input.endFrame();
   }
@@ -1495,26 +1520,27 @@ export class Game {
     return { STORY, CHAPTERS, SIDE_QUESTS, ZONES, LANDMARKS, ITEMS, RECIPES, FURNITURE, VEHICLES, FISH, INSECTS, fishWhere };
   }
 
-  /** Rapport de pixels voulu par les réglages (écran × netteté max × résolution de rendu). */
+  /** Rapport de pixels utilisé (écran × netteté max × résolution de rendu). */
   fullPixelRatio() {
-    const gs = this.settings.graphics;
+    const gs = this.graphics();
     return Math.min(window.devicePixelRatio || 1, gs.maxRatio) * gs.renderScale;
   }
 
-  /**
-   * Netteté adaptative (écrans haute définition) : baisse la netteté quand la carte
-   * graphique ne suit plus, jamais en dessous de la résolution normale de l'écran.
-   */
-  updateDynamicResolution(dt) {
+  /** Qualité automatique : allège ou rétablit les réglages selon la fluidité mesurée. */
+  updateAutoQuality(dt) {
     const gs = this.settings.graphics;
-    const full = this.fullPixelRatio();
-    const floor = gs.dynres ? Math.min(full, Math.max(1, gs.renderScale)) : full;
-    const target = 1000 / (this.settings.fpsLimit || 60);
-    const r = this.dynres.update(dt, full, floor, target);
-    if (Math.abs(r - this.renderer.getPixelRatio()) < 0.01) return;
-    this.renderer.setPixelRatio(r);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.postfx.setSize(window.innerWidth, window.innerHeight);
+    if (!gs.auto || this.autoOff) return;
+    // 60 images par seconde visées (ou la limite choisie, si elle est plus basse).
+    const target = 1000 / Math.min(this.settings.fpsLimit || 60, 60);
+    const level = this.autoQuality.update(dt, gs, target, window.devicePixelRatio || 1);
+    if (this.autoQuality.struggle >= 3 && !this.struggleTold && this.state === 'play' && this.renderStyle !== 'cartoon') {
+      this.struggleTold = true;
+      this.ui.toast('🐢 Ton ordinateur a du mal avec le rendu réaliste : essaie le préréglage « Basse » (Paramètres → Graphismes), bien plus léger.', 9000);
+    }
+    if (level === null) return;
+    this.settings.autoLevel = level;
+    this.applyGraphics();
+    saveSettings(this.settings);
   }
 
   /** Ambiance musicale voulue à cet instant (voir core/music.js). */
@@ -1582,6 +1608,8 @@ export class Game {
   resize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
+    // (Fenêtre passée sur un autre écran : la densité de pixels peut changer.)
+    this.renderer.setPixelRatio(this.fullPixelRatio());
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.postfx.setSize(window.innerWidth, window.innerHeight);
   }

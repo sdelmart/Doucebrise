@@ -56,6 +56,9 @@ export class PostFX {
     this.composer = null;
     this.enabled = false;
     this.night = 0;
+    // Ombres du soleil recalculées une image sur N (qualité automatique, petits ordinateurs).
+    this.shadowEvery = 1;
+    this.frameN = 0;
   }
 
   get active() {
@@ -85,8 +88,8 @@ export class PostFX {
       this.ao = new GTAOPass(this.scene, this.camera, size.x, size.y);
       this.ao.output = GTAOPass.OUTPUT.Default;
       this.ao.blendIntensity = 0.85;
-      this.ao.updateGtaoMaterial({ radius: 0.9, distanceExponent: 1.4, thickness: 1.2, scale: 1, samples: 12 });
-      this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, rings: 2, samples: 12 });
+      this.ao.updateGtaoMaterial({ radius: 0.9, distanceExponent: 1.4, thickness: 1.2, scale: 1, samples: 10 });
+      this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, rings: 2, samples: 8 });
       // L'occlusion lit la profondeur de l'image qui vient d'être dessinée (normales
       // recalculées à partir d'elle) au lieu de redessiner toute la scène une seconde
       // fois : environ deux fois moins d'appels de dessin. (setGBuffer est appelé
@@ -130,9 +133,9 @@ export class PostFX {
     const pr = this.renderer.getPixelRatio();
     this.composer.setPixelRatio(pr);
     this.composer.setSize(w, h);
-    // Écrans haute définition : l'occlusion ambiante (très floue par nature) est calculée
-    // à demi-résolution, soit encore au moins la résolution normale de l'écran.
-    if (this.ao && pr >= 1.5) this.ao.setSize(Math.round(w * pr * 0.5), Math.round(h * pr * 0.5));
+    // L'occlusion ambiante (très floue par nature) est calculée à demi-résolution :
+    // près de trois fois moins chère, sans différence visible une fois lissée.
+    if (this.ao) this.ao.setSize(Math.round(w * pr * 0.5), Math.round(h * pr * 0.5));
     if (this.fxaa) this.fxaa.material.uniforms.resolution.value.set(1 / (w * pr), 1 / (h * pr));
   }
 
@@ -157,8 +160,12 @@ export class PostFX {
   }
 
   render(dt) {
-    // Ombres du soleil : calculées une seule fois par image (voir game.js).
-    this.renderer.shadowMap.needsUpdate = true;
+    // Ombres du soleil : calculées une seule fois par image (voir game.js), ou une image
+    // sur N quand la qualité automatique allège le rendu.
+    if (dt === 0 || ++this.frameN >= this.shadowEvery) {
+      this.frameN = 0;
+      this.renderer.shadowMap.needsUpdate = true;
+    }
     if (this.active) this.composer.render(dt);
     else this.renderer.render(this.scene, this.camera);
   }

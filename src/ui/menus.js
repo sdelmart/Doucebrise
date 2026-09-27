@@ -372,7 +372,9 @@ export class SettingsPanel {
       if (o.type === 'choice') ctl = this.chips(`graphics.${k}`, o.choices, v);
       else if (o.type === 'toggle') ctl = this.toggle(`graphics.${k}`, v);
       else ctl = this.range(`graphics.${k}`, v, o.min, o.max, o.step, o.fmt(v));
-      html += this.row(o.label, ctl, o.note || (o.restart ? 'Pris en compte au redémarrage.' : ''));
+      let note = o.note || (o.restart ? 'Pris en compte au redémarrage.' : '');
+      if (k === 'auto' && v && s.autoLevel > 0 && !this.game.autoOff) note = `En ce moment : réglages allégés pour rester fluide (palier ${s.autoLevel} sur 9). ${note}`;
+      html += this.row(o.label, ctl, note);
     }
     // Réglages appliqués au démarrage : on propose de relancer le jeu tout de suite.
     const boot = this.game.bootGraphics || {};
@@ -381,7 +383,7 @@ export class SettingsPanel {
       html = `<div class="restart-bar"><span>🔄 ${pending.map(([, o]) => o.label).join(', ')} : il faut redémarrer le jeu pour voir le changement.</span>
         <button class="btn small" data-restart>Redémarrer maintenant</button></div>${html}`;
     }
-    html += '<p class="note">Astuce : F3 affiche le compteur d\'images par seconde. Si le jeu saccade, baisse d\'abord les ombres, la distance d\'affichage et la résolution de rendu.</p>';
+    html += '<p class="note">Astuce : F3 affiche le compteur d\'images par seconde. Avec la qualité automatique, le jeu s\'allège tout seul s\'il saccade ; sinon, baisse d\'abord les ombres, la distance d\'affichage et la résolution de rendu.</p>';
     return html;
   }
 

@@ -143,12 +143,12 @@ assets/models/
 
 ### ⚡ Fluidité
 - **Peu d'appels de dessin** : chaque animal et chaque habitant se dessine en un ou deux maillages « skinnés » (leurs pièces articulées servent d'os, `src/core/rig.js`) au lieu d'une dizaine ; les ombres du soleil sont calculées une seule fois par image ; l'occlusion ambiante relit la profondeur de l'image au lieu de redessiner la scène. Environ 4 fois moins d'appels de dessin qu'en 0.7.0 (≈ 370 au lieu de ≈ 1 470 au village).
-- **Netteté adaptative** (écrans Retina / 4K) : si la carte graphique ne suit plus, la netteté baisse par petits paliers, jamais sous la résolution normale de l'écran, puis remonte ; le temps réel de la carte graphique est mesuré quand le navigateur le permet (`src/core/dynres.js`). Le compteur FPS détaillé affiche la netteté du moment.
-- Occlusion ambiante à demi-résolution sur ces écrans ; éclairage du ciel mis à jour sur place (pas d'à-coup) ; sol et herbe sans calcul inutile au loin.
+- **Qualité automatique** (activée par défaut, `src/core/autoquality.js`) : le jeu mesure sa fluidité et, sous ~50 images/s, allège ses réglages par paliers, du moins visible au plus visible — ombres de contact, netteté Retina (×2 → ×1), herbe, ombres et halo, résolution de rendu (jusqu'à 52 %), sol simplifié, ombres recalculées une image sur deux ou trois… — puis les remonte quand il y a de la marge (temps réel de la carte graphique quand le navigateur le donne, sinon essais de plus en plus espacés). Jamais au-delà des réglages choisis. Le palier atteint est retenu ; au premier lancement, il part d'une estimation selon la carte graphique (puces intégrées Intel / AMD / Apple M1 déjà allégées). Si même tout allégé le jeu rame, il propose le préréglage Basse. Le compteur FPS détaillé (F3) et les paramètres affichent le palier du moment.
+- Occlusion ambiante toujours à demi-résolution (≈ 3 fois moins chère, même rendu une fois lissée) ; sol détaillé qui ne lit que ses deux couches principales par pixel ; éclairage du ciel mis à jour sur place (pas d'à-coup) ; sol et herbe sans calcul inutile au loin.
 - **Arbres** : toute une île se dessine en **deux lots** (écorces, feuillages) où chaque arbre est trié et écarté s'il est hors champ ; **trois niveaux de détail** selon la distance (moins de rameaux, plus grands, au loin) ; les ombres utilisent la version la plus légère ; chaque rameau est découpé au plus près de sa forme (deux fois moins de pixels transparents) ; l'éclairage des feuilles est calculé par sommet. Les lampes éteintes (le jour) ou lointaines ne sont plus calculées pour chaque pixel du jeu.
 
 ### ⚙️ Paramètres complets
-- **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (style de rendu réaliste ou cartoon, résolution de rendu, netteté Retina, netteté adaptative, ombres, ombres de contact, sol détaillé, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages). Le style et le sol détaillé demandent un redémarrage : un bouton le propose aussitôt.
+- **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (style de rendu réaliste ou cartoon, résolution de rendu, netteté Retina, qualité automatique, ombres, ombres de contact, sol détaillé, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages). Le style et le sol détaillé demandent un redémarrage : un bouton le propose aussitôt.
 - **Affichage** : plein écran, compteur FPS (simple ou détaillé avec graphique, appels de dessin, triangles, carte graphique), limite d'images par seconde (30 à 144), champ de vision, taille de l'interface, barre d'aide des touches, mini-carte, flèche du guide.
 - **Contrôles** : touches réassignables, sensibilité et inversion de la caméra, caméra qui suit, manette.
 - **Audio** : volumes général, musique, effets et ambiance séparés. La musique change selon l'île et la nuit ; ambiances d'oiseaux, de grillons, de vagues, de vent et de pluie.
@@ -184,7 +184,7 @@ electron/                Application de bureau (fenêtre, protocole interne app:
 src/
   main.js, game.js       Démarrage, boucle, états, interactions, récompenses, sauvegarde
   core/                  Maths, matériaux (réaliste ou cartoon), fusion des modèles articulés (rig.js),
-                         netteté adaptative (dynres.js), entrées (touches, manette), paramètres,
+                         qualité automatique (autoquality.js), entrées (touches, manette), paramètres,
                          post-traitement, particules, sons et musique, sauvegarde (profils), mises à jour,
                          chargement des modèles 3D (models.js)
   world/                 Terrain de l'archipel (et sol détaillé : terrainTextures.js), ciel, météo,

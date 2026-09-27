@@ -4,10 +4,10 @@
 const KEY = 'doucebrise-settings';
 
 export const PRESETS = {
-  basse: { label: 'Basse', desc: 'Pour les petits ordinateurs', style: 'cartoon', renderScale: 0.75, maxRatio: 1, dynres: false, shadows: 'off', ao: false, ground: false, renderDistance: 160, grass: 0, aa: 'off', bloom: false, grading: false, water: 'simple', clouds: 'low' },
-  moyenne: { label: 'Moyenne', desc: 'Équilibrée', style: 'realiste', renderScale: 1, maxRatio: 1.25, dynres: true, shadows: 'low', ao: false, ground: true, renderDistance: 220, grass: 45, aa: 'fxaa', bloom: true, grading: true, water: 'simple', clouds: 'medium' },
-  haute: { label: 'Haute', desc: 'Recommandée', style: 'realiste', renderScale: 1, maxRatio: 2, dynres: true, shadows: 'high', ao: true, ground: true, renderDistance: 300, grass: 80, aa: 'smaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
-  ultra: { label: 'Ultra', desc: 'Pour les cartes graphiques puissantes', style: 'realiste', renderScale: 1, maxRatio: 2, dynres: true, shadows: 'ultra', ao: true, ground: true, renderDistance: 420, grass: 110, aa: 'msaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
+  basse: { label: 'Basse', desc: 'Pour les petits ordinateurs', style: 'cartoon', renderScale: 0.75, maxRatio: 1, auto: true, shadows: 'off', ao: false, ground: false, renderDistance: 160, grass: 0, aa: 'off', bloom: false, grading: false, water: 'simple', clouds: 'low' },
+  moyenne: { label: 'Moyenne', desc: 'Équilibrée', style: 'realiste', renderScale: 1, maxRatio: 1.25, auto: true, shadows: 'low', ao: false, ground: true, renderDistance: 220, grass: 45, aa: 'fxaa', bloom: true, grading: true, water: 'simple', clouds: 'medium' },
+  haute: { label: 'Haute', desc: 'Recommandée', style: 'realiste', renderScale: 1, maxRatio: 2, auto: true, shadows: 'high', ao: true, ground: true, renderDistance: 300, grass: 80, aa: 'smaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
+  ultra: { label: 'Ultra', desc: 'Pour les cartes graphiques puissantes', style: 'realiste', renderScale: 1, maxRatio: 2, auto: true, shadows: 'ultra', ao: true, ground: true, renderDistance: 420, grass: 110, aa: 'msaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
 };
 
 export const SHADOW_SIZES = { off: 0, low: 1024, high: 2048, ultra: 4096 };
@@ -16,7 +16,7 @@ export const GRAPHICS_OPTIONS = {
   style: { label: 'Style de rendu', type: 'choice', choices: [['realiste', 'Réaliste'], ['cartoon', 'Cartoon']], restart: true, note: 'Réaliste : lumière douce du ciel, reflets, ombres de contact. Cartoon : aplats et contours.' },
   renderScale: { label: 'Résolution de rendu', type: 'range', min: 0.5, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)} %` },
   maxRatio: { label: 'Netteté (écrans Retina / 4K)', type: 'choice', choices: [[1, '×1'], [1.25, '×1,25'], [1.5, '×1,5'], [2, '×2']] },
-  dynres: { label: 'Netteté adaptative', type: 'toggle', note: 'Écrans Retina / 4K : la netteté baisse un peu quand la carte graphique ne suit plus, jamais sous la résolution de l\'écran.' },
+  auto: { label: 'Qualité automatique', type: 'toggle', note: 'Si le jeu rame, les réglages les plus coûteux baissent d\'eux-mêmes (ombres de contact, netteté Retina, herbe, ombres, résolution…), puis remontent quand il y a de la marge. Jamais au-delà de tes réglages.' },
   shadows: { label: 'Ombres', type: 'choice', choices: [['off', 'Aucune'], ['low', 'Basses'], ['high', 'Hautes'], ['ultra', 'Ultra']] },
   ao: { label: 'Ombres de contact (occlusion ambiante)', type: 'toggle' },
   ground: { label: 'Sol détaillé (textures)', type: 'toggle', restart: true },
@@ -103,10 +103,16 @@ export function loadSettings(legacy = null) {
   if (stored) {
     // Réglages ajoutés depuis : on les prend dans le préréglage choisi.
     const presetBase = PRESETS[stored.preset] || base.graphics;
+    const graphics = { ...base.graphics, ...presetBase, ...(stored.graphics || {}) };
+    // Ancienne « netteté adaptative » : remplacée par la qualité automatique (activée).
+    if ('dynres' in graphics) {
+      delete graphics.dynres;
+      graphics.auto = true;
+    }
     return {
       ...base,
       ...stored,
-      graphics: { ...base.graphics, ...presetBase, ...(stored.graphics || {}) },
+      graphics,
       audio: { ...base.audio, ...(stored.audio || {}) },
       keys: { ...(stored.keys || {}) },
     };

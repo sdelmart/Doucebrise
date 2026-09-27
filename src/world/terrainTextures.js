@@ -91,7 +91,7 @@ export function addGroundDetail(material, { maxAnisotropy = 8 } = {}) {
     const add = `groundAdd(w${i}, alb, nh, vec3(${l.avg.map(f).join(', ')}), ${f(l.bump)}, ${f(l.rough)});`;
     if (i === LAYER.rock) {
       // Roche : projection sur trois axes (pas d'étirement sur les falaises).
-      return `if (w${i} > 0.01) {
+      return `if (w${i} > 0.01 && w${i} >= wTop2) {
             vec3 tw = pow(abs(normalize(vGroundNormal)), vec3(4.0));
             tw /= tw.x + tw.y + tw.z;
             vec4 ta;
@@ -105,7 +105,7 @@ export function addGroundDetail(material, { maxAnisotropy = 8 } = {}) {
           }`;
     }
     const two = [LAYER.grass, LAYER.forest, LAYER.sand].includes(i) ? 'near' : 'false';
-    return `if (w${i} > 0.01) { groundSample(${i}.0, ${k}, ${two}, vGroundPos.xz, pdx.xz, pdy.xz, alb, nh); ${add} }`;
+    return `if (w${i} > 0.01 && w${i} >= wTop2) { groundSample(${i}.0, ${k}, ${two}, vGroundPos.xz, pdx.xz, pdy.xz, alb, nh); ${add} }`;
   }).join('\n          ');
   material.onBeforeCompile = (shader, renderer) => {
     if (prev) prev.call(material, shader, renderer);
@@ -171,6 +171,11 @@ ${shader.fragmentShader}`.replace(
       {
         float w1 = vSplatA.x, w2 = vSplatA.y, w3 = vSplatA.z, w4 = vSplatB.x, w5 = vSplatB.y, w6 = vSplatB.z;
         float w0 = max(0.0, 1.0 - (w1 + w2 + w3 + w4 + w5 + w6));
+        // Seules les deux couches les plus présentes sont lues (une troisième, rare et
+        // faible, ne se verrait pas) : bien moins de lectures de textures par pixel.
+        float wTop1 = 0.0;
+        float wTop2 = 0.0;
+        ${Array.from({ length: GROUND_LAYERS.length }, (_, i) => `if (w${i} > wTop1) { wTop2 = wTop1; wTop1 = w${i}; } else if (w${i} > wTop2) wTop2 = w${i};`).join('\n        ')}
         // Le grain s'estompe au loin (il y serait plus petit qu'un pixel) : au-delà,
         // rien n'est échantillonné et les couleurs des biomes restent intactes.
         float camDist = length(vGroundPos - cameraPosition);

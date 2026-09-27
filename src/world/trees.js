@@ -42,6 +42,20 @@ function pixelsOf(img) {
 /** Charge les textures des arbres (à appeler avant de construire le monde). */
 export async function loadTreeTextures() {
   if (textures) return textures;
+  // Les arbres sont dessinés par lots (plusieurs arbres en un appel) : sans cette
+  // possibilité (Firefox), chaque arbre coûterait un dessin, et le jeu reprend les
+  // arbres des packs de modèles, plus légers.
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    const ok = !!gl?.getExtension('WEBGL_multi_draw');
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    if (!ok) {
+      console.info('Arbres réalistes indisponibles ici (WEBGL_multi_draw absent) : arbres simples.');
+      return null;
+    }
+  } catch {
+    return null;
+  }
   try {
     const [bark, barkN, leaves, alpha] = await Promise.all([barkUrl, barkNormalUrl, leavesUrl, leavesAlphaUrl].map(loadImage));
     // Rameaux : couleur (JPEG) + transparence (PNG en niveaux de gris).

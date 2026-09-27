@@ -61,11 +61,13 @@ export class PerfOverlay {
     const r = g.renderer;
     const w = Math.round(r.domElement.width);
     const h = Math.round(r.domElement.height);
-    const gs = g.settings.graphics;
+    const gs = g.graphics();
+    const auto = g.settings.graphics.auto && !g.autoOff ? g.settings.autoLevel || 0 : 0;
     this.detailEl.innerHTML = `${avg.toFixed(1)} ms · pire ${worst.toFixed(1)} ms<br>
       ${info.render.calls} dessins · ${(info.render.triangles / 1000).toFixed(0)} k triangles<br>
       ${info.memory.geometries} géométries · ${info.memory.textures} textures<br>
-      ${w}×${h} (×${r.getPixelRatio().toFixed(2).replace(/\.?0+$/, '')}${gs.dynres && r.getPixelRatio() < g.fullPixelRatio() - 0.01 ? ' adaptée' : ''}) · ombres ${gs.shadows} · ${gs.aa.toUpperCase()}${gs.bloom ? ' · bloom' : ''}<br>
+      ${w}×${h} (×${r.getPixelRatio().toFixed(2).replace(/\.?0+$/, '')}) · ombres ${gs.shadows} · ${gs.aa.toUpperCase()}${gs.bloom ? ' · bloom' : ''}${gs.ao ? ' · AO' : ''}<br>
+      ${auto ? `qualité auto : allégée (palier ${auto}/9)` : 'qualité : réglages complets'}<br>
       <span class="perf-gpu">${this.gpu}</span>`;
     this.drawGraph();
   }
