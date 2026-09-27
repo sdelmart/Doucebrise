@@ -6,7 +6,7 @@ import '@fontsource/nunito/latin-ext-600.css';
 import '@fontsource/nunito/latin-ext-800.css';
 import '@fontsource/nunito/latin-ext-900.css';
 import { Game } from './game.js';
-import { loadModels, loadModelPack } from './core/models.js';
+import { loadModels } from './core/models.js';
 import { NATURE_MODEL_IDS } from './world/natureModels.js';
 import { CHARACTER_MODEL_IDS } from './player/avatar.js';
 
@@ -26,8 +26,6 @@ async function modelsReady() {
   if (!ids.length) return;
   const p = document.querySelector('#loading p');
   const label = p?.textContent;
-  // Version en ligne : tous les modèles dans un seul fichier (voir core/models.js).
-  if (window.DOUCEBRISE_MODEL_PACK) await loadModelPack(window.DOUCEBRISE_MODEL_PACK);
   await loadModels(ids, (k) => {
     if (p) p.textContent = `Chargement des modèles… ${Math.round(k * 100)} %`;
   });

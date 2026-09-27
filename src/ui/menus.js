@@ -5,6 +5,7 @@ import { SEASONS } from '../world/weather.js';
 import { escapeHtml } from './ui.js';
 import { VERSION, checkForUpdate } from '../core/updates.js';
 import { MUSIC_MOODS } from '../core/music.js';
+import { modelStatus } from '../core/models.js';
 
 // Menus : écran titre (3 profils), menu pause (Échap), paramètres complets
 // (graphismes, affichage, contrôles, audio, jeu) et crédits.
@@ -86,7 +87,8 @@ export class TitleMenu {
           </div>
         </div>
         ${this.update ? `<a class="update-link" href="${escapeHtml(this.update.url)}" target="_blank" rel="noopener">✨ La version ${escapeHtml(this.update.version)} est disponible — la télécharger</a>` : ''}
-        <p class="hint">Clavier + souris ou manette · Sauvegarde automatique · v${VERSION}</p>`;
+        <p class="hint">Clavier + souris ou manette · Sauvegarde automatique · v${VERSION}</p>
+        ${modelStatus.loaded < modelStatus.wanted ? `<p class="hint model-warn">⚠️ Modèles 3D chargés : ${modelStatus.loaded}/${modelStatus.wanted}${modelStatus.errors[0] ? ` — ${escapeHtml(modelStatus.errors[0])}` : ''}</p>` : ''}`;
       card.querySelector('#btn-continue').onclick = () => g.continueGame();
       card.querySelector('#btn-new').onclick = () => {
         if (!active || active.empty) g.newGame();

@@ -792,3 +792,4 @@ body.touch-ui #keyhints,
 body.touch-ui .d-choice .key { display: none !important; }
 .key.touch-icon { background: #fff; color: inherit; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12); border-radius: 50%; min-width: 26px; height: 26px; font-size: 14px; }
 body.touch-ui .kb-only, body.touch-ui .key-hint { display: none !important; }
+.model-warn { color: #b0413e; font-size: 12px; max-width: 520px; margin: 8px auto 0; }

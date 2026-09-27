@@ -37,33 +37,57 @@ export function modelsIn(dir) {
   return MODEL_FILES.filter((m) => m.dir === dir || m.dir.startsWith(`${dir}/`));
 }
 
-// Paquet de modèles : certains hébergeurs ne servent pas les fichiers .glb / .gltf / .bin ;
-// la version publiée en ligne les regroupe alors dans un seul .json (nom → base64).
-let packed = null;
+// Paquet de modèles : la version publiée en ligne regroupe tous les modèles dans un script
+// (assets/models-pack.js → window.DOUCEBRISE_PACK = { "fichier.glb": "base64…" }).
+// Ils sont alors décodés en mémoire : aucun téléchargement ni lien temporaire (blob:),
+// que certains hébergeurs interdisent.
+const PACK = (typeof window !== 'undefined' && window.DOUCEBRISE_PACK) || null;
 
-/** Charge un paquet de modèles (URL d'un .json { "fichier.glb": "base64…" }). */
-export async function loadModelPack(url) {
-  try {
-    const pack = await (await fetch(url)).json();
-    packed = new Map();
-    for (const [name, b64] of Object.entries(pack)) {
-      const bin = atob(b64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      packed.set(name, URL.createObjectURL(new Blob([bytes])));
-    }
-  } catch (e) {
-    console.warn('Paquet de modèles illisible', e?.message || e);
-  }
+function base64ToBuffer(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
 }
+
+/** État du chargement (affiché sur l'écran titre en cas de souci). */
+export const modelStatus = { wanted: 0, loaded: 0, errors: [] };
 
 const manager = new THREE.LoadingManager();
 manager.setURLModifier((url) => {
   if (url.startsWith('data:') || url.startsWith('blob:')) return url;
-  const found = BY_NAME.get(baseName(url)) || url;
-  return packed?.get(baseName(found)) || found;
+  return BY_NAME.get(baseName(url)) || url;
 });
 const loader = new GLTFLoader(manager);
+
+// Textures intégrées aux .glb : décodées directement depuis leurs octets (createImageBitmap),
+// sans passer par une adresse blob: téléchargée.
+loader.register((parser) => ({
+  name: 'doucebrise_embedded_textures',
+  loadTexture(index) {
+    const json = parser.json;
+    const def = json.textures[index];
+    const src = json.images?.[def.source];
+    if (!src || src.bufferView === undefined || typeof createImageBitmap === 'undefined') return null;
+    return parser
+      .getDependency('bufferView', src.bufferView)
+      .then((buf) => createImageBitmap(new Blob([buf], { type: src.mimeType || 'image/png' }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' }))
+      .then((bmp) => {
+        const t = new THREE.Texture(bmp);
+        const sampler = (json.samplers || [])[def.sampler] || {};
+        t.flipY = false;
+        t.name = def.name || src.name || '';
+        t.magFilter = sampler.magFilter === 9728 ? THREE.NearestFilter : THREE.LinearFilter;
+        t.minFilter = sampler.minFilter === 9728 ? THREE.NearestFilter : sampler.minFilter === 9729 ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
+        t.wrapS = sampler.wrapS === 33071 ? THREE.ClampToEdgeWrapping : sampler.wrapS === 33648 ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
+        t.wrapT = sampler.wrapT === 33071 ? THREE.ClampToEdgeWrapping : sampler.wrapT === 33648 ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
+        t.needsUpdate = true;
+        parser.associations.set(t, { textures: index });
+        return t;
+      })
+      .catch(() => null);
+  },
+}));
 const cache = new Map(); // id → gltf
 
 export function getModel(id) {
@@ -74,15 +98,20 @@ export function getModel(id) {
 export async function loadModels(ids, onProgress = () => {}) {
   const todo = [...new Set(ids)].filter((id) => !cache.has(id));
   let done = 0;
+  modelStatus.wanted += todo.length;
   await Promise.all(todo.map(async (id) => {
     const file = MODEL_FILES.find((m) => m.id === id);
     if (!file) return;
     try {
-      const gltf = await loader.loadAsync(file.url);
+      const packed = PACK?.[baseName(file.url)];
+      const gltf = packed ? await loader.parseAsync(base64ToBuffer(packed), '') : await loader.loadAsync(file.url);
       gltf.scene.updateMatrixWorld(true);
       cache.set(id, gltf);
+      modelStatus.loaded++;
     } catch (e) {
-      console.warn(`Modèle illisible : ${file.path}`, e?.message || e);
+      const msg = e?.message || String(e);
+      modelStatus.errors.push(`${file.name} : ${msg}`);
+      console.warn(`Modèle illisible : ${file.path}`, msg);
     }
     onProgress(++done / todo.length);
   }));

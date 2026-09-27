@@ -32,7 +32,9 @@ const GradeShader = {
       vec4 tex = texture2D(tDiffuse, vUv);
       vec3 c = max(tex.rgb, 0.0);
       float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-      c = mix(vec3(l), c, uSaturation);
+      // Saturation, sans jamais passer sous zéro : pow() d'une valeur négative donne
+      // du noir sur les vraies cartes graphiques (toits rouges, fruits…).
+      c = max(mix(vec3(l), c, uSaturation), 0.0);
       // Contraste autour du gris moyen (espace linéaire).
       c = pow(c / 0.18, vec3(uContrast)) * 0.18;
       c += vec3(uWarm, uWarm * 0.35, -uWarm * 0.6) * l;
