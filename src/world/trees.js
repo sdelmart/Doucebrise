@@ -85,13 +85,26 @@ const WIND = { strength: 0.006, base: 1.5 };
 
 // Rameaux : transparence (plus pleine au loin : les petits niveaux de la texture
 // l'éclaircissent), chute des feuilles en hiver (rang du rameau < part tombée).
+/** Point suivi par la caméra (tête du personnage) : les arbres entre les deux s'effacent. */
+export const treeFocus = { value: new THREE.Vector3(0, -1000, 0) };
+
+// La vue n'est jamais bouchée : ce qui est tout près de la caméra, ou entre elle et le
+// personnage, s'efface (0 : gardé, 1 : effacé).
+const TREE_FADE = `uniform vec3 uTreeFocus;
+float treeFade(vec3 p) {
+  vec3 toF = p - cameraPosition;
+  vec3 toP = uTreeFocus - cameraPosition;
+  float lp = max(length(toP), 0.001);
+  vec3 dir = toP / lp;
+  float along = dot(toF, dir);
+  float side = length(toF - dir * along);
+  float inWay = step(0.0, along) * (1.0 - smoothstep(lp - 1.2, lp - 0.4, along)) * (1.0 - smoothstep(1.1, 2.2, side));
+  return 1.0 - smoothstep(0.9, 2.4, length(toF)) * (1.0 - inWay);
+}`;
+
 const LEAF_FRAG_PARS = `uniform highp sampler2DArray tLeaves;
 uniform float uBare;
-uniform vec3 uTreeFocus;
 varying vec4 vLeaf;`;
-
-/** Point suivi par la caméra (tête du personnage) : les rameaux entre les deux s'effacent. */
-export const treeFocus = { value: new THREE.Vector3(0, -1000, 0) };
 const LEAF_FRAG = `{
     vec2 luv = vec2(vMapUv.x, 1.0 - vMapUv.y);
     vec4 lt = texture(tLeaves, vec3(luv, vLeaf.x));
@@ -104,18 +117,7 @@ const LEAF_FRAG = `{
     #endif
     if (vLeaf.y < vLeaf.z * uBare) lt.a = 0.0;
     #ifdef TREE_NEAR_FADE
-    {
-      // La vue n'est jamais bouchée : rameaux tout près de la caméra, ou entre elle et
-      // le personnage, effacés.
-      vec3 toF = vSeasonPos - cameraPosition;
-      vec3 toP = uTreeFocus - cameraPosition;
-      float lp = max(length(toP), 0.001);
-      vec3 dir = toP / lp;
-      float along = dot(toF, dir);
-      float side = length(toF - dir * along);
-      float inWay = step(0.0, along) * (1.0 - smoothstep(lp - 1.2, lp - 0.4, along)) * (1.0 - smoothstep(1.1, 2.2, side));
-      lt.a *= smoothstep(0.9, 2.4, length(toF)) * (1.0 - inWay);
-    }
+    lt.a *= 1.0 - treeFade(vSeasonPos);
     #endif
     diffuseColor *= lt;
   }`;
@@ -232,7 +234,7 @@ function leafInject(material, depth) {
     shader.uniforms.uBare = globalUniforms.uBare;
     shader.uniforms.uTreeFocus = treeFocus;
     shader.vertexShader = `${depth ? '#define TREE_LEAF_DEPTH\n' : ''}${LEAF_VERT_PARS}\n${shader.vertexShader}`.replace('#include <begin_vertex>', LEAF_VERT);
-    let fs = `${depth ? '#define TREE_LEAF_DEPTH\n' : '#define TREE_NEAR_FADE\n'}${LEAF_FRAG_PARS}\n${shader.fragmentShader}`.replace('#include <map_fragment>', LEAF_FRAG);
+    let fs = `${depth ? '#define TREE_LEAF_DEPTH\n' : `#define TREE_NEAR_FADE\n${TREE_FADE}\n`}${LEAF_FRAG_PARS}\n${shader.fragmentShader}`.replace('#include <map_fragment>', LEAF_FRAG);
     if (!depth) {
       Object.assign(shader.uniforms, leafLight);
       shader.vertexShader = `${LEAF_LIGHT_PARS}\n${shader.vertexShader}`.replace('#include <fog_vertex>', LEAF_LIGHT_VERT);
@@ -253,8 +255,11 @@ function barkInject(material, depth) {
     shader.uniforms.tBark = { value: textures.bark };
     shader.uniforms.tBarkN = { value: textures.barkNormal };
     shader.vertexShader = `attribute vec2 aBark;\nvarying vec2 vBark;\n${shader.vertexShader}`.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vBark = aBark;');
-    shader.fragmentShader = `uniform highp sampler2DArray tBark;\nuniform highp sampler2DArray tBarkN;\nvarying vec2 vBark;\n${shader.fragmentShader}`
-      .replace('#include <map_fragment>', 'diffuseColor *= texture(tBark, vec3(vMapUv, vBark.x));')
+    shader.uniforms.uTreeFocus = treeFocus;
+    shader.fragmentShader = `uniform highp sampler2DArray tBark;\nuniform highp sampler2DArray tBarkN;\nvarying vec2 vBark;\n${TREE_FADE}\n${shader.fragmentShader}`
+      .replace('#include <map_fragment>', `diffuseColor *= texture(tBark, vec3(vMapUv, vBark.x));
+      // Tronc et branches qui boucheraient la vue : effacés en pointillé fin.
+      if (treeFade(vSeasonPos) > fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))))) discard;`)
       .replace('texture2D( normalMap, vNormalMapUv )', 'texture(tBarkN, vec3(vNormalMapUv, vBark.x))');
   };
   material.customProgramCacheKey = () => `${prevKey}|tree-bark-${depth ? 'd' : 'c'}`;
