@@ -108,11 +108,18 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 - Sans aucune chanson, le jeu joue sa petite musique générée.
 
 ### 🎨 Graphismes
-- Direction artistique **cozy** : rendu cartoon avec contours, tons **ACES** (exposition 1,15), lumière d'hémisphère bleu ciel pastel / pêche, soleil crème doré, **ombres douces**, brume assortie au ciel.
+- **Rendu réaliste** (par défaut) : matériaux physiques, **lumière du ciel** (le ciel du moment éclaire la scène et s'y reflète), **ombres de contact** (occlusion ambiante GTAO), ombres du soleil douces et stables, tons **ACES** (exposition 1,15). Le style **Cartoon** (aplats et contours) reste disponible dans les paramètres (préréglage Basse).
+- **Sol détaillé** : textures photographiques (Poly Haven, CC0) mélangées selon le terrain — herbe, sous-bois, terre des chemins, sable, roche des falaises, pavés des places, neige des sommets — avec relief (normales) et transitions par la hauteur (les cailloux dépassent de l'herbe). Les couleurs des biomes et des saisons sont gardées.
+- **Tapis d'herbe dense** autour du joueur : des dizaines de milliers de brins animés par le vent, qui s'écartent à ton passage, dorés en automne et tassés sous la neige (réglage « Herbe »).
 - **Personnage 3D animé** (KayKit Adventurers) : Mage, Chevalier, Barbare, Rôdeur, Voleur, Voleur à capuche — ou le style **Classique** entièrement personnalisable (onglet Style du créateur). Marche, course, saut, cueillette, caresses via les animations KayKit ; s'asseoir, saluer, danser, applaudir, pêcher sont posés en code.
 - **Arbres, buissons, fleurs, champignons et rochers** importés (KayKit Forest, Kenney Nature Kit), recolorés dans la palette du jeu : cerisiers roses, arbres dorés, sapins enneigés, palmiers ; ils gardent le vent, les feuilles d'automne et la neige de l'hiver.
-- **Halo lumineux** (lanternes, fenêtres et étoiles qui brillent la nuit), étalonnage et vignette, **eau** avec reflets du ciel, éclat du soleil et lagon turquoise.
+- **Eau** : houle et vaguelettes, reflet du ciel selon l'angle (Fresnel), éclat du soleil, écume en dentelle sur les rivages, lagon turquoise.
+- **Halo lumineux** (lanternes, fenêtres et étoiles qui brillent la nuit), étalonnage et vignette.
 - Ombres jusqu'à 4096 px, anticrénelage FXAA / SMAA / MSAA.
+
+### 🧱 Textures du sol (dossier `assets/textures/`)
+- `terrain-albedo.jpg` (couleurs) et `terrain-normal-height.jpg` (rouge/vert : normale, bleu : hauteur) : sept textures de 1024 px (normales en 512 px) empilées de haut en bas, dans l'ordre de `GROUND_LAYERS` (`src/world/terrainTextures.js`) : herbe (*leafy_grass*), sous-bois (*forrest_ground_01*), terre (*park_dirt*), sable (*sand_01*), roche (*rock_face*), pavés (*cobblestone_floor_01*), neige (*snow_02*). Toutes viennent de [Poly Haven](https://polyhaven.com/textures) (CC0) ; crédits : `assets/textures/CREDITS.md`.
+- Sans ces fichiers (ou avec « Sol détaillé » désactivé), le terrain garde ses couleurs unies.
 
 ### 🧱 Modèles 3D (dossier `assets/models/`)
 ```
@@ -127,7 +134,7 @@ assets/models/
 - Sans ces fichiers, le jeu reprend ses modèles construits en code. Crédits et licences (CC0) : `assets/models/CREDITS.md`.
 
 ### ⚙️ Paramètres complets
-- **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (résolution de rendu, netteté Retina, ombres, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages).
+- **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (style de rendu réaliste ou cartoon, résolution de rendu, netteté Retina, ombres, ombres de contact, sol détaillé, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages). Le style et le sol détaillé demandent un redémarrage : un bouton le propose aussitôt.
 - **Affichage** : plein écran, compteur FPS (simple ou détaillé avec graphique, appels de dessin, triangles, carte graphique), limite d'images par seconde (30 à 144), champ de vision, taille de l'interface, barre d'aide des touches, mini-carte, flèche du guide.
 - **Contrôles** : touches réassignables, sensibilité et inversion de la caméra, caméra qui suit, manette.
 - **Audio** : volumes général, musique, effets et ambiance séparés. La musique change selon l'île et la nuit ; ambiances d'oiseaux, de grillons, de vagues, de vent et de pluie.
@@ -157,14 +164,16 @@ scripts/smoke.mjs        Test de fumée (Chromium sans écran)
 scripts/music-levels.mjs Égalise le volume des musiques (music/levels.json)
 music/<ambiance>/        Les chansons du jeu, rangées par ambiance
 assets/models/           Modèles 3D importés (personnages, animations, végétation)
+assets/textures/         Textures du sol (Poly Haven)
 electron/                Application de bureau (fenêtre, protocole interne app://, plein écran)
 src/
   main.js, game.js       Démarrage, boucle, états, interactions, récompenses, sauvegarde
-  core/                  Maths, matériaux cartoon, entrées (touches, manette), paramètres,
+  core/                  Maths, matériaux (réaliste ou cartoon), entrées (touches, manette), paramètres,
                          post-traitement, particules, sons et musique, sauvegarde (profils), mises à jour,
                          chargement des modèles 3D (models.js)
-  world/                 Terrain de l'archipel, ciel, météo, eau, villages, îles, végétation
-                         (et modèles importés : natureModels.js), collisions
+  world/                 Terrain de l'archipel (et sol détaillé : terrainTextures.js), ciel, météo,
+                         eau, villages, îles, végétation (modèles importés : natureModels.js),
+                         tapis d'herbe (grassField.js), collisions
   player/                Personnage classique, personnage importé animé (avatar.js), visage,
                          apparence, déplacement, caméra
   animals/               Espèces (modèles 3D), comportement, gestion

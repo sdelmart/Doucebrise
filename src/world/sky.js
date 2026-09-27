@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { smoothstep, clamp, createRng } from '../core/math.js';
-import { Shape, G, toon } from '../core/materials.js';
+import { Shape, G, toon, isRealistic } from '../core/materials.js';
 
 // Cycle jour/nuit : ciel dégradé, soleil, lune, étoiles, nuages, lumières et brouillard.
 
@@ -23,12 +23,22 @@ const KEYS = [
 // avant de la compresser. Lumières et ciel sont donc atténués pour garder les mêmes tons
 // moyens qu'avant, avec des hautes lumières plus douces.
 const LIGHT_SCALE = { sun: 0.74, hemi: 0.84, ambient: 0.8, sky: 0.82 };
+// Rendu réaliste : le ciel éclaire la scène (voir updateEnvironment) ; la lumière
+// d'hémisphère et la lumière ambiante ne font plus que compléter.
+export const REALISTIC_LIGHT = { env: 0.44, hemi: 0.27, ambient: 0.3, sun: 0.9 };
+
+const _UP = new THREE.Vector3(0, 1, 0);
+const _lx = new THREE.Vector3();
+const _ly = new THREE.Vector3();
+const _lz = new THREE.Vector3();
+const _snap = new THREE.Vector3();
 
 const KEY_COLORS = KEYS.map((k) => [k[0], new THREE.Color(k[1]), new THREE.Color(k[2]), new THREE.Color(k[3]), k[4], new THREE.Color(k[5]), new THREE.Color(k[6]), k[7]]);
 
 export class DayNight {
   constructor(scene) {
     this.scene = scene;
+    this.real = REALISTIC_LIGHT;
     this.hour = 8.5;
     this.day = 1;
     this.speed = 1;
@@ -42,7 +52,7 @@ export class DayNight {
     // Lumières.
     this.hemi = new THREE.HemisphereLight('#e3f5ff', '#90b06a', 1.1);
     scene.add(this.hemi);
-    this.ambient = new THREE.AmbientLight('#ffffff', 0.18 * LIGHT_SCALE.ambient);
+    this.ambient = new THREE.AmbientLight('#ffffff', 0.18 * LIGHT_SCALE.ambient * (isRealistic() ? REALISTIC_LIGHT.ambient : 1));
     scene.add(this.ambient);
     this.sun = new THREE.DirectionalLight('#fff6e4', 2.2);
     this.sun.castShadow = true;
@@ -314,10 +324,23 @@ export class DayNight {
     const sunUp = this.sunDir.y > 0.02;
     const lightDir = sunUp ? this.sunDir : this.moonDir;
     const horizonFade = clamp(Math.abs(lightDir.y) * 6, 0, 1);
-    this.sun.intensity = this.sunIntensity * horizonFade;
+    this.sun.intensity = this.sunIntensity * horizonFade * (isRealistic() ? REALISTIC_LIGHT.sun : 1);
+    this.scene.environmentIntensity = REALISTIC_LIGHT.env;
     this.sun.color.copy(this.sunColor);
-    this.sun.position.copy(focus).addScaledVector(lightDir, 110);
-    this.sun.target.position.copy(focus);
+    // Ombres stables : le cadre de la carte d'ombre avance par pas d'un texel (sinon les
+    // bords des ombres scintillent quand on marche).
+    const sc = this.sun.shadow.camera;
+    const texel = (sc.right - sc.left) / Math.max(1, this.sun.shadow.mapSize.x);
+    _lz.copy(lightDir).negate();
+    _lx.crossVectors(_UP, _lz);
+    if (_lx.lengthSq() < 1e-6) _lx.set(1, 0, 0);
+    _lx.normalize();
+    _ly.crossVectors(_lz, _lx);
+    const fx = Math.round(focus.dot(_lx) / texel) * texel;
+    const fy = Math.round(focus.dot(_ly) / texel) * texel;
+    _snap.copy(_lx).multiplyScalar(fx).addScaledVector(_ly, fy).addScaledVector(_lz, focus.dot(_lz));
+    this.sun.position.copy(_snap).addScaledVector(lightDir, 110);
+    this.sun.target.position.copy(_snap);
 
     const u = this.domeUniforms;
     u.uTop.value.copy(this.skyTop);
@@ -360,6 +383,32 @@ export class DayNight {
     this.updateShooting(dt);
   }
 
+  /**
+   * Éclairage d'environnement (rendu réaliste) : le ciel du moment, flouté, éclaire tous
+   * les matériaux et s'y reflète ; un sol vert-brun renvoie un peu de lumière par en
+   * dessous. Recalculé quand l'heure a assez changé (ou à la demande).
+   */
+  updateEnvironment(renderer, force = false) {
+    if (!isRealistic()) return;
+    if (!this.pmrem) {
+      this.pmrem = new THREE.PMREMGenerator(renderer);
+      this.envScene = new THREE.Scene();
+      this.envScene.add(new THREE.Mesh(this.dome.geometry, this.dome.material));
+      const ground = new THREE.SphereGeometry(400, 32, 12, 0, Math.PI * 2, Math.PI / 2 + 0.03, Math.PI / 2 - 0.03);
+      this.envGround = new THREE.Mesh(ground, new THREE.MeshBasicMaterial({ color: '#56703e', side: THREE.BackSide, fog: false }));
+      this.envScene.add(this.envGround);
+    }
+    if (!force && this.envHour !== undefined && Math.abs(this.hour - this.envHour) < 0.12 && Math.abs((this.cloudCover || 0) - this.envCover) < 0.1) return;
+    this.envHour = this.hour;
+    this.envCover = this.cloudCover || 0;
+    const day = 1 - this.nightFactor;
+    this.envGround.material.color.copy(this.hemi.groundColor).lerp(new THREE.Color('#4a6a36'), 0.5).multiplyScalar(0.18 + 0.3 * day);
+    const rt = this.pmrem.fromScene(this.envScene, 0, 1, 1000);
+    this.scene.environment = rt.texture;
+    this.envRT?.dispose();
+    this.envRT = rt;
+  }
+
   interpolate(h) {
     let i = 0;
     while (i < KEY_COLORS.length - 2 && KEY_COLORS[i + 1][0] <= h) i++;
@@ -372,6 +421,6 @@ export class DayNight {
     this.sunIntensity = (a[4] + (b[4] - a[4]) * t) * LIGHT_SCALE.sun;
     this.hemi.color.copy(a[5]).lerp(b[5], t);
     this.hemi.groundColor.copy(a[6]).lerp(b[6], t);
-    this.hemi.intensity = (a[7] + (b[7] - a[7]) * t) * LIGHT_SCALE.hemi;
+    this.hemi.intensity = (a[7] + (b[7] - a[7]) * t) * LIGHT_SCALE.hemi * (isRealistic() ? REALISTIC_LIGHT.hemi : 1);
   }
 }

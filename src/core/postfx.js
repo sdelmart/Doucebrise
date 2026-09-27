@@ -4,6 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 
@@ -51,7 +52,7 @@ export class PostFX {
     this.renderer = renderer;
     this.scene = scene;
     this.camera = camera;
-    this.opts = { aa: 'off', bloom: false, grading: false };
+    this.opts = { aa: 'off', bloom: false, grading: false, ao: false };
     this.composer = null;
     this.enabled = false;
     this.night = 0;
@@ -62,9 +63,9 @@ export class PostFX {
   }
 
   configure(opts) {
-    const same = this.composer && ['aa', 'bloom', 'grading'].every((k) => this.opts[k] === opts[k]);
+    const same = this.composer && ['aa', 'bloom', 'grading', 'ao'].every((k) => this.opts[k] === opts[k]);
     this.opts = { ...this.opts, ...opts };
-    this.enabled = this.opts.bloom || this.opts.grading || this.opts.aa === 'smaa' || this.opts.aa === 'fxaa' || this.opts.aa === 'msaa';
+    this.enabled = this.opts.bloom || this.opts.grading || this.opts.ao || this.opts.aa === 'smaa' || this.opts.aa === 'fxaa' || this.opts.aa === 'msaa';
     if (same) return;
     this.dispose();
     if (!this.enabled) return;
@@ -76,6 +77,27 @@ export class PostFX {
     });
     const composer = new EffectComposer(r, rt);
     composer.addPass(new RenderPass(this.scene, this.camera));
+    // Ombres de contact : occlusion ambiante (GTAO) au pied des murs, sous les arbres,
+    // entre les objets posés au sol.
+    if (this.opts.ao) {
+      this.ao = new GTAOPass(this.scene, this.camera, size.x, size.y);
+      this.ao.output = GTAOPass.OUTPUT.Default;
+      this.ao.blendIntensity = 0.85;
+      this.ao.updateGtaoMaterial({ radius: 0.9, distanceExponent: 1.4, thickness: 1.2, scale: 1, samples: 12 });
+      this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, rings: 2, samples: 12 });
+      // Objets placés par le shader (tapis d'herbe) : exclus de l'occlusion.
+      const hide = this.ao._overrideVisibility.bind(this.ao);
+      this.ao._overrideVisibility = () => {
+        hide();
+        this.scene.traverse((o) => {
+          if (o.userData.noAO && o.visible) {
+            o.visible = false;
+            this.ao._visibilityCache.push(o);
+          }
+        });
+      };
+      composer.addPass(this.ao);
+    }
     if (this.opts.bloom) {
       this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.3, 0.55, 0.9);
       composer.addPass(this.bloom);
@@ -137,5 +159,6 @@ export class PostFX {
     this.bloom = null;
     this.grade = null;
     this.fxaa = null;
+    this.ao = null;
   }
 }

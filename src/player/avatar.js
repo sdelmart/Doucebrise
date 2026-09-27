@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { Character } from './character.js';
 import { modelsIn, getModel } from '../core/models.js';
-import { Shape, G, getGradientMap, outlineMaterial, vertexColorToon } from '../core/materials.js';
+import { Shape, G, getGradientMap, outlineMaterial, vertexColorToon, shadedMaterial, isRealistic } from '../core/materials.js';
 import { damp } from '../core/math.js';
 
 // Apparence du joueur : un personnage KayKit importé (assets/models/characters/, animé par
@@ -123,7 +123,7 @@ function umbrellaMesh(color) {
   }
   s.add(G.cyl(0.016, 0.016, 1.3, 5), '#6b4a3a', { pos: [0, 0.72, 0] });
   s.add(G.sphere(0.035, 6, 4), color, { pos: [0, 1.53, 0] });
-  const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
+  const mat = shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
   const m = new THREE.Mesh(s.build(), mat);
   m.castShadow = true;
   return m;
@@ -146,7 +146,7 @@ const _e = new THREE.Euler();
 const _v = new THREE.Vector3();
 
 function toonFrom(mat) {
-  const m = new THREE.MeshToonMaterial({
+  const m = shadedMaterial({
     color: mat.color?.clone() || new THREE.Color('#ffffff'),
     map: mat.map || null,
     gradientMap: getGradientMap(),
@@ -199,7 +199,7 @@ class ModelBody {
     for (const n of POSED_BONES) if (this.bones[n]) this.rest[n] = this.bones[n].quaternion.clone();
     // Contour dessiné (comme le reste du jeu), qui suit le squelette.
     for (const m of this.meshes) {
-      if (!m.isSkinnedMesh) continue;
+      if (!m.isSkinnedMesh || isRealistic()) continue;
       const o = new THREE.SkinnedMesh(m.geometry, outlineMaterial(OUTLINE / this.unit));
       o.name = 'outline';
       o.bind(m.skeleton, m.bindMatrix);

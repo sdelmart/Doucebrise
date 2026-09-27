@@ -33,6 +33,7 @@ import { PostFX } from './core/postfx.js';
 import { Particles } from './core/particles.js';
 import { Audio } from './core/audio.js';
 import { MusicPlayer } from './core/music.js';
+import { setRenderStyle } from './core/materials.js';
 import { loadSave, writeSave, clearSave, getSlot } from './core/save.js';
 import { UI } from './ui/ui.js';
 import { Creator } from './ui/creator.js';
@@ -64,6 +65,11 @@ export class Game {
     this.slot = getSlot();
     this.save = loadSave(this.slot);
     this.settings = loadSettings(this.save?.settings);
+    // Style de rendu (réaliste ou cartoon) : avant la création des matériaux.
+    this.renderStyle = this.settings.graphics.style || 'realiste';
+    setRenderStyle(this.renderStyle);
+    // Réglages pris en compte au démarrage seulement (les paramètres proposent de redémarrer).
+    this.bootGraphics = { ...this.settings.graphics };
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -247,7 +253,7 @@ export class Game {
     this.world.sky.cloudQuality = { low: 0.35, medium: 0.6, high: 1 }[gs.clouds] ?? 0.6;
     const wu = this.world.water.userData.uniforms;
     if (wu) wu.uReflect.value = gs.water === 'reflets' ? 1 : 0;
-    this.postfx.configure({ aa: gs.aa, bloom: gs.bloom, grading: gs.grading });
+    this.postfx.configure({ aa: gs.aa, bloom: gs.bloom, grading: gs.grading, ao: gs.ao });
     this.postfx.setSize(window.innerWidth, window.innerHeight);
     this.camera.fov = st.fov;
     this.camera.updateProjectionMatrix();
@@ -1415,6 +1421,7 @@ export class Game {
     const sdt = paused ? 0 : dt;
     const worldDt = this.state === 'title' ? 0 : sdt;
     this.world.update(worldDt, this.elapsed, this.player.pos, this.grassRadius);
+    this.world.sky.updateEnvironment(this.renderer);
     this.audio.setRain(this.state === 'play' && !this.indoors ? this.world.weather.rainAmt : 0);
     this.world.weather.indoors = this.indoors;
     this.visits.update(this.camera);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Terrain } from './terrain.js';
+import { GrassField } from './grassField.js';
 import { DayNight } from './sky.js';
 import { createWater } from './water.js';
 import { Colliders } from './collision.js';
@@ -38,6 +39,8 @@ export class World {
     this.particles = null;
     this.vegetation = new Vegetation(this);
     scene.add(this.vegetation.group);
+    this.grassField = new GrassField(this);
+    scene.add(this.grassField.mesh);
     this.ambient = new Ambient(this);
     scene.add(this.ambient.group);
   }
@@ -138,6 +141,10 @@ export class World {
     this.weather.update(dt, focus);
     const night = this.sky.nightFactor;
     this.vegetation.updateGrass(focus, grassRadius);
+    // Tapis d'herbe dense : environ un tiers du rayon de l'herbe (réglage « Herbe »).
+    const field = Math.min(34, grassRadius * 0.3);
+    if (field !== this.grassField.radius) this.grassField.setRadius(field);
+    this.grassField.update(focus);
     const winter = this.weather.seasonIndex === 3;
     if (this.vegetation.flowerMeshes[0].visible === winter) {
       for (const m of this.vegetation.flowerMeshes) m.visible = !winter;

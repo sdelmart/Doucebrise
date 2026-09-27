@@ -9,6 +9,9 @@ import { Game } from './game.js';
 import { loadModels } from './core/models.js';
 import { NATURE_MODEL_IDS } from './world/natureModels.js';
 import { CHARACTER_MODEL_IDS } from './player/avatar.js';
+import { loadGroundTextures } from './world/terrainTextures.js';
+import { loadSettings } from './core/settings.js';
+import { loadSave } from './core/save.js';
 
 // Point d'entrée : on attend la police (utilisée aussi pour dessiner les enseignes),
 // on laisse le navigateur afficher l'écran de chargement, puis on construit le monde.
@@ -32,7 +35,18 @@ async function modelsReady() {
   if (p) p.textContent = label;
 }
 
-Promise.all([fontsReady(), modelsReady()]).then(() =>
+// Sol détaillé (textures du terrain), si le réglage est activé.
+async function groundReady() {
+  let on = true;
+  try {
+    on = loadSettings(loadSave()?.settings).graphics.ground !== false;
+  } catch {
+    /* réglages illisibles : valeurs par défaut */
+  }
+  if (on) await loadGroundTextures();
+}
+
+Promise.all([fontsReady(), modelsReady(), groundReady()]).then(() =>
   requestAnimationFrame(() =>
     setTimeout(() => {
       try {

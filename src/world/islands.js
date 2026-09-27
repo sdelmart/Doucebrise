@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Shape, G, toon, vertexColorToon, addSeason } from '../core/materials.js';
+import { Shape, G, toon, vertexColorToon, addSeason, shadedMaterial } from '../core/materials.js';
 import { createRng } from '../core/math.js';
 import { ISLANDS, LANDMARKS } from './layout.js';
 import { place, rotate2, signBoard, benchGeo, boatGeo, WOOD, WOOD_DARK, IRON, STONE } from './village.js';
@@ -849,7 +849,7 @@ export class IslandVillages {
     this.add(id, hotSpringGeo(S.r), S.x, sy, S.z, 0.3);
     this.world.reserve(S.x, S.z, S.r + 3.5);
     this.world.colliders.addBox(S.x + Math.cos(0.3) * (S.r + 3.5), S.z - Math.sin(0.3) * (S.r + 3.5), 1.7, 1.4, 0.3);
-    const spring = new THREE.Mesh(new THREE.CircleGeometry(S.r - 0.2, 32), new THREE.MeshToonMaterial({ color: '#8fe3e0', emissive: '#4fb8c9', emissiveIntensity: 0.35, transparent: true, opacity: 0.88 }));
+    const spring = new THREE.Mesh(new THREE.CircleGeometry(S.r - 0.2, 32), shadedMaterial({ color: '#8fe3e0', emissive: '#4fb8c9', emissiveIntensity: 0.35, transparent: true, opacity: 0.88 }));
     spring.rotation.x = -Math.PI / 2;
     spring.position.set(S.x, sy + 0.25, S.z);
     (this.extraMeshes ||= []).push({ island: id, mesh: spring });

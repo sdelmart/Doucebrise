@@ -705,6 +705,7 @@ body.no-keyhints #keyhints { display: none; }
 .switch input:checked + span { background: var(--mint-d); }
 .switch input:checked + span::after { transform: translateX(20px); }
 .presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 8px; }
+.restart-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; padding: 10px 12px; border-radius: 14px; background: #fff3d6; border: 2px solid #f2cf86; font-weight: 800; font-size: 13px; }
 .preset { border: 2px solid var(--line); background: var(--card); border-radius: 14px; padding: 8px 6px; display: grid; gap: 2px; font-family: inherit; }
 .preset b { font-size: 15px; }
 .preset small { font-size: 11px; color: var(--ink-soft); font-weight: 700; }

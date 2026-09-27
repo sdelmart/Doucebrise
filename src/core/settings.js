@@ -4,18 +4,21 @@
 const KEY = 'doucebrise-settings';
 
 export const PRESETS = {
-  basse: { label: 'Basse', desc: 'Pour les petits ordinateurs', renderScale: 0.75, maxRatio: 1, shadows: 'off', renderDistance: 160, grass: 0, aa: 'off', bloom: false, grading: false, water: 'simple', clouds: 'low' },
-  moyenne: { label: 'Moyenne', desc: 'Équilibrée', renderScale: 1, maxRatio: 1.25, shadows: 'low', renderDistance: 220, grass: 45, aa: 'fxaa', bloom: true, grading: true, water: 'simple', clouds: 'medium' },
-  haute: { label: 'Haute', desc: 'Recommandée', renderScale: 1, maxRatio: 2, shadows: 'high', renderDistance: 300, grass: 80, aa: 'smaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
-  ultra: { label: 'Ultra', desc: 'Pour les cartes graphiques puissantes', renderScale: 1, maxRatio: 2, shadows: 'ultra', renderDistance: 420, grass: 110, aa: 'msaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
+  basse: { label: 'Basse', desc: 'Pour les petits ordinateurs', style: 'cartoon', renderScale: 0.75, maxRatio: 1, shadows: 'off', ao: false, ground: false, renderDistance: 160, grass: 0, aa: 'off', bloom: false, grading: false, water: 'simple', clouds: 'low' },
+  moyenne: { label: 'Moyenne', desc: 'Équilibrée', style: 'realiste', renderScale: 1, maxRatio: 1.25, shadows: 'low', ao: false, ground: true, renderDistance: 220, grass: 45, aa: 'fxaa', bloom: true, grading: true, water: 'simple', clouds: 'medium' },
+  haute: { label: 'Haute', desc: 'Recommandée', style: 'realiste', renderScale: 1, maxRatio: 2, shadows: 'high', ao: true, ground: true, renderDistance: 300, grass: 80, aa: 'smaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
+  ultra: { label: 'Ultra', desc: 'Pour les cartes graphiques puissantes', style: 'realiste', renderScale: 1, maxRatio: 2, shadows: 'ultra', ao: true, ground: true, renderDistance: 420, grass: 110, aa: 'msaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
 };
 
 export const SHADOW_SIZES = { off: 0, low: 1024, high: 2048, ultra: 4096 };
 
 export const GRAPHICS_OPTIONS = {
+  style: { label: 'Style de rendu', type: 'choice', choices: [['realiste', 'Réaliste'], ['cartoon', 'Cartoon']], restart: true, note: 'Réaliste : lumière douce du ciel, reflets, ombres de contact. Cartoon : aplats et contours.' },
   renderScale: { label: 'Résolution de rendu', type: 'range', min: 0.5, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)} %` },
   maxRatio: { label: 'Netteté (écrans Retina / 4K)', type: 'choice', choices: [[1, '×1'], [1.25, '×1,25'], [1.5, '×1,5'], [2, '×2']] },
   shadows: { label: 'Ombres', type: 'choice', choices: [['off', 'Aucune'], ['low', 'Basses'], ['high', 'Hautes'], ['ultra', 'Ultra']] },
+  ao: { label: 'Ombres de contact (occlusion ambiante)', type: 'toggle' },
+  ground: { label: 'Sol détaillé (textures)', type: 'toggle', restart: true },
   renderDistance: { label: 'Distance d\'affichage', type: 'range', min: 120, max: 480, step: 20, fmt: (v) => `${v} m` },
   grass: { label: 'Herbe (rayon)', type: 'range', min: 0, max: 140, step: 5, fmt: (v) => (v ? `${v} m` : 'Aucune') },
   aa: { label: 'Anticrénelage', type: 'choice', choices: [['off', 'Aucun'], ['fxaa', 'FXAA'], ['smaa', 'SMAA'], ['msaa', 'MSAA ×4']] },
@@ -97,10 +100,12 @@ export function loadSettings(legacy = null) {
     stored = null;
   }
   if (stored) {
+    // Réglages ajoutés depuis : on les prend dans le préréglage choisi.
+    const presetBase = PRESETS[stored.preset] || base.graphics;
     return {
       ...base,
       ...stored,
-      graphics: { ...base.graphics, ...(stored.graphics || {}) },
+      graphics: { ...base.graphics, ...presetBase, ...(stored.graphics || {}) },
       audio: { ...base.audio, ...(stored.audio || {}) },
       keys: { ...(stored.keys || {}) },
     };

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Shape, G, toon, vertexColorToon, getGradientMap, addSeason } from '../core/materials.js';
+import { Shape, G, toon, vertexColorToon, getGradientMap, addSeason, shadedMaterial } from '../core/materials.js';
 import { createRng } from '../core/math.js';
 import { LANDMARKS, ZONES } from './layout.js';
 import { buildHome, fencePoints, DEFAULT_HOME, HOME_SIZES } from './home.js';
@@ -246,7 +246,7 @@ export function signBoard(text, w = 2.6, h = 0.6, bg = '#f6e7c8', fg = '#6b4a2e'
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
-  const mat = new THREE.MeshToonMaterial({ map: tex, gradientMap: getGradientMap() });
+  const mat = shadedMaterial({ map: tex, gradientMap: getGradientMap() });
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), [
     toon(WOOD), toon(WOOD), toon(WOOD), toon(WOOD), mat, mat,
   ]);

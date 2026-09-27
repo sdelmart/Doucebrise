@@ -372,7 +372,14 @@ export class SettingsPanel {
       if (o.type === 'choice') ctl = this.chips(`graphics.${k}`, o.choices, v);
       else if (o.type === 'toggle') ctl = this.toggle(`graphics.${k}`, v);
       else ctl = this.range(`graphics.${k}`, v, o.min, o.max, o.step, o.fmt(v));
-      html += this.row(o.label, ctl);
+      html += this.row(o.label, ctl, o.note || (o.restart ? 'Pris en compte au redémarrage.' : ''));
+    }
+    // Réglages appliqués au démarrage : on propose de relancer le jeu tout de suite.
+    const boot = this.game.bootGraphics || {};
+    const pending = Object.entries(GRAPHICS_OPTIONS).filter(([k, o]) => o.restart && gs[k] !== boot[k]);
+    if (pending.length) {
+      html = `<div class="restart-bar"><span>🔄 ${pending.map(([, o]) => o.label).join(', ')} : il faut redémarrer le jeu pour voir le changement.</span>
+        <button class="btn small" data-restart>Redémarrer maintenant</button></div>${html}`;
     }
     html += '<p class="note">Astuce : F3 affiche le compteur d\'images par seconde. Si le jeu saccade, baisse d\'abord les ombres, la distance d\'affichage et la résolution de rendu.</p>';
     return html;
@@ -611,6 +618,12 @@ export class SettingsPanel {
       }
       g.resetGame();
     });
+    this.el.querySelector('[data-restart]')?.addEventListener('click', () => {
+      const playing = g.state === 'play';
+      saveSettings(this.s);
+      if (playing) g.saveNow();
+      restartOn(getSlot(), playing ? 'continue' : null);
+    });
     this.el.querySelector('[data-defaults]')?.addEventListener('click', () => {
       const d = defaultSettings();
       Object.assign(s, d);
@@ -635,7 +648,8 @@ export class Credits {
       <p class="tagline">L'archipel des cœurs doux</p>
       <div class="credits-list">
         <p><b>Un jeu fait avec ♥</b><br>pour les soirées douces, les amis à poils et les grandes balades.</p>
-        <p><b>Conception, programmation, graphismes, sons</b><br>Tout est fabriqué dans le jeu, sans image externe : modèles 3D, ciel, eau, bruitages et ambiances sont générés en direct.</p>
+        <p><b>Conception, programmation, graphismes, sons</b><br>Maisons, habitants, animaux, meubles, ciel, eau, bruitages et ambiances sont générés en direct par le jeu.</p>
+        <p><b>Modèles 3D et textures (CC0)</b><br>Personnages et forêt : KayKit, Kay Lousberg · Nature Kit : Kenney · Textures du sol : Poly Haven</p>
         <p><b>Technologies</b><br>Three.js (moteur 3D) · Vite · Electron (applications Windows et macOS)</p>
         <p><b>Police</b><br>Nunito — SIL Open Font License</p>
         ${game.music.tracks.some((t) => t.source === 'bundled') ? `<p><b>Musiques choisies avec amour</b><br>${[...new Set(game.music.tracks.filter((t) => t.source === 'bundled').map((t) => t.name))].map(escapeHtml).join('<br>')}</p>` : ''}

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Shape, G, toon, withOutline, paintGradientY, vertexColorToon, getGradientMap } from '../core/materials.js';
+import { Shape, G, toon, withOutline, paintGradientY, vertexColorToon, getGradientMap, shadedMaterial } from '../core/materials.js';
 import { createFaceTextures, createPatternTexture, FACE_PHI, FACE_THETA0, FACE_THETA_LEN } from './face.js';
 import { clamp, damp } from '../core/math.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -143,7 +143,7 @@ export class Character {
     const pattern = createPatternTexture(a.pattern, base, accent);
     pattern.repeat.set(3, 2);
     this.textures.push(pattern);
-    this.clothMat = new THREE.MeshToonMaterial({ map: pattern, gradientMap: getGradientMap() });
+    this.clothMat = shadedMaterial({ map: pattern, gradientMap: getGradientMap() });
     this.materials.push(this.clothMat);
 
     this.armL.position.set(0.2 * b + 0.02, 0.35, 0);
@@ -209,7 +209,7 @@ export class Character {
         shell.scale(b, 1, 0.86 * b);
         const js = new Shape();
         js.add(shell, a.topColor);
-        const jm = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
+        const jm = shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
         this.materials.push(jm);
         this.addPart(this.torso, js.build(), jm);
         for (const side of [-1, 1]) {
@@ -348,7 +348,7 @@ export class Character {
 
     this.faceTex = createFaceTextures(a);
     this.textures.push(...Object.values(this.faceTex));
-    this.faceMat = new THREE.MeshToonMaterial({
+    this.faceMat = shadedMaterial({
       map: this.faceTex.normal,
       gradientMap: getGradientMap(),
       transparent: true,
@@ -831,7 +831,7 @@ export class Character {
           s.add(G.sphere(1, 16, 10), lighten(c, 0.35), { pos: [side * 0.22, 0.1, -0.02], scale: [0.25, 0.13, 0.015], rot: [0, 0, side * 0.55] });
           s.add(G.sphere(1, 16, 10), lighten(c, 0.1), { pos: [side * 0.22, 0.1, -0.03], scale: [0.18, 0.08, 0.016], rot: [0, 0, side * 0.55] });
           s.add(G.sphere(1, 14, 8), lighten(c, 0.35), { pos: [side * 0.15, -0.09, -0.02], scale: [0.15, 0.09, 0.015], rot: [0, 0, -side * 0.45] });
-          const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), transparent: true, opacity: 0.85, side: THREE.DoubleSide, emissive: lighten(c, 0.6), emissiveIntensity: 0.25 });
+          const mat = shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), transparent: true, opacity: 0.85, side: THREE.DoubleSide, emissive: lighten(c, 0.6), emissiveIntensity: 0.25 });
           this.materials.push(mat);
           const m = this.addPart(pivot, s.build(), mat, { outline: false });
           m.castShadow = false;
@@ -848,7 +848,7 @@ export class Character {
         g.translate(0, -0.4, 0);
         const s = new Shape();
         s.add(g, c);
-        const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
+        const mat = shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
         this.materials.push(mat);
         this.addPart(pivot, s.build(), mat, { outline: false });
         const col = new Shape();
@@ -920,7 +920,7 @@ export class Character {
           s.add(G.sphere(1, 12, 8), lighten(c, 0.6), { pos: [side * 0.24, 0.16, -0.03], scale: [0.08, 0.07, 0.016] });
           s.add(G.sphere(1, 14, 8), darken(c, 0.2), { pos: [side * 0.15, -0.1, -0.02], scale: [0.13, 0.12, 0.015], rot: [0, 0, -side * 0.4] });
           s.add(G.sphere(1, 10, 8), '#2e2e3a', { pos: [side * 0.33, 0.24, -0.025], scale: [0.03, 0.03, 0.016] });
-          const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
+          const mat = shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
           this.materials.push(mat);
           const m = this.addPart(pivot, s.build(), mat, { outline: false });
           m.castShadow = false;
@@ -1005,7 +1005,7 @@ export class Character {
             rainbow.forEach((col, i) => s.add(G.sphere(1, 14, 8), col, { pos: [side * 0.2, 0.1 - i * 0.012, -0.02 - i * 0.004], scale: [0.26 - i * 0.03, 0.15 - i * 0.017, 0.015], rot: [0, 0, side * 0.45] }));
             rainbow.forEach((col, i) => i % 2 === 0 && s.add(G.sphere(1, 12, 8), col, { pos: [side * 0.14, -0.1, -0.02 - i * 0.004], scale: [0.14 - i * 0.02, 0.09 - i * 0.012, 0.015], rot: [0, 0, -side * 0.45] }));
           }
-          const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide, emissive: '#ffffff', emissiveIntensity: a.back === 'ailesAnge' ? 0.15 : 0.08 });
+          const mat = shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide, emissive: '#ffffff', emissiveIntensity: a.back === 'ailesAnge' ? 0.15 : 0.08 });
           this.materials.push(mat);
           const m = this.addPart(pivot, s.build(), mat, { outline: false });
           m.castShadow = false;
@@ -1098,7 +1098,7 @@ export class Character {
       s.add(G.cyl(0.016, 0.016, 1.3, 5), '#6b4a3a', { pos: [-0.2, 0.72, 0.14] });
       s.add(G.sphere(0.035, 6, 4), color, { pos: [0.02, 1.53, 0.08] });
       s.add(G.torus(0.05, 0.014, 5, 10, Math.PI), '#6b4a3a', { pos: [-0.25, 0.08, 0.14], rot: [0, 0, Math.PI] });
-      const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
+      const mat = shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
       this.umbrella = new THREE.Mesh(s.build(), mat);
       this.umbrella.castShadow = true;
       this.torso.add(this.umbrella);

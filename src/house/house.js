@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { toon, vertexColorToon, withOutline, getGradientMap } from '../core/materials.js';
+import { toon, vertexColorToon, withOutline, getGradientMap, shadedMaterial } from '../core/materials.js';
 import { FURNITURE, WALLPAPERS, FLOORS, surfaceTexture } from './furniture.js';
 import { DEFAULT_HOME, HOME_SIZES } from '../world/home.js';
 
@@ -105,8 +105,8 @@ export class House {
     lawn.position.set(x, -0.32, z);
     lawn.receiveShadow = true;
     g.add(lawn);
-    this.floorMat = new THREE.MeshToonMaterial({ gradientMap: getGradientMap() });
-    this.wallMat = new THREE.MeshToonMaterial({ gradientMap: getGradientMap() });
+    this.floorMat = shadedMaterial({ gradientMap: getGradientMap() });
+    this.wallMat = shadedMaterial({ gradientMap: getGradientMap() });
     this.trimMat = toon('#fffaf2');
     this.baseMat = toon('#c9a27a');
     this.doorMat = toon('#9c6b4f');
@@ -283,9 +283,9 @@ export class House {
     const f = FURNITURE[id];
     const obj = new THREE.Group();
     const mat = ghost
-      ? new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), transparent: true, opacity: 0.72, emissive: '#39d98a', emissiveIntensity: 0.25 })
+      ? shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), transparent: true, opacity: 0.72, emissive: '#39d98a', emissiveIntensity: 0.25 })
       : f.doubleSide
-        ? new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide })
+        ? shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide })
         : vertexColorToon();
     const body = new THREE.Mesh(f.build(color), mat);
     body.castShadow = !ghost;

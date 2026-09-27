@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { toon, getGradientMap } from '../core/materials.js';
+import { toon, getGradientMap, shadedMaterial } from '../core/materials.js';
 import { FURNITURE, WALLPAPERS, FLOORS, surfaceTexture } from './furniture.js';
 
 // Visites chez les habitants : on frappe à leur porte (de 6 h à 22 h) et on entre dans
@@ -107,8 +107,8 @@ export class Visits {
     lawn.rotation.x = -Math.PI / 2;
     lawn.position.set(x, -0.32, z);
     g.add(lawn);
-    this.floorMat = new THREE.MeshToonMaterial({ gradientMap: getGradientMap() });
-    this.wallMat = new THREE.MeshToonMaterial({ gradientMap: getGradientMap() });
+    this.floorMat = shadedMaterial({ gradientMap: getGradientMap() });
+    this.wallMat = shadedMaterial({ gradientMap: getGradientMap() });
     const trim = toon('#fffaf2');
     const base = toon('#c9a27a');
     const floor = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.3, d + 0.4), [base, base, this.floorMat, base, base, base]);

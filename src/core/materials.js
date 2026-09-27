@@ -18,8 +18,25 @@ export function getGradientMap() {
   return gradientMap;
 }
 
+// Style de rendu (Paramètres → Graphismes) : « réaliste » = matériaux PBR doux éclairés
+// par le ciel (sans contours), « cartoon » = aplats à paliers et contours dessinés.
+// Choisi au lancement, avant la création du moindre matériau.
+let STYLE = 'realiste';
+export function setRenderStyle(style) {
+  STYLE = style === 'cartoon' ? 'cartoon' : 'realiste';
+}
+export const isRealistic = () => STYLE === 'realiste';
+
+/** Matériau éclairé du jeu, dans le style choisi (mêmes options que MeshToonMaterial). */
+export function shadedMaterial(opts = {}) {
+  if (STYLE === 'cartoon') return new THREE.MeshToonMaterial({ gradientMap: getGradientMap(), ...opts });
+  const { gradientMap, ...rest } = opts;
+  void gradientMap;
+  return new THREE.MeshStandardMaterial({ roughness: 0.82, metalness: 0, ...rest });
+}
+
 export function toon(color = '#ffffff', opts = {}) {
-  return new THREE.MeshToonMaterial({ color, gradientMap: getGradientMap(), ...opts });
+  return shadedMaterial({ color, ...opts });
 }
 
 /** Matériau partagé à couleurs par sommet (animaux, personnages, décor fusionné). */
@@ -134,6 +151,7 @@ export function outlineMaterial(thickness = 0.018, color = '#3b2a2a') {
 
 /** Ajoute une coque de contour à un mesh (enfant qui suit ses animations). */
 export function withOutline(mesh, thickness = 0.018) {
+  if (STYLE !== 'cartoon') return mesh;
   const o = new THREE.Mesh(mesh.geometry, outlineMaterial(thickness));
   o.name = 'outline';
   o.raycast = () => {};

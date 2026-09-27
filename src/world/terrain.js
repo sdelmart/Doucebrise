@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createRng, createNoise2D, fbm, smoothstep, lerp, clamp, distToPolyline } from '../core/math.js';
 import { toon, addSeason } from '../core/materials.js';
+import { groundTextures, addGroundDetail } from './terrainTextures.js';
 import { WORLD_SEED, PATHS, LANDMARKS, ISLANDS, MAP_RANGE, islandAt } from './layout.js';
 
 // Terrain de l'île : une grille de hauteurs partagée entre le rendu et le gameplay,
@@ -198,51 +199,71 @@ export class Terrain {
 
   // --- Couleurs ---------------------------------------------------------------
 
-  colorAt(x, z, h, normalY, out = new THREE.Color()) {
+  /**
+   * Couleur du sol ; w (facultatif, 7 nombres) reçoit en plus la part de chaque type de
+   * sol (voir GROUND_LAYERS : herbe, sous-bois, terre, sable, roche, pavés, neige).
+   */
+  colorAt(x, z, h, normalY, out = new THREE.Color(), w = null) {
+    // Mélange vers une couleur et, pour le sol détaillé, vers le type de sol correspondant.
+    const mix = (color, layer, t) => {
+      out.lerp(color, t);
+      if (w && t > 0) {
+        for (let k = 0; k < 7; k++) w[k] *= 1 - t;
+        w[layer] += t;
+      }
+    };
+    if (w) {
+      w.fill(0);
+      w[0] = 1;
+    }
     const n1 = this.noiseB(x * 0.045, z * 0.045);
     const n2 = this.noiseC(x * 0.18, z * 0.18);
     out.copy(COLORS.grassA).lerp(COLORS.grassB, smoothstep(-0.4, 0.6, n1));
-    out.lerp(COLORS.grassC, smoothstep(0.2, 0.8, n2) * 0.5);
+    mix(COLORS.grassC, 0, smoothstep(0.2, 0.8, n2) * 0.5);
 
     const forest = smoothstep(40, 22, Math.hypot(x + 4, z + 58));
-    out.lerp(n2 > 0 ? COLORS.forest : COLORS.forestB, forest * 0.9);
+    mix(n2 > 0 ? COLORS.forest : COLORS.forestB, 1, forest * 0.9);
     const meadow = smoothstep(30, 12, Math.hypot(x - 50, z - 8));
-    out.lerp(COLORS.meadow, meadow * 0.7);
+    mix(COLORS.meadow, 0, meadow * 0.7);
     const hill = smoothstep(20, 8, Math.hypot(x - LANDMARKS.windmill.x, z - LANDMARKS.windmill.z));
-    out.lerp(COLORS.hill, hill * 0.6);
+    mix(COLORS.hill, 0, hill * 0.6);
 
     const pd = this.pathDistance(x, z) + n2 * 0.5;
-    out.lerp(COLORS.path, smoothstep(2.6, 1.5, pd));
+    mix(COLORS.path, 2, smoothstep(2.6, 1.5, pd));
     const plaza = Math.hypot(x, z) + n2 * 0.6;
-    out.lerp(COLORS.plaza, smoothstep(14.5, 13, plaza));
+    mix(COLORS.plaza, 5, smoothstep(14.5, 13, plaza));
 
     const isl = islandAt(x, z);
     if (isl === 'pins') {
-      out.lerp(COLORS.pineGrass, 0.55 + n2 * 0.15);
+      mix(COLORS.pineGrass, 0, 0.55 + n2 * 0.15);
       const B = LANDMARKS.bourg;
-      out.lerp(COLORS.alpine, smoothstep(30, 14, Math.hypot(x - B.x, z - B.z)) * 0.6);
-      out.lerp(COLORS.path, smoothstep(2.6, 1.5, pd));
-      out.lerp(COLORS.stone, smoothstep(11.5, 10, Math.hypot(x - B.x, z - B.z) + n2 * 0.6));
-      out.lerp(COLORS.rock, smoothstep(0.86, 0.72, normalY));
-      out.lerp(COLORS.rock, smoothstep(11, 15, h) * 0.6);
-      out.lerp(COLORS.snow, smoothstep(14.5, 17.5, h + n1 * 1.5));
-      out.lerp(COLORS.pebble, smoothstep(1.3, 0.8, h + n2 * 0.15));
-      out.lerp(COLORS.wetSand, smoothstep(0.1, -0.6, h) * 0.6);
+      mix(COLORS.alpine, 0, smoothstep(30, 14, Math.hypot(x - B.x, z - B.z)) * 0.6);
+      mix(COLORS.path, 2, smoothstep(2.6, 1.5, pd));
+      mix(COLORS.stone, 5, smoothstep(11.5, 10, Math.hypot(x - B.x, z - B.z) + n2 * 0.6));
+      mix(COLORS.rock, 4, smoothstep(0.86, 0.72, normalY));
+      mix(COLORS.rock, 4, smoothstep(11, 15, h) * 0.6);
+      mix(COLORS.snow, 6, smoothstep(14.5, 17.5, h + n1 * 1.5));
+      mix(COLORS.pebble, 4, smoothstep(1.3, 0.8, h + n2 * 0.15));
+      mix(COLORS.wetSand, 3, smoothstep(0.1, -0.6, h) * 0.6);
       return out;
     }
     if (isl === 'corail') {
       out.copy(COLORS.tropic).lerp(COLORS.tropicB, smoothstep(-0.3, 0.6, n1));
-      out.lerp(COLORS.path, smoothstep(2.6, 1.5, pd));
+      if (w) {
+        w.fill(0);
+        w[0] = 1;
+      }
+      mix(COLORS.path, 2, smoothstep(2.6, 1.5, pd));
       const P = LANDMARKS.port;
-      out.lerp(COLORS.coralTiles, smoothstep(12.5, 11, Math.hypot(x - P.x, z - P.z) + n2 * 0.6));
-      out.lerp(COLORS.rock, smoothstep(0.82, 0.7, normalY));
-      out.lerp(COLORS.sand, smoothstep(1.8, 1.1, h + n2 * 0.15));
-      out.lerp(COLORS.wetSand, smoothstep(0.1, -0.6, h));
+      mix(COLORS.coralTiles, 5, smoothstep(12.5, 11, Math.hypot(x - P.x, z - P.z) + n2 * 0.6));
+      mix(COLORS.rock, 4, smoothstep(0.82, 0.7, normalY));
+      mix(COLORS.sand, 3, smoothstep(1.8, 1.1, h + n2 * 0.15));
+      mix(COLORS.wetSand, 3, smoothstep(0.1, -0.6, h));
       return out;
     }
-    out.lerp(COLORS.rock, smoothstep(0.82, 0.7, normalY));
-    out.lerp(COLORS.sand, smoothstep(1.35, 0.85, h + n2 * 0.15));
-    out.lerp(COLORS.wetSand, smoothstep(0.1, -0.6, h));
+    mix(COLORS.rock, 4, smoothstep(0.82, 0.7, normalY));
+    mix(COLORS.sand, 3, smoothstep(1.35, 0.85, h + n2 * 0.15));
+    mix(COLORS.wetSand, 3, smoothstep(0.1, -0.6, h));
     return out;
   }
 
@@ -285,16 +306,37 @@ export class Terrain {
     const normals = geo.attributes.normal;
     const colors = new Float32Array(count * 3);
     const col = new THREE.Color();
+    // Sol détaillé : part de chaque type de sol par sommet (l'herbe prend le reste).
+    const detailed = !!groundTextures();
+    const w = new Float32Array(7);
+    const splatA = detailed ? new Float32Array(count * 3) : null;
+    const splatB = detailed ? new Float32Array(count * 3) : null;
+    // Part d'herbe par sommet (tapis d'herbe dense : pas sur les chemins, le sable, la roche…).
+    this.grassDensity = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      this.colorAt(positions[i * 3], positions[i * 3 + 2], positions[i * 3 + 1], normals.getY(i), col);
+      const h = positions[i * 3 + 1];
+      const ny = normals.getY(i);
+      this.colorAt(positions[i * 3], positions[i * 3 + 2], h, ny, col, w);
       colors[i * 3] = col.r;
       colors[i * 3 + 1] = col.g;
       colors[i * 3 + 2] = col.b;
+      this.grassDensity[i] = clamp(w[0] + w[1] * 0.55, 0, 1) * smoothstep(1.05, 1.5, h) * smoothstep(0.62, 0.8, ny);
+      if (detailed) {
+        splatA.set([w[1], w[2], w[3]], i * 3);
+        splatB.set([w[4], w[5], w[6]], i * 3);
+      }
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    if (detailed) {
+      geo.setAttribute('splatA', new THREE.BufferAttribute(splatA, 3));
+      geo.setAttribute('splatB', new THREE.BufferAttribute(splatB, 3));
+    }
     this.vertexColors = colors;
 
-    const mesh = new THREE.Mesh(geo, addSeason(toon('#ffffff', { vertexColors: true }), { ground: true, snowLo: 0.55, snowHi: 0.85 }));
+    let material = addSeason(toon('#ffffff', { vertexColors: true }), { ground: true, snowLo: 0.55, snowHi: 0.85 });
+    if (material.isMeshStandardMaterial) material.roughness = 0.92;
+    if (detailed) material = addGroundDetail(material);
+    const mesh = new THREE.Mesh(geo, material);
     mesh.receiveShadow = true;
     mesh.name = 'terrain';
     return mesh;

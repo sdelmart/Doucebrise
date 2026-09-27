@@ -93,6 +93,31 @@ try {
     if (!r.avatar) throw new Error('le personnage importé n\'est pas chargé');
     if (r.models < 5) throw new Error(`végétation importée incomplète (${r.models} types)`);
   });
+  await step('Rendu réaliste (sol détaillé, herbe dense)', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      return {
+        style: g.renderStyle,
+        env: !!g.scene.environment,
+        ground: !!g.world.terrainMesh.geometry.attributes.splatA,
+        grass: g.world.grassField.geometry.instanceCount,
+      };
+    });
+    if (r.style !== 'realiste') throw new Error(`style de rendu : ${r.style}`);
+    if (!r.env) throw new Error('pas de lumière du ciel (environnement)');
+    if (!r.ground) throw new Error('textures du sol non chargées');
+    if (!(r.grass > 1000)) throw new Error(`tapis d'herbe vide (${r.grass})`);
+  });
+  await step('Paramètres : redémarrage proposé', async () => {
+    await settle();
+    await page.evaluate(() => window.game.openPanel('settings'));
+    await page.waitForSelector('[data-set="graphics.style"][data-val="cartoon"]', { state: 'visible', timeout: 10000 });
+    await page.evaluate(() => document.querySelector('[data-set="graphics.style"][data-val="cartoon"]').click());
+    await page.waitForSelector('.restart-bar [data-restart]', { state: 'visible', timeout: 5000 });
+    await page.evaluate(() => document.querySelector('[data-set="graphics.style"][data-val="realiste"]').click());
+    if (await page.$('.restart-bar')) throw new Error('le bandeau de redémarrage reste affiché');
+    await page.evaluate(() => window.game.closePanels());
+  });
   await step('Musique', async () => {
     const r = await page.evaluate(() => new Promise((resolve) => {
       const m = window.game.music;
