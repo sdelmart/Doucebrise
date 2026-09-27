@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { World } from './world/world.js';
 import { zoneAt, LANDMARKS, islandAt } from './world/layout.js';
 import { whaleModel } from './world/islands.js';
-import { Character } from './player/character.js';
+import { Avatar } from './player/avatar.js';
 import { Player } from './player/player.js';
 import { FollowCamera } from './player/camera.js';
 import { DEFAULT_APPEARANCE, normalizeAppearance, randomAppearance, isLocked, shopClothes, OPTIONS } from './player/appearance.js';
@@ -67,7 +67,12 @@ export class Game {
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    // Rendu « cozy » : couleurs sRGB, tons ACES un peu surexposés, ombres douces.
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
     this.renderer.shadowMap.enabled = true;
+    // PCFSoftShadowMap a été retiré de Three.js (r186) : PCF + rayon de flou (voir sky.js).
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 900);
@@ -86,7 +91,7 @@ export class Game {
     this.world.particles = this.particles;
 
     const appearance = this.save ? normalizeAppearance(this.save.appearance) : { ...DEFAULT_APPEARANCE };
-    this.character = new Character(appearance);
+    this.character = new Avatar(appearance);
     this.scene.add(this.character.root);
     this.player = new Player(this.world, this.character);
     this.animals = new AnimalManager(this);

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { Shape, G, toon, addWind, addSeason, paintGradientY } from '../core/materials.js';
 import { createRng, smoothstep } from '../core/math.js';
 import { ISLANDS, LANDMARKS, SLED_COURSE } from './layout.js';
+import { natureGeometries, kindOffset, flowerColors, surfaceSpots } from './natureModels.js';
+import { crownOf } from '../core/models.js';
 
 // Végétation instanciée : arbres, buissons à baies, fleurs, herbe, rochers,
 // champignons, tournesols et carottes sauvages (les trois derniers sont récoltables).
@@ -382,6 +384,7 @@ function makeInstanced(geo, material, count, { cast = true, receive = true } = {
 }
 
 function pushInstance(mesh, x, y, z, rotY = 0, scale = 1, color = null, tilt = null) {
+  if (mesh.isVariants) return mesh.push(x, y, z, rotY, scale, color, tilt);
   const i = mesh.count;
   if (tilt) _q.setFromUnitVectors(_up, tilt).multiply(new THREE.Quaternion().setFromAxisAngle(_up, rotY));
   else _q.setFromAxisAngle(_up, rotY);
@@ -390,6 +393,54 @@ function pushInstance(mesh, x, y, z, rotY = 0, scale = 1, color = null, tilt = n
   if (color) mesh.setColorAt(i, color);
   mesh.count++;
   return i;
+}
+
+/**
+ * Plusieurs modèles importés pour un même type de plante : chaque instance prend l'un
+ * d'eux selon sa position (sans toucher au tirage aléatoire : le monde reste identique).
+ */
+class Variants extends THREE.Group {
+  constructor(geos, material, count, opts, yOffset = 0) {
+    super();
+    this.isVariants = true;
+    this.cap = count;
+    this.yOffset = yOffset;
+    this.meshes = geos.map((g) => makeInstanced(g, material, count, opts));
+    this.meshes.forEach((m) => this.add(m));
+  }
+
+  get count() {
+    return this.meshes.reduce((n, m) => n + m.count, 0);
+  }
+
+  get instanceMatrix() {
+    return { count: this.cap };
+  }
+
+  push(x, y, z, rotY, scale, color, tilt) {
+    const h = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453);
+    const m = this.meshes[Math.floor(h) % this.meshes.length];
+    return pushInstance(m, x, y + this.yOffset * scale, z, rotY, scale, color, tilt);
+  }
+
+  finish() {
+    for (const m of this.meshes) {
+      m.instanceMatrix.needsUpdate = true;
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+      m.computeBoundingSphere();
+      m.visible = m.count > 0;
+    }
+  }
+}
+
+/** Fruits (sphères) posés sur les points donnés. */
+function fruitsGeo(spots, color, r, stem = null) {
+  const s = new Shape();
+  for (const p of spots) {
+    s.add(G.sphere(r, 8, 6), color, { pos: [p.x, p.y, p.z] });
+    if (stem) s.add(G.cyl(0.02, 0.02, r * 0.6, 4), stem, { pos: [p.x, p.y + r, p.z] });
+  }
+  return s.build();
 }
 
 export class Vegetation {
@@ -426,6 +477,25 @@ export class Vegetation {
     this.placeCorail(createRng(7373));
   }
 
+  /**
+   * Maillage instancié d'un type de plante : modèles importés s'il y en a (plusieurs
+   * variantes, ou un seul si single), sinon la géométrie construite en code.
+   */
+  kind(kind, fallback, material, count, opts = {}, { single = false, extra = null, key = '' } = {}) {
+    const geos = natureGeometries(kind, { extra, key });
+    if (!geos) {
+      const mesh = makeInstanced(fallback(), material, count, opts);
+      mesh.userData.model = null;
+      return mesh;
+    }
+    if (single || geos.length === 1) {
+      const mesh = makeInstanced(geos[0], material, count, opts);
+      mesh.userData.model = kind;
+      return mesh;
+    }
+    return new Variants(geos, material, count, opts, kindOffset(kind));
+  }
+
   /** Végétation d'une île secondaire, dans son propre groupe (masqué quand elle est loin). */
   islandGroup(id) {
     if (!this.islandGroups[id]) {
@@ -439,6 +509,11 @@ export class Vegetation {
   }
 
   addTo(id, mesh) {
+    if (mesh.isVariants) {
+      mesh.finish();
+      this.islandGroup(id).add(mesh);
+      return mesh;
+    }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
@@ -450,10 +525,10 @@ export class Vegetation {
     const I = ISLANDS.pins;
     const { pineMat, leafMat, staticMat, flowerMat, bushMat } = this.mats;
     const area = { area: I.r + 12, center: [I.x, I.z] };
-    const pines = makeInstanced(treePine(), pineMat, 520);
-    const firs = makeInstanced(treeFir(), pineMat, 260);
-    const snowy = makeInstanced(treePineSnow(), pineMat, 200);
-    const golden = makeInstanced(treeRound('#f0a45a', '#ffd98a', '#8a5a43'), leafMat, 40);
+    const pines = this.kind('pine', treePine, pineMat, 520);
+    const firs = this.kind('fir', treeFir, pineMat, 260);
+    const snowy = this.kind('pineSnow', treePineSnow, pineMat, 200);
+    const golden = this.kind('treeGolden', () => treeRound('#f0a45a', '#ffd98a', '#8a5a43'), leafMat, 40);
     const tint = () => _c.setScalar(rng.range(0.9, 1.08));
     this.scatter(rng, 900, 12000, { ...area, pad: 1.9, pathPad: 2.6, minH: 0.8, maxSlope: 0.5 }, (x, z, h) => {
       const B = LANDMARKS.bourg;
@@ -478,7 +553,7 @@ export class Vegetation {
     [pines, firs, snowy, golden].forEach((m) => this.addTo('pins', m));
 
     // Rochers du Pic.
-    const rocks = makeInstanced(rockGeo(), staticMat, 120);
+    const rocks = this.kind('rock', rockGeo, staticMat, 120);
     this.scatter(rng, 110, 3000, { ...area, pad: 1.5, pathPad: 2.2, minH: 0.3, maxSlope: 0.9 }, (x, z, h) => {
       if (sledDistance(x, z) < 5.5) return false;
       const sc = rng.range(0.5, 1.6) * (h > 9 ? 1.4 : 1);
@@ -508,8 +583,9 @@ export class Vegetation {
     this.addTo('pins', crystals);
 
     // Myrtilles, edelweiss, pommes de pin, champignons.
-    const bb = makeInstanced(blueberryBushGeo(), bushMat, 30);
-    const berries = makeInstanced(blueberriesGeo(), toon('#ffffff', { vertexColors: true }), 30, { cast: false });
+    const bb = this.kind('bushBlue', blueberryBushGeo, bushMat, 30, {}, { single: true });
+    const blueShape = bb.userData.model ? fruitsGeo(surfaceSpots(bb.geometry, 9, { minY: 0.3, out: 0.04, seed: 7 }), '#4b5fc9', 0.075) : blueberriesGeo();
+    const berries = makeInstanced(blueShape, toon('#ffffff', { vertexColors: true }), 30, { cast: false });
     this.scatter(rng, 24, 3000, { ...area, pad: 1.8, pathPad: 2.2, maxSlope: 0.35 }, (x, z, h) => {
       if (h > 12) return false;
       const rot = rng.range(0, 6.28);
@@ -546,7 +622,7 @@ export class Vegetation {
       this.resources.push({ type: 'cone', x, z, y: h + 0.3, mesh: cones, index: i, label: 'Ramasser des pommes de pin', item: 'pomme-pin', amount: [1, 3], regrow: 10 });
     });
     this.addTo('pins', cones);
-    const shrooms = makeInstanced(mushroomGeo(), staticMat, 50, { cast: false });
+    const shrooms = this.kind('mushroom', mushroomGeo, staticMat, 50, { cast: false }, { single: true });
     let m = 0;
     this.scatter(rng, 40, 2000, { ...area, pad: 0.5, pathPad: 1.5, maxSlope: 0.45 }, (x, z, h) => {
       if (h > 10) return false;
@@ -562,10 +638,15 @@ export class Vegetation {
     const { leafMat, staticMat, flowerMat, tallMat } = this.mats;
     const area = { area: I.r + 12, center: [I.x, I.z] };
     const palmMat = addSeason(addWind(toon('#ffffff', { vertexColors: true }), { strength: 0.012, base: 3.5, key: 'palm' }), { leaf: 0.3, snowLo: 0.4, snowHi: 0.8, snow: 0.5 });
-    const palm = palmGeo();
-    const palms = makeInstanced(palm.geo, palmMat, 170);
-    const coconuts = makeInstanced(coconutsGeo(palm.top), toon('#ffffff', { vertexColors: true }), 40);
-    const round = makeInstanced(treeRound('#5fb35a', '#b5e07a'), leafMat, 40);
+    let palm = null;
+    const palmFallback = () => (palm ||= palmGeo()).geo;
+    const palms = this.kind('palm', palmFallback, palmMat, 170);
+    // Cocotiers : un seul modèle, pour que les noix soient bien sous sa couronne.
+    const cocoPalms = palms.userData?.model === null ? palms : this.kind('palmCoco', palmFallback, palmMat, 40, {}, { single: true });
+    const crown = cocoPalms.userData?.model ? crownOf(cocoPalms.geometry) : null;
+    const coconuts = makeInstanced(coconutsGeo(crown ? [crown.x, crown.y + 0.1, crown.z] : (palm ||= palmGeo()).top), toon('#ffffff', { vertexColors: true }), 40);
+    const palmCount = () => palms.count + (cocoPalms === palms ? 0 : cocoPalms.count);
+    const round = this.kind('treeTropical', () => treeRound('#5fb35a', '#b5e07a'), leafMat, 40);
     const tint = () => _c.setScalar(rng.range(0.92, 1.08));
     let k = 0;
     this.scatter(rng, 150, 6000, { ...area, pad: 2.6, pathPad: 2.5, minH: 0.5, maxSlope: 0.4 }, (x, z, h) => {
@@ -573,11 +654,12 @@ export class Vegetation {
       if (Math.hypot(x - Pt.x, z - Pt.z) < 18) return false;
       const palmsHere = h < 4 || rng() < 0.75;
       if (palmsHere) {
-        if (palms.count >= 170) return false;
+        if (palmCount() >= 170) return false;
         const rot = rng.range(0, 6.28);
         const sc = rng.range(0.85, 1.25);
-        pushInstance(palms, x, h - 0.1, z, rot, sc, tint());
-        if (k++ % 4 === 0 && coconuts.count < 40) {
+        const coco = k++ % 4 === 0 && coconuts.count < 40;
+        pushInstance(coco ? cocoPalms : palms, x, h - 0.1, z, rot, sc, tint());
+        if (coco) {
           const ci = pushInstance(coconuts, x, h - 0.1, z, rot, sc);
           this.resources.push({ type: 'palm', x, z, y: h + 1.5, mesh: coconuts, index: ci, label: 'Secouer le cocotier', item: 'noix-coco', amount: [1, 2], regrow: 12 });
         }
@@ -590,6 +672,7 @@ export class Vegetation {
       return true;
     });
     this.addTo('corail', palms);
+    if (cocoPalms !== palms) this.addTo('corail', cocoPalms);
     this.addTo('corail', coconuts);
     this.addTo('corail', round);
 
@@ -602,7 +685,7 @@ export class Vegetation {
       if (i % 2 === 0) this.resources.push({ type: 'flower', x, z, y: h + 0.8, mesh: hib, index: i, label: 'Cueillir un hibiscus', item: 'hibiscus', amount: [1, 2], regrow: 10 });
     });
     this.addTo('corail', hib);
-    const flowers = ['#ff8fb1', '#ffd84d', '#ff9f68'].map((c) => makeInstanced(flowerGeo(c), flowerMat, 160, { cast: false }));
+    const flowers = ['#ff8fb1', '#ffd84d', '#ff9f68'].map((c) => this.kind('flower', () => flowerGeo(c), flowerMat, 160, { cast: false }, { single: true, extra: flowerColors(c), key: c }));
     for (let c = 0; c < 40; c++) {
       const cx = I.x + rng.range(-55, 55);
       const cz = I.z + rng.range(-55, 55);
@@ -634,7 +717,7 @@ export class Vegetation {
     }
     this.addTo('corail', stars);
     this.addTo('corail', corals);
-    const rocks = makeInstanced(rockGeo(), staticMat, 40);
+    const rocks = this.kind('rock', rockGeo, staticMat, 40);
     this.scatter(rng, 30, 1500, { ...area, pad: 2, pathPad: 2.5, minH: -1.5, maxSlope: 0.6 }, (x, z, h) => {
       const sc = rng.range(0.4, 1.1);
       pushInstance(rocks, x, h + 0.1 * sc, z, rng.range(0, 6.28), sc, _c.setScalar(rng.range(0.95, 1.12)));
@@ -689,6 +772,11 @@ export class Vegetation {
   }
 
   add(mesh) {
+    if (mesh.isVariants) {
+      mesh.finish();
+      this.group.add(mesh);
+      return mesh;
+    }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
@@ -711,12 +799,12 @@ export class Vegetation {
 
   placeTrees(rng, mat) {
     const types = {
-      round: makeInstanced(treeRound('#63b35a', '#a6dd7a'), mat, 140),
-      light: makeInstanced(treeRound('#86c75f', '#d0ea84'), mat, 60),
-      cherry: makeInstanced(treeRound('#f19ab8', '#ffd9e6', '#8a5a4a'), mat, 40),
-      golden: makeInstanced(treeRound('#f0a45a', '#ffd98a', '#8a5a43'), mat, 30),
-      pine: makeInstanced(treePine(), this.pineMat, 160),
-      apple: makeInstanced(treeApple(), mat, 16),
+      round: this.kind('treeRound', () => treeRound('#63b35a', '#a6dd7a'), mat, 140),
+      light: this.kind('treeLight', () => treeRound('#86c75f', '#d0ea84'), mat, 60),
+      cherry: this.kind('treeCherry', () => treeRound('#f19ab8', '#ffd9e6', '#8a5a4a'), mat, 40),
+      golden: this.kind('treeGolden', () => treeRound('#f0a45a', '#ffd98a', '#8a5a43'), mat, 30),
+      pine: this.kind('pine', treePine, this.pineMat, 160),
+      apple: this.kind('treeApple', treeApple, mat, 16, {}, { single: true }),
     };
     const forestD = (x, z) => smoothstep(44, 18, Math.hypot(x + 4, z + 58));
     const tint = () => _c.setScalar(rng.range(0.92, 1.08));
@@ -748,7 +836,9 @@ export class Vegetation {
     }
 
     // Verger : pommiers récoltables.
-    const apples = makeInstanced(appleGeo(), toon('#ffffff', { vertexColors: true }), 16);
+    // Pommes posées sur le feuillage (celui du modèle importé s'il y en a un).
+    const appleShape = types.apple.userData.model ? fruitsGeo(surfaceSpots(types.apple.geometry, 8, { minY: 0.42, out: 0.1, seed: 3 }), '#e5484d', 0.2, '#6b4a2a') : appleGeo();
+    const apples = makeInstanced(appleShape, toon('#ffffff', { vertexColors: true }), 16);
     this.apples = apples;
     const o = { x: 30, z: -26 };
     for (let i = 0; i < 3; i++) {
@@ -774,8 +864,9 @@ export class Vegetation {
   }
 
   placeBushes(rng, mat) {
-    const bushes = makeInstanced(bushGeo(), mat, 50);
-    const berries = makeInstanced(berriesGeo(), toon('#ffffff', { vertexColors: true }), 50);
+    const bushes = this.kind('bush', bushGeo, mat, 50, {}, { single: true });
+    const berryShape = bushes.userData.model ? fruitsGeo(surfaceSpots(bushes.geometry, 10, { minY: 0.3, out: 0.05, seed: 5 }), '#e0385f', 0.1) : berriesGeo();
+    const berries = makeInstanced(berryShape, toon('#ffffff', { vertexColors: true }), 50);
     this.berries = berries;
     berries.castShadow = false;
     const zonesD = (x, z) => 0.25 + 0.75 * Math.max(smoothstep(50, 25, Math.hypot(x + 4, z + 58)), smoothstep(34, 10, Math.hypot(x - 50, z - 8)));
@@ -796,8 +887,8 @@ export class Vegetation {
 
   placeFlowers(rng, mat) {
     const palette = ['#ff8fb1', '#ffffff', '#c9a0ff', '#ffd84d', '#8fc7ff', '#ff9f68'];
-    const meshes = palette.map((c, i) => makeInstanced(i === 1 ? flowerGeo('#ffffff', '#ffc94d') : flowerGeo(c), mat, 500, { cast: false }));
-    const tulips = ['#ff6f91', '#ffb0c8', '#fff07a'].map((c) => makeInstanced(tulipGeo(c), mat, 200, { cast: false }));
+    const meshes = palette.map((c, i) => this.kind('flower', () => (i === 1 ? flowerGeo('#ffffff', '#ffc94d') : flowerGeo(c)), mat, 500, { cast: false }, { single: true, extra: flowerColors(c), key: c }));
+    const tulips = ['#ff6f91', '#ffb0c8', '#fff07a'].map((c) => this.kind('tulip', () => tulipGeo(c), mat, 200, { cast: false }, { single: true, extra: flowerColors(c), key: c }));
     const meadow = (x, z) => smoothstep(34, 12, Math.hypot(x - 50, z - 8));
     // Massifs : on tire un centre puis on plante une touffe de fleurs d'une même couleur.
     for (let c = 0; c < 170; c++) {
@@ -874,7 +965,7 @@ export class Vegetation {
   }
 
   placeRocks(rng, mat) {
-    const rocks = makeInstanced(rockGeo(), mat, 70);
+    const rocks = this.kind('rock', rockGeo, mat, 70);
     this.scatter(rng, 55, 2000, { area: 100, pad: 2, pathPad: 2.5, minH: -1.5, maxSlope: 0.6 }, (x, z, h) => {
       const sc = rng.range(0.4, 1.3);
       pushInstance(rocks, x, h + 0.1 * sc, z, rng.range(0, 6.28), sc, _c.setScalar(rng.range(0.9, 1.1)));
@@ -885,7 +976,7 @@ export class Vegetation {
   }
 
   placeMushrooms(rng, mat) {
-    const shrooms = makeInstanced(mushroomGeo(), mat, 60, { cast: false });
+    const shrooms = this.kind('mushroom', mushroomGeo, mat, 60, { cast: false }, { single: true });
     let n = 0;
     this.scatter(rng, 55, 2000, { area: 44, center: [-4, -58], pad: 0.5, pathPad: 1.5 }, (x, z, h) => {
       const i = pushInstance(shrooms, x, h - 0.02, z, rng.range(0, 6.28), rng.range(0.8, 1.6));

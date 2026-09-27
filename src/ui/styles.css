@@ -785,3 +785,10 @@ body.no-keyhints #keyhints { display: none; }
 .mm-list li.now { background: #efeaff; }
 .mm-list li.off span { opacity: 0.45; text-decoration: line-through; }
 .mm-empty { margin: 6px 0 2px; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+
+/* Écran tactile : pas de bulles de touches du clavier, seulement les boutons d'action. */
+body.touch-ui #hud [data-akey],
+body.touch-ui #keyhints,
+body.touch-ui .d-choice .key { display: none !important; }
+.key.touch-icon { background: #fff; color: inherit; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12); border-radius: 50%; min-width: 26px; height: 26px; font-size: 14px; }
+body.touch-ui .kb-only, body.touch-ui .key-hint { display: none !important; }

@@ -12,6 +12,8 @@ export default defineConfig({
   build: {
     target: 'es2020',
     chunkSizeWarningLimit: 1500,
+    // Modèles 3D : jamais intégrés au code (le chargeur retrouve .bin et textures par leur nom).
+    assetsInlineLimit: (file) => (/\.(glb|gltf|bin)$/i.test(file) ? false : undefined),
     rollupOptions: {
       output: {
         // Musiques : noms de fichiers simples (sans espaces ni accents) dans le jeu construit.

@@ -6,17 +6,24 @@ import { Shape, G, toon } from '../core/materials.js';
 
 const KEYS = [
   // h, haut du ciel, horizon, soleil, int. soleil, ciel hémi, sol hémi, int. hémi
+  // (le jour : lumière d'hémisphère bleu ciel pastel en haut, pêche très douce en bas,
+  // soleil crème doré)
   [0, '#101c40', '#28396c', '#a9bcff', 0.5, '#6676bd', '#2a3650', 0.85],
   [4.5, '#152350', '#34427a', '#a9bcff', 0.46, '#6a77ba', '#2c3650', 0.82],
-  [5.6, '#3a4a8c', '#e59aa4', '#ffb89a', 0.5, '#9a8ab8', '#4a4a50', 0.75],
-  [7, '#86bdf0', '#ffd3a8', '#ffd6a6', 1.6, '#ffe7d2', '#8a9a66', 1.0],
-  [9.5, '#6fc4f5', '#d4f1fd', '#fff6e4', 2.3, '#e3f5ff', '#90b06a', 1.1],
-  [15.5, '#72c2f2', '#dff2fb', '#fff1dc', 2.2, '#e8f3ff', '#94ae6a', 1.08],
-  [18, '#7c8fd8', '#ffc08e', '#ffbd80', 1.5, '#ffd9c2', '#8a8a60', 0.95],
+  [5.6, '#3a4a8c', '#e59aa4', '#ffb89a', 0.5, '#9a8ab8', '#5a4a50', 0.75],
+  [7, '#86bdf0', '#ffd3a8', '#ffd9a8', 1.6, '#ffe4d0', '#e0b08e', 1.0],
+  [9.5, '#6fc4f5', '#d4f1fd', '#fff0d2', 2.3, '#d4eaff', '#f0c6a2', 1.1],
+  [15.5, '#72c2f2', '#dff2fb', '#ffeccc', 2.2, '#d9edff', '#f2c8a4', 1.08],
+  [18, '#7c8fd8', '#ffc08e', '#ffbd80', 1.5, '#ffd6c0', '#e2a886', 0.95],
   [19.4, '#46508e', '#f08f8a', '#ff9a78', 0.7, '#b58ab0', '#4d4658', 0.78],
   [20.8, '#1b2656', '#4a4a86', '#a9bcff', 0.48, '#6d76b8', '#2c3650', 0.84],
   [24, '#101c40', '#28396c', '#a9bcff', 0.5, '#6676bd', '#2a3650', 0.85],
 ];
+// Rendu ACES (exposition 1,15, voir game.js) : Three.js multiplie l'image par exposition / 0,6
+// avant de la compresser. Lumières et ciel sont donc atténués pour garder les mêmes tons
+// moyens qu'avant, avec des hautes lumières plus douces.
+const LIGHT_SCALE = { sun: 0.74, hemi: 0.84, ambient: 0.8, sky: 0.82 };
+
 const KEY_COLORS = KEYS.map((k) => [k[0], new THREE.Color(k[1]), new THREE.Color(k[2]), new THREE.Color(k[3]), k[4], new THREE.Color(k[5]), new THREE.Color(k[6]), k[7]]);
 
 export class DayNight {
@@ -35,7 +42,7 @@ export class DayNight {
     // Lumières.
     this.hemi = new THREE.HemisphereLight('#e3f5ff', '#90b06a', 1.1);
     scene.add(this.hemi);
-    this.ambient = new THREE.AmbientLight('#ffffff', 0.18);
+    this.ambient = new THREE.AmbientLight('#ffffff', 0.18 * LIGHT_SCALE.ambient);
     scene.add(this.ambient);
     this.sun = new THREE.DirectionalLight('#fff6e4', 2.2);
     this.sun.castShadow = true;
@@ -47,8 +54,9 @@ export class DayNight {
     sc.bottom = -42;
     sc.near = 1;
     sc.far = 240;
-    this.sun.shadow.bias = -0.0006;
+    this.sun.shadow.bias = -0.0005;
     this.sun.shadow.normalBias = 0.04;
+    this.sun.shadow.radius = 3; // ombres adoucies (filtrage PCF)
     scene.add(this.sun);
     scene.add(this.sun.target);
 
@@ -70,6 +78,7 @@ export class DayNight {
       uStars: { value: 0 },
       uTime: { value: 0 },
       uAurora: { value: 0 },
+      uExposure: { value: LIGHT_SCALE.sky },
       uShootA: { value: [new THREE.Vector4(), new THREE.Vector4()] },
       uShootB: { value: [new THREE.Vector4(), new THREE.Vector4()] },
     };
@@ -87,7 +96,7 @@ export class DayNight {
         }`,
       fragmentShader: /* glsl */ `
         uniform vec3 uTop; uniform vec3 uHorizon; uniform vec3 uSunDir; uniform vec3 uSunColor;
-        uniform vec3 uMoonDir; uniform float uMoonPhase; uniform float uStars; uniform float uTime; uniform float uAurora;
+        uniform vec3 uMoonDir; uniform float uMoonPhase; uniform float uStars; uniform float uTime; uniform float uAurora; uniform float uExposure;
         uniform vec4 uShootA[2]; uniform vec4 uShootB[2];
         varying vec3 vDir;
         float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
@@ -181,7 +190,8 @@ export class DayNight {
             float st = streak(d, uShootA[0], uShootB[0]) + streak(d, uShootA[1], uShootB[1]);
             col += vec3(1.0, 0.95, 0.85) * st * 1.6;
           }
-          gl_FragColor = vec4(col, 1.0);
+          gl_FragColor = vec4(col * uExposure, 1.0);
+          #include <tonemapping_fragment>
           #include <colorspace_fragment>
         }`,
     });
@@ -359,9 +369,9 @@ export class DayNight {
     this.skyTop.copy(a[1]).lerp(b[1], t);
     this.skyHorizon.copy(a[2]).lerp(b[2], t);
     this.sunColor.copy(a[3]).lerp(b[3], t);
-    this.sunIntensity = a[4] + (b[4] - a[4]) * t;
+    this.sunIntensity = (a[4] + (b[4] - a[4]) * t) * LIGHT_SCALE.sun;
     this.hemi.color.copy(a[5]).lerp(b[5], t);
     this.hemi.groundColor.copy(a[6]).lerp(b[6], t);
-    this.hemi.intensity = a[7] + (b[7] - a[7]) * t;
+    this.hemi.intensity = (a[7] + (b[7] - a[7]) * t) * LIGHT_SCALE.hemi;
   }
 }

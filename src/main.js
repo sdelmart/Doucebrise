@@ -6,6 +6,9 @@ import '@fontsource/nunito/latin-ext-600.css';
 import '@fontsource/nunito/latin-ext-800.css';
 import '@fontsource/nunito/latin-ext-900.css';
 import { Game } from './game.js';
+import { loadModels } from './core/models.js';
+import { NATURE_MODEL_IDS } from './world/natureModels.js';
+import { CHARACTER_MODEL_IDS } from './player/avatar.js';
 
 // Point d'entrée : on attend la police (utilisée aussi pour dessiner les enseignes),
 // on laisse le navigateur afficher l'écran de chargement, puis on construit le monde.
@@ -17,7 +20,19 @@ async function fontsReady() {
   await Promise.race([wait, new Promise((r) => setTimeout(r, 2500))]);
 }
 
-fontsReady().then(() =>
+// Modèles 3D importés (assets/models/) : chargés avant de construire le monde.
+async function modelsReady() {
+  const ids = [...NATURE_MODEL_IDS, ...CHARACTER_MODEL_IDS];
+  if (!ids.length) return;
+  const p = document.querySelector('#loading p');
+  const label = p?.textContent;
+  await loadModels(ids, (k) => {
+    if (p) p.textContent = `Chargement des modèles… ${Math.round(k * 100)} %`;
+  });
+  if (p) p.textContent = label;
+}
+
+Promise.all([fontsReady(), modelsReady()]).then(() =>
   requestAnimationFrame(() =>
     setTimeout(() => {
       try {

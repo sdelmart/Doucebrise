@@ -14,7 +14,7 @@ import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
-    uSaturation: { value: 1.08 },
+    uSaturation: { value: 1.24 },
     uContrast: { value: 1.04 },
     uWarm: { value: 0.02 },
     uVignette: { value: 0.28 },
@@ -111,7 +111,8 @@ export class PostFX {
     }
     if (this.grade) {
       const u = this.grade.material.uniforms;
-      u.uSaturation.value = 1.1 - fog * 0.15 + golden * 0.05;
+      // ACES désature un peu : on redonne des couleurs franches (ambiance cozy).
+      u.uSaturation.value = 1.24 - fog * 0.15 + golden * 0.05;
       u.uContrast.value = 1.04 - fog * 0.04;
       u.uWarm.value = 0.012 + golden * 0.025 - night * 0.015;
       u.uVignette.value = 0.26 + night * 0.12;

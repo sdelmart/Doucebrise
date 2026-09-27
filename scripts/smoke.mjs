@@ -81,6 +81,18 @@ try {
       await page.evaluate(() => window.game.closePanels());
     }
   });
+  await step('Modèles 3D', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      let models = 0;
+      g.world.vegetation.group.traverse((o) => {
+        if (o.isVariants || o.userData?.model) models++;
+      });
+      return { avatar: g.character.isModel, models };
+    });
+    if (!r.avatar) throw new Error('le personnage importé n\'est pas chargé');
+    if (r.models < 5) throw new Error(`végétation importée incomplète (${r.models} types)`);
+  });
   await step('Musique', async () => {
     const r = await page.evaluate(() => new Promise((resolve) => {
       const m = window.game.music;

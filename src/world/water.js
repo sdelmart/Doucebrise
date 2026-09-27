@@ -92,7 +92,8 @@ export function createWater(terrain, sky) {
         col *= mix(vec3(1.0), uLight, 0.65);
         float alpha = mix(0.55, 0.9, smoothstep(0.0, 3.0, depth));
         alpha = max(alpha, foam * 0.95);
-        gl_FragColor = vec4(col, alpha);
+        gl_FragColor = vec4(col * 0.82, alpha); // atténué pour le rendu ACES (voir sky.js)
+        #include <tonemapping_fragment>
         #include <colorspace_fragment>
         #include <fog_fragment>
       }`,

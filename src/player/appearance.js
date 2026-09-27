@@ -55,6 +55,7 @@ export const OPTIONS = {
 };
 
 export const DEFAULT_APPEARANCE = {
+  model: 'auto', // 'auto' : personnage importé s'il y en a, 'classique' : construit en code
   name: 'Lou',
   skin: '#fbd5bd',
   height: 1,

@@ -14,6 +14,15 @@ export function promptKey(k) {
   return PROMPT_KEYS[k] ? actionKey(PROMPT_KEYS[k]) : k;
 }
 
+// Écran tactile : pas de lettres du clavier, mais l'icône du bouton d'action à toucher.
+const TOUCH_ICONS = { KeyE: '✋', KeyF: '🍓', KeyR: '💞', KeyG: '🪶', KeyV: '🚲', Space: '⤒' };
+const TOUCH_BY_ACTION = { interact: '✋', feed: '🍓', adopt: '💞', play: '🪶', vehicle: '🚲', jump: '⤒' };
+/** Icône du bouton tactile d'une bulle d'action (« E », « KeyE »…), ou null. */
+function touchIcon(k) {
+  return TOUCH_ICONS[k] || TOUCH_BY_ACTION[PROMPT_KEYS[k]] || null;
+}
+export const isTouchUI = () => document.body.classList.contains('touch-ui');
+
 // Interface HTML : HUD, bulle d'interaction, notifications, mini-carte, fenêtres.
 
 const $ = (sel) => document.querySelector(sel);
@@ -22,6 +31,7 @@ const _v = new THREE.Vector3();
 export class UI {
   constructor(game) {
     this.game = game;
+    this.initTouchUI();
     this.el = {
       hud: $('#hud'),
       title: $('#title'),
@@ -94,9 +104,31 @@ export class UI {
     this.el.title.classList.add('hidden');
   }
 
+  /**
+   * Mode tactile : les bulles de touches du clavier (E, C, H…) disparaissent au profit des
+   * boutons d'action. On bascule dès qu'on touche l'écran, et on revient au clavier dès
+   * qu'une vraie touche est pressée ou qu'une souris est utilisée.
+   */
+  initTouchUI() {
+    const set = (on) => {
+      if (on === isTouchUI()) return;
+      document.body.classList.toggle('touch-ui', on);
+      this.promptKey = null;
+      if (this.el?.touch) this.el.touch.classList.toggle('hidden', !(on && !this.el.hud.classList.contains('hidden')));
+    };
+    set(!!window.matchMedia?.('(hover: none) and (pointer: coarse)').matches);
+    window.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch') set(true);
+      else if (e.pointerType === 'mouse') set(false);
+    }, { capture: true, passive: true });
+    window.addEventListener('keydown', (e) => {
+      if (e.isTrusted && !e.padLogical) set(false);
+    }, { capture: true, passive: true });
+  }
+
   showHUD(on) {
     this.el.hud.classList.toggle('hidden', !on);
-    this.el.touch.classList.toggle('hidden', !(on && this.game.input.isTouch));
+    this.el.touch.classList.toggle('hidden', !(on && (this.game.input.isTouch || isTouchUI())));
     if (!on) this.setPrompt(null);
   }
 
@@ -391,7 +423,7 @@ export class UI {
   wishPrompt(on) {
     const el = $('#wish');
     if (!el) return;
-    el.querySelector('[data-akey]').textContent = actionKey('feed');
+    el.querySelector('[data-akey]').textContent = isTouchUI() ? TOUCH_ICONS.KeyF : actionKey('feed');
     el.classList.toggle('hidden', !on);
   }
 
@@ -424,7 +456,8 @@ export class UI {
       this.promptKey = '';
       return;
     }
-    const key = JSON.stringify([target.title, target.sub, target.hearts, target.actions]);
+    const touch = isTouchUI();
+    const key = JSON.stringify([target.title, target.sub, target.hearts, target.actions, touch]);
     if (key !== this.promptKey) {
       this.promptKey = key;
       let html = `<div class="p-title">${escapeHtml(target.title)}</div>`;
@@ -432,7 +465,9 @@ export class UI {
       if (target.hearts !== undefined) html += `<div class="hearts">${heartsString(target.hearts)}</div>`;
       html += '<div class="actions">';
       for (const a of target.actions) {
-        html += `<div class="act${a.dim ? ' dim' : ''}"><span class="key">${escapeHtml(promptKey(a.key))}</span>${escapeHtml(a.label)}</div>`;
+        const icon = touch && touchIcon(a.key);
+        const k = touch ? (icon ? `<span class="key touch-icon">${icon}</span>` : '') : `<span class="key">${escapeHtml(promptKey(a.key))}</span>`;
+        html += `<div class="act${a.dim ? ' dim' : ''}">${k}${escapeHtml(a.label)}</div>`;
       }
       html += '</div>';
       el.innerHTML = html;

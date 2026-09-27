@@ -1,10 +1,12 @@
 import { OPTIONS, SKIN_TONES, HAIR_COLORS, EYE_COLORS, CLOTH_COLORS, randomAppearance } from '../player/appearance.js';
+import { availableModels, modelLabel, modelIcon, resolveModel } from '../player/avatar.js';
 
 // Panneau de personnalisation : onglets, puces d'options, nuanciers et curseurs.
 
 const $ = (s) => document.querySelector(s);
 
 const TABS = [
+  { id: 'style', label: 'Style' },
   { id: 'corps', label: 'Corps' },
   { id: 'visage', label: 'Visage' },
   { id: 'cheveux', label: 'Cheveux' },
@@ -15,7 +17,7 @@ const TABS = [
 export class Creator {
   constructor(game) {
     this.game = game;
-    this.tab = 'corps';
+    this.tab = availableModels().length ? 'style' : 'corps';
     this.a = null;
     this.tabsEl = $('#cr-tabs');
     this.body = $('#cr-body');
@@ -27,7 +29,7 @@ export class Creator {
     this.nameInput.addEventListener('keydown', (e) => e.stopPropagation());
     $('#cr-random').addEventListener('click', () => {
       const name = this.a.name;
-      this.a = { ...randomAppearance(), name };
+      this.a = { ...randomAppearance(), name, model: this.a.model };
       this.commit();
       this.render();
     });
@@ -67,6 +69,7 @@ export class Creator {
   renderTabs() {
     this.tabsEl.innerHTML = '';
     for (const t of TABS) {
+      if (t.id === 'style' && !availableModels().length) continue;
       const b = document.createElement('button');
       b.className = `tab${t.id === this.tab ? ' active' : ''}`;
       b.textContent = t.label;
@@ -182,7 +185,25 @@ export class Creator {
     const b = this.body;
     b.innerHTML = '';
     const a = this.a;
+    // Caméra : en pied pour choisir le personnage, plus près pour les détails du visage.
+    this.game.cam.studio.dist = this.tab === 'style' ? 4.6 : 3.3;
+    this.game.cam.studio.height = this.tab === 'style' ? 0.7 : 0.95;
+    // Personnage importé : seuls le style et la taille s'appliquent.
+    const model = resolveModel(a);
+    if (model && this.tab !== 'style') {
+      b.append(field(`${modelIcon(model)} ${modelLabel(model)}`, this.tab === 'corps'
+        ? 'La taille s\'applique à ton personnage ; la peau, la carrure et la tête concernent le style Classique.'
+        : 'Ces réglages habillent le style Classique (onglet Style). Ton personnage garde sa tenue d\'aventurier.'));
+    }
     switch (this.tab) {
+      case 'style': {
+        const current = model || 'classique';
+        const opts = [...availableModels().map((m) => ({ id: m.id, label: modelLabel(m.id), icon: modelIcon(m.id) })), { id: 'classique', label: 'Classique', icon: '🎨' }];
+        const f = this.chips('Personnage', 'model', opts, 'Les aventuriers sont des modèles 3D animés. Le style Classique se personnalise entièrement : visage, coiffure, tenues et accessoires des boutiques.');
+        f.querySelectorAll('.chip').forEach((c, i) => c.classList.toggle('active', opts[i].id === current));
+        b.append(f);
+        break;
+      }
       case 'corps':
         b.append(
           this.colors('Couleur de peau', 'skin', SKIN_TONES),

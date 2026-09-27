@@ -2,7 +2,7 @@
 
 Un jeu 3D **cosy** dans l'esprit de *Heartopia* : un archipel de trois îles et trois villages à explorer, des animaux à apprivoiser, 16 habitants avec leurs histoires et leurs quêtes, une maison à construire et décorer, des véhicules, des métiers, une météo vivante, un ciel étoilé… et une histoire à suivre, « Le Cœur de Doucebrise ».
 
-Le jeu est écrit avec Three.js. Il se joue **dans le navigateur** ou comme **application de bureau Windows et macOS**. Les modèles 3D, les visages, les motifs, les meubles, le ciel, l'eau et les bruitages sont tous générés par le code ; les musiques viennent du dossier `music/`.
+Le jeu est écrit avec Three.js. Il se joue **dans le navigateur** ou comme **application de bureau Windows et macOS**. Le personnage, les arbres, les fleurs et les rochers viennent de packs de modèles 3D libres (KayKit, Kenney) ; les maisons, les animaux, les habitants, les meubles, le ciel, l'eau et les bruitages sont générés par le code ; les musiques viennent du dossier `music/`.
 
 ## Télécharger l'application (Windows / macOS)
 
@@ -47,6 +47,8 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 | `C` `P` `J` `I` `M` `O` `H` | Tenue · animaux · journal · sac · carte · photo · aide |
 | `Échap` | Menu pause (le temps s'arrête) : paramètres, sauvegarde, profils, quitter |
 | `F3` · `F11` | Compteur FPS (simple / détaillé) · plein écran |
+
+**Écran tactile** : joystick et boutons d'action à icônes (✋ interagir, 🍓 nourrir, 💞 adopter…) ; les bulles de touches du clavier disparaissent dès qu'on touche l'écran et reviennent au premier appui sur une touche.
 
 **Manette** : stick gauche pour bouger, stick droit pour la caméra, A interagir, X nourrir / vœu, Y sauter, B / Start menu, LB carte, RB journal, Select sac, gâchette gauche pour courir. **Tous les menus se pilotent à la manette** (croix ou stick pour choisir, A valider, B retour, LB / RB changer d'onglet) et aussi aux flèches du clavier + Entrée. Sur mobile, un joystick et des boutons tactiles apparaissent.
 
@@ -106,8 +108,23 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 - Sans aucune chanson, le jeu joue sa petite musique générée.
 
 ### 🎨 Graphismes
-- Style cartoon doux, **halo lumineux** (lanternes, fenêtres et étoiles qui brillent la nuit), étalonnage et vignette, **eau** avec reflets du ciel, éclat du soleil et lagon turquoise.
+- Direction artistique **cozy** : rendu cartoon avec contours, tons **ACES** (exposition 1,15), lumière d'hémisphère bleu ciel pastel / pêche, soleil crème doré, **ombres douces**, brume assortie au ciel.
+- **Personnage 3D animé** (KayKit Adventurers) : Mage, Chevalier, Barbare, Rôdeur, Voleur, Voleur à capuche — ou le style **Classique** entièrement personnalisable (onglet Style du créateur). Marche, course, saut, cueillette, caresses via les animations KayKit ; s'asseoir, saluer, danser, applaudir, pêcher sont posés en code.
+- **Arbres, buissons, fleurs, champignons et rochers** importés (KayKit Forest, Kenney Nature Kit), recolorés dans la palette du jeu : cerisiers roses, arbres dorés, sapins enneigés, palmiers ; ils gardent le vent, les feuilles d'automne et la neige de l'hiver.
+- **Halo lumineux** (lanternes, fenêtres et étoiles qui brillent la nuit), étalonnage et vignette, **eau** avec reflets du ciel, éclat du soleil et lagon turquoise.
 - Ombres jusqu'à 4096 px, anticrénelage FXAA / SMAA / MSAA.
+
+### 🧱 Modèles 3D (dossier `assets/models/`)
+```
+assets/models/
+  characters/      KayKit Adventurers → Characters/gltf/*.glb (un fichier par personnage)
+  animations/      KayKit Adventurers → Animations/gltf/Rig_Medium/*.glb (animations partagées)
+  nature/kaykit/   KayKit Forest Nature Pack → Assets/gltf/*.gltf + *.bin + forest_texture.png
+  nature/kenney/   Kenney Nature Kit → Models/GLTF format/*.glb
+```
+- Formats : **.glb** (tout-en-un) de préférence ; les **.gltf** fonctionnent aussi, avec leur **.bin** et leur texture **.png** posés à côté (le jeu les retrouve par leur nom).
+- Tout est détecté automatiquement : un nouveau personnage déposé dans `characters/` apparaît dans le créateur (il doit utiliser le squelette KayKit « Rig_Medium »). Quels modèles remplacent quelles plantes : `src/world/natureModels.js`.
+- Sans ces fichiers, le jeu reprend ses modèles construits en code. Crédits et licences (CC0) : `assets/models/CREDITS.md`.
 
 ### ⚙️ Paramètres complets
 - **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (résolution de rendu, netteté Retina, ombres, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages).
@@ -139,13 +156,17 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 scripts/smoke.mjs        Test de fumée (Chromium sans écran)
 scripts/music-levels.mjs Égalise le volume des musiques (music/levels.json)
 music/<ambiance>/        Les chansons du jeu, rangées par ambiance
+assets/models/           Modèles 3D importés (personnages, animations, végétation)
 electron/                Application de bureau (fenêtre, protocole interne app://, plein écran)
 src/
   main.js, game.js       Démarrage, boucle, états, interactions, récompenses, sauvegarde
   core/                  Maths, matériaux cartoon, entrées (touches, manette), paramètres,
-                         post-traitement, particules, sons et musique, sauvegarde (profils), mises à jour
-  world/                 Terrain de l'archipel, ciel, météo, eau, villages, îles, végétation, collisions
-  player/                Personnage, visage, apparence, déplacement, caméra
+                         post-traitement, particules, sons et musique, sauvegarde (profils), mises à jour,
+                         chargement des modèles 3D (models.js)
+  world/                 Terrain de l'archipel, ciel, météo, eau, villages, îles, végétation
+                         (et modèles importés : natureModels.js), collisions
+  player/                Personnage classique, personnage importé animé (avatar.js), visage,
+                         apparence, déplacement, caméra
   animals/               Espèces (modèles 3D), comportement, gestion
   npc/                   Habitants : apparence, emploi du temps, trajets, goûts et répliques
   house/                 Maison : pièce, meubles, papiers peints, mode décoration, visites chez les habitants
