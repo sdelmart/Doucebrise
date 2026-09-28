@@ -24,7 +24,7 @@ class RNG {
 
 // Écorces et rameaux disponibles (couches des textures, voir treeTextures.js).
 export const BARK = { oak: 0, birch: 1, pine: 2 };
-export const LEAF = { oak: 0, ash: 1, aspen: 2, pine: 3, cherry: 4, fresh: 5, apple: 6, tropical: 7 };
+export const LEAF = { oak: 0, ash: 1, aspen: 2, pine: 3, cherry: 4, fresh: 5, apple: 6, tropical: 7, palm: 8 };
 
 // Contour de chaque rameau (niveaux [v, u gauche, u droite], du pied à la pointe) : le
 // polygone suit la forme du rameau au lieu d'un carré presque vide, ce qui divise par
@@ -41,7 +41,7 @@ const box = (sh) => {
   const r = Math.max(...sh.map((p) => p[2]));
   return [[0, l, r], [sh[sh.length - 1][0], l, r]];
 };
-const LEAF_SHAPES = [SHAPE.oak, SHAPE.ash, SHAPE.aspen, SHAPE.pine, SHAPE.ash, SHAPE.aspen, SHAPE.ash, SHAPE.ash].map((sh) => ({ fine: sh, box: box(sh) }));
+const LEAF_SHAPES = [SHAPE.oak, SHAPE.ash, SHAPE.aspen, SHAPE.pine, SHAPE.ash, SHAPE.aspen, SHAPE.ash, SHAPE.ash, [[0, 0, 1], [1, 0, 1]]].map((sh) => ({ fine: sh, box: box(sh) }));
 
 // Essences : paramètres par niveau (0 = tronc). height : hauteur finale (m).
 // leaves.size : taille d'un rameau ; drop : part du feuillage qui tombe l'hiver.
@@ -89,6 +89,29 @@ export const SPECIES = {
     force: -0.004,
     leaves: { leaf: LEAF.pine, count: 9, start: 0.1, size: 7.2, vary: 0.25, angle: 40, drop: 0 },
   },
+  // Buissons (d'après les modèles « bush » d'EZ-Tree) : tiges qui partent du sol.
+  bush: {
+    type: 'deciduous', bark: BARK.oak, height: 1.35,
+    levels: 3, children: [6, 3, 2], angle: [0, 26, 60, 58], start: [0, 0.5, 0.3, 0],
+    length: [0.1, 15, 5.6, 4.6], radius: [0.6, 0.9, 0.7, 0.6], taper: [0.7, 0.7, 0.7, 0.7],
+    gnarl: [0.1, 0.09, 0.05, 0.09], twist: [0.3, -0.07, 0, 0], sections: [3, 5, 5, 4], segments: [4, 4, 3, 3],
+    force: -0.02,
+    leaves: { leaf: LEAF.apple, count: 8, start: 0, size: 3.4, vary: 0.45, angle: 55, drop: 0.6 },
+  },
+  blueberry: {
+    type: 'deciduous', bark: BARK.oak, height: 1.0,
+    levels: 2, children: [12, 3, 0], angle: [0, 24, 34], start: [0, 0.6, 0.5],
+    length: [0.1, 18, 7.5], radius: [0.6, 0.9, 0.7], taper: [0.7, 0.7, 0.7],
+    gnarl: [0.02, 0.11, 0.05], twist: [0.35, -0.04, 0], sections: [3, 4, 5], segments: [3, 3, 3],
+    force: -0.02,
+    leaves: { leaf: LEAF.ash, count: 10, start: 0, size: 3.6, vary: 0.4, angle: 55, drop: 0 },
+  },
+  // Palmier : tronc courbe annelé, couronne de palmes (unités : mètres).
+  palm: {
+    type: 'palm', bark: BARK.oak, barkTint: [1.45, 1.3, 1.1], trunk: 5.4, bend: 1.1, radius: 0.2,
+    fronds: 15, frondLength: 3.1, frondWidth: 1.25,
+    leaves: { leaf: LEAF.palm, drop: 0 },
+  },
   fir: {
     type: 'evergreen', bark: BARK.pine, height: 7.0,
     levels: 1, children: [40], angle: [0, 118], start: [0, 0.14],
@@ -114,8 +137,48 @@ const _q2 = new THREE.Quaternion();
 const _q3 = new THREE.Quaternion();
 const _e = new THREE.Euler();
 
+/** Palmier : tronc qui se courbe vers le haut, palmes rayonnant du sommet. */
+function growPalm(sp, seed) {
+  const rng = new RNG(seed);
+  const H = sp.trunk * (0.85 + rng.random(0.3));
+  const bend = sp.bend * (0.4 + rng.random(0.9));
+  const az = rng.random(Math.PI * 2);
+  const dir = new THREE.Vector3(Math.cos(az), 0, Math.sin(az));
+  const N = 22;
+  const sections = [];
+  const tan = new THREE.Vector3();
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const o = new THREE.Vector3().copy(dir).multiplyScalar(bend * t * t).setY(H * t);
+    tan.copy(dir).multiplyScalar(2 * bend * t).setY(H).normalize();
+    const q = new THREE.Quaternion().setFromUnitVectors(UP, tan);
+    sections.push({ origin: o, orientation: new THREE.Euler().setFromQuaternion(q), radius: sp.radius * (1.2 - 0.4 * t) });
+  }
+  const top = sections[N].origin.clone();
+  const leaves = [];
+  const F = sp.fronds;
+  const a0 = rng.random(Math.PI * 2);
+  for (let k = 0; k < F; k++) {
+    // Palmes jeunes (redressées) au centre, anciennes (retombantes) autour.
+    const young = k % 3 === 0;
+    leaves.push({
+      frond: true,
+      origin: top.clone().add(new THREE.Vector3(0, young ? 0.05 : -0.08, 0)),
+      az: a0 + (2 * Math.PI * k) / F + rng.random(0.25, -0.25),
+      el: young ? 0.75 + rng.random(0.3) : 0.1 + rng.random(0.4),
+      length: sp.frondLength * (young ? 0.8 : 1) * (0.85 + rng.random(0.3)),
+      droop: young ? 0.25 : 0.55 + rng.random(0.35),
+      width: sp.frondWidth * (0.85 + rng.random(0.3)),
+      size: sp.frondLength,
+      rank: rng.random(),
+    });
+  }
+  return { sp, branches: [{ level: 0, segments: 10, sections, length: H, rings: true }], leaves, height: top.y + 1, top };
+}
+
 /** Squelette : branches (sections successives) et rameaux, à la bonne échelle. */
 export function growTree(sp, seed) {
+  if (sp.type === 'palm') return growPalm(sp, seed);
   const rng = new RNG(seed);
   const rank = new RNG(seed * 7 + 3);
   const branches = [];
@@ -266,9 +329,11 @@ export function barkGeometry(tree, lod = 0, { snow = 0 } = {}) {
     const uRep = Math.max(1, Math.round((2 * Math.PI * secs[Math.min(1, secs.length - 1)].radius) / 1.1));
     const start = pos.length / 3;
     let v = 0;
+    const tint = sp.barkTint || [1, 1, 1];
     secs.forEach((s, i) => {
       if (i > 0) v += s.origin.distanceTo(secs[i - 1].origin) / TILE;
-      const ao = b.level === 0 ? THREE.MathUtils.clamp(0.72 + s.origin.y * 0.25, 0.72, 1) : 0.92;
+      let ao = b.level === 0 ? THREE.MathUtils.clamp(0.72 + s.origin.y * 0.25, 0.72, 1) : 0.92;
+      if (b.rings && i % 2) ao *= 0.78; // anneaux du palmier
       for (let j = 0; j <= segs; j++) {
         const a = (2 * Math.PI * (j % segs)) / segs;
         _n.set(Math.cos(a), 0, Math.sin(a)).applyEuler(s.orientation);
@@ -276,7 +341,7 @@ export function barkGeometry(tree, lod = 0, { snow = 0 } = {}) {
         pos.push(_v.x, _v.y, _v.z);
         nor.push(_n.x, _n.y, _n.z);
         uv.push((j / segs) * uRep, v);
-        col.push(ao, ao, ao);
+        col.push(ao * tint[0], ao * tint[1], ao * tint[2]);
       }
     });
     const N = segs + 1;
@@ -312,6 +377,7 @@ export function barkGeometry(tree, lod = 0, { snow = 0 } = {}) {
  * rameaux intérieurs plus sombres. Attributs : aLeaf (couche, rang, chute d'hiver, neige).
  */
 export function leafGeometry(tree, lod = 0, { snow = 0, leaf = null } = {}) {
+  if (tree.sp.type === 'palm') return frondGeometry(tree, lod, { snow });
   const L = LODS[lod];
   const sp = tree.sp;
   const layer = leaf ?? sp.leaves.leaf;
@@ -369,10 +435,70 @@ export function leafGeometry(tree, lod = 0, { snow = 0, leaf = null } = {}) {
 }
 
 /**
+ * Palmes : rubans courbés (pliés en V le long de la nervure) qui retombent sous leur
+ * poids, texturés par la couche « palme ». Toutes gardées au loin (elles font la
+ * silhouette), avec moins de segments.
+ */
+function frondGeometry(tree, lod, { snow = 0 } = {}) {
+  const segs = [8, 5, 3][lod];
+  const pos = [];
+  const nor = [];
+  const uv = [];
+  const col = [];
+  const lf = [];
+  const idx = [];
+  const up = new THREE.Vector3(0, 1, 0);
+  const d = new THREE.Vector3();
+  const side = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  const n = new THREE.Vector3();
+  for (const f of tree.leaves) {
+    d.set(Math.cos(f.az), 0, Math.sin(f.az));
+    side.set(-d.z, 0, d.x);
+    const w = f.width / 2;
+    const base = pos.length / 3;
+    for (let j = 0; j <= segs; j++) {
+      const s = j / segs;
+      const along = f.length * s;
+      p.copy(f.origin).addScaledVector(d, Math.cos(f.el) * along).addScaledVector(up, Math.sin(f.el) * along - (f.droop * along * along) / f.length);
+      // Largeur : étroite au pied (la texture dessine la forme), bords relevés en V.
+      const ww = w * Math.min(1, 0.35 + s * 3);
+      const ao = 0.78 + 0.22 * s;
+      n.copy(up).multiplyScalar(0.8).addScaledVector(d, 0.45).normalize();
+      for (const k of [-1, 0, 1]) {
+        const q = p.clone().addScaledVector(side, k * ww).addScaledVector(up, k ? ww * 0.22 : 0);
+        pos.push(q.x, q.y, q.z);
+        nor.push(n.x, n.y, n.z);
+        uv.push((k + 1) / 2, s);
+        col.push(ao * 0.96, ao, ao * 0.94);
+        lf.push(LEAF.palm, f.rank, 0, snow * s);
+      }
+    }
+    for (let j = 0; j < segs; j++) {
+      for (let k = 0; k < 2; k++) {
+        const a = base + j * 3 + k;
+        idx.push(a, a + 1, a + 4, a, a + 4, a + 3);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('aLeaf', new THREE.Float32BufferAttribute(lf, 4));
+  g.setIndex(idx);
+  g.computeBoundingSphere();
+  return g;
+}
+
+/**
  * Points sur l'extérieur de la couronne (fruits), bien répartis : origines des rameaux
  * gardés au niveau de détail le plus bas (visibles de près comme de loin).
  */
 export function crownSpots(tree, count, { minY = 0.45, out = 0.12 } = {}) {
+  // Palmier : sous la couronne, autour du sommet du tronc (noix de coco).
+  if (tree.top) return Array.from({ length: count }, (_, i) => tree.top.clone().add(new THREE.Vector3(Math.cos(i * 2.4) * 0.2, -0.3, Math.sin(i * 2.4) * 0.2)));
   const { c, r } = crownOf(tree);
   const cands = [];
   for (const l of tree.leaves) {

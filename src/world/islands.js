@@ -3,6 +3,7 @@ import { Shape, G, toon, vertexColorToon, addSeason, shadedMaterial } from '../c
 import { createRng } from '../core/math.js';
 import { ISLANDS, LANDMARKS } from './layout.js';
 import { place, rotate2, signBoard, benchGeo, boatGeo, WOOD, WOOD_DARK, IRON, STONE } from './village.js';
+import { SURF } from './decor.js';
 
 // L'archipel : les deux ponts, Bourg-Sapin (chalets de montagne, source chaude,
 // lac, belvédère) et Port-Corail (maisons colorées, port, pilotis, paillote).
@@ -15,17 +16,17 @@ function chalet({ w = 5.6, d = 5.0, h = 3.2, wood = '#a8714a', roof = '#7a3b2e',
   const glass = new Shape();
   const top = 0.9 + h;
   const stone = ['#b8b0a4', '#a39c92', '#c9c2b6'];
-  s.add(G.box(w + 0.6, 0.9, d + 0.6), '#aaa398', { pos: [0, 0.45, 0] });
+  s.add(G.box(w + 0.6, 0.9, d + 0.6), '#aaa398', { pos: [0, 0.45, 0], surf: SURF.stone });
   for (let i = 0; i < 18; i++) {
     const side = i % 4;
     const along = ((i * 0.37) % 1) - 0.5;
     const L = side < 2 ? w : d;
     const px = side < 2 ? along * L : (side === 2 ? 1 : -1) * (w / 2 + 0.31);
     const pz = side < 2 ? (side === 0 ? 1 : -1) * (d / 2 + 0.31) : along * L;
-    s.add(G.box(side < 2 ? 0.55 : 0.08, 0.28, side < 2 ? 0.08 : 0.55), stone[i % 3], { pos: [px, 0.3 + (i % 3) * 0.22, pz] });
+    s.add(G.box(side < 2 ? 0.55 : 0.08, 0.28, side < 2 ? 0.08 : 0.55), stone[i % 3], { pos: [px, 0.3 + (i % 3) * 0.22, pz], surf: SURF.stone });
   }
   // Murs en rondins : bandes et bouts de rondins aux angles.
-  s.add(G.box(w, h, d), wood, { pos: [0, 0.9 + h / 2, 0] });
+  s.add(G.box(w, h, d), wood, { pos: [0, 0.9 + h / 2, 0], surf: SURF.planks });
   const dark = new THREE.Color(wood).multiplyScalar(0.78).getStyle();
   for (let y = 1.1; y < top - 0.1; y += 0.34) {
     s.add(G.box(w + 0.02, 0.05, d + 0.02), dark, { pos: [0, y, 0] });
@@ -36,14 +37,14 @@ function chalet({ w = 5.6, d = 5.0, h = 3.2, wood = '#a8714a', roof = '#7a3b2e',
   const tri = new THREE.Shape([new THREE.Vector2(-d / 2, 0), new THREE.Vector2(d / 2, 0), new THREE.Vector2(0, rh)]);
   const gable = new THREE.ExtrudeGeometry(tri, { depth: w - 0.02, bevelEnabled: false });
   gable.rotateY(Math.PI / 2);
-  s.add(gable, '#b8834f', { pos: [-(w - 0.02) / 2, top, 0] });
+  s.add(gable, '#b8834f', { pos: [-(w - 0.02) / 2, top, 0], surf: SURF.planks });
   const a = Math.atan2(rh, d / 2);
   const L = Math.hypot(d / 2, rh) + 1.0;
   for (const side of [-1, 1]) {
-    s.add(G.box(w + 1.5, 0.32, L), roof, { pos: [0, top + rh / 2 + 0.05, side * (d / 4 + 0.2)], rot: [side * a, 0, 0] });
-    s.add(G.box(w + 1.55, 0.14, L * 0.62), '#f7fbff', { pos: [0, top + rh * 0.72 + 0.28, side * (d / 8 + 0.12)], rot: [side * a, 0, 0] });
+    s.add(G.box(w + 1.5, 0.32, L), roof, { pos: [0, top + rh / 2 + 0.05, side * (d / 4 + 0.2)], rot: [side * a, 0, 0], surf: SURF.tiles });
+    s.add(G.box(w + 1.55, 0.14, L * 0.62), '#f7fbff', { pos: [0, top + rh * 0.72 + 0.28, side * (d / 8 + 0.12)], rot: [side * a, 0, 0], surf: SURF.plain });
   }
-  s.add(G.box(w + 1.6, 0.3, 0.5), '#f7fbff', { pos: [0, top + rh + 0.24, 0] });
+  s.add(G.box(w + 1.6, 0.3, 0.5), '#f7fbff', { pos: [0, top + rh + 0.24, 0], surf: SURF.plain });
   // Pignon décoré : croix de bois et œil-de-bœuf.
   for (const sz of [-1, 1]) {
     s.add(G.box(0.12, rh * 0.9, 0.08), trim, { pos: [0, top + rh * 0.45, sz * (d / 2 - 0.02)] });
@@ -55,24 +56,24 @@ function chalet({ w = 5.6, d = 5.0, h = 3.2, wood = '#a8714a', roof = '#7a3b2e',
     glass.add(G.cyl(0.24, 0.24, 0.04, 12), '#ffffff', { pos: [sx * (w / 2 + 0.04), top + rh * 0.42, 0], rot: [0, 0, Math.PI / 2] });
   }
   // Cheminée en pierre.
-  s.add(G.box(0.8, 2.2, 0.8), '#a39c92', { pos: [w * 0.3, top + rh * 0.65, -d * 0.18] });
-  s.add(G.box(0.95, 0.18, 0.95), '#8f887e', { pos: [w * 0.3, top + rh * 0.65 + 1.15, -d * 0.18] });
-  s.add(G.box(0.96, 0.12, 0.96), '#f7fbff', { pos: [w * 0.3, top + rh * 0.65 + 1.28, -d * 0.18] });
+  s.add(G.box(0.8, 2.2, 0.8), '#a39c92', { pos: [w * 0.3, top + rh * 0.65, -d * 0.18], surf: SURF.stone });
+  s.add(G.box(0.95, 0.18, 0.95), '#8f887e', { pos: [w * 0.3, top + rh * 0.65 + 1.15, -d * 0.18], surf: SURF.stone });
+  s.add(G.box(0.96, 0.12, 0.96), '#f7fbff', { pos: [w * 0.3, top + rh * 0.65 + 1.28, -d * 0.18], surf: SURF.plain });
   const smoke = [w * 0.3, top + rh * 0.65 + 1.5, -d * 0.18];
   // Porte, fenêtres à volets, jardinières de géraniums.
   const fz = d / 2;
   s.add(G.box(1.4, 2.25, 0.1), trim, { pos: [0, 0.9 + 1.1, fz + 0.02] });
-  s.add(G.box(1.1, 2.0, 0.14), '#7a4a32', { pos: [0, 0.9 + 1.0, fz + 0.05] });
+  s.add(G.box(1.1, 2.0, 0.14), '#7a4a32', { pos: [0, 0.9 + 1.0, fz + 0.05], surf: SURF.planks });
   for (const y of [1.3, 1.9, 2.5]) s.add(G.box(1.0, 0.05, 0.02), '#5e3826', { pos: [0, 0.9 + y - 0.35, fz + 0.13] });
   s.add(G.sphere(0.07, 8, 6), '#ffd166', { pos: [0.35, 0.9 + 0.95, fz + 0.15] });
-  s.add(G.box(2.0, 0.3, 1.0), '#9a948c', { pos: [0, 0.75, fz + 0.75] });
+  s.add(G.box(2.0, 0.3, 1.0), '#9a948c', { pos: [0, 0.75, fz + 0.75], surf: SURF.stone });
   const win = (x, y, z, rotY) => {
     const f = new Shape();
     f.add(G.box(1.05, 1.05, 0.1), trim, {});
     f.add(G.box(0.07, 0.95, 0.14), trim, { pos: [0, 0, 0.02] });
     f.add(G.box(0.95, 0.07, 0.14), trim, { pos: [0, 0, 0.02] });
     for (const sx of [-0.78, 0.78]) {
-      f.add(G.box(0.42, 1.05, 0.08), shutter, { pos: [sx, 0, 0] });
+      f.add(G.box(0.42, 1.05, 0.08), shutter, { pos: [sx, 0, 0], surf: SURF.planks });
       f.add(G.sphere(0.07, 6, 4), '#fff3d6', { pos: [sx, 0.15, 0.05], scale: [1, 1.2, 0.3] });
     }
     f.add(G.box(1.2, 0.24, 0.36), WOOD_DARK, { pos: [0, -0.66, 0.18] });
@@ -112,14 +113,14 @@ function seaHouse({ w = 5.2, d = 4.6, h = 3.4, wall = '#8fd6e8', trim = '#ffffff
   const s = new Shape();
   const glass = new Shape();
   const top = 0.4 + h;
-  s.add(G.box(w + 0.4, 0.4, d + 0.4), '#f3e3c8', { pos: [0, 0.2, 0] });
-  s.add(G.box(w, h, d), wall, { pos: [0, 0.4 + h / 2, 0] });
+  s.add(G.box(w + 0.4, 0.4, d + 0.4), '#f3e3c8', { pos: [0, 0.2, 0], surf: SURF.stone });
+  s.add(G.box(w, h, d), wall, { pos: [0, 0.4 + h / 2, 0], surf: SURF.plaster });
   s.add(G.box(w + 0.06, 0.35, d + 0.06), trim, { pos: [0, 0.55, 0] });
   if (roof === 'terrasse') {
     s.add(G.box(w + 0.2, 0.16, d + 0.2), trim, { pos: [0, top + 0.05, 0] });
-    s.add(G.box(w + 0.2, 0.45, 0.12), wall, { pos: [0, top + 0.35, d / 2 + 0.04] });
-    s.add(G.box(w + 0.2, 0.45, 0.12), wall, { pos: [0, top + 0.35, -d / 2 - 0.04] });
-    for (const sx of [-1, 1]) s.add(G.box(0.12, 0.45, d + 0.2), wall, { pos: [sx * (w / 2 + 0.04), top + 0.35, 0] });
+    s.add(G.box(w + 0.2, 0.45, 0.12), wall, { pos: [0, top + 0.35, d / 2 + 0.04], surf: SURF.plaster });
+    s.add(G.box(w + 0.2, 0.45, 0.12), wall, { pos: [0, top + 0.35, -d / 2 - 0.04], surf: SURF.plaster });
+    for (const sx of [-1, 1]) s.add(G.box(0.12, 0.45, d + 0.2), wall, { pos: [sx * (w / 2 + 0.04), top + 0.35, 0], surf: SURF.plaster });
     s.add(G.box(w + 0.3, 0.08, d + 0.3), trim, { pos: [0, top + 0.6, 0] });
     // Parasol et pots sur la terrasse.
     s.add(G.cyl(0.03, 0.03, 1.6, 5), '#fffaf2', { pos: [w * 0.2, top + 0.9, -d * 0.1] });
@@ -133,24 +134,24 @@ function seaHouse({ w = 5.2, d = 4.6, h = 3.4, wall = '#8fd6e8', trim = '#ffffff
     const r = Math.hypot(w, d) / 2 + 0.55;
     const cone = new THREE.ConeGeometry(r, 1.6, 4, 1);
     cone.rotateY(Math.PI / 4);
-    s.add(cone, '#d9784f', { pos: [0, top + 0.8, 0], scale: [(w + 0.9) / (r * Math.SQRT2), 1, (d + 0.9) / (r * Math.SQRT2)] });
+    s.add(cone, '#d9784f', { pos: [0, top + 0.8, 0], scale: [(w + 0.9) / (r * Math.SQRT2), 1, (d + 0.9) / (r * Math.SQRT2)], surf: SURF.tiles });
     for (let i = 0; i < 4; i++) s.add(G.box(w + 0.95 - i * 0.5, 0.05, 0.05), '#b85f3c', { pos: [0, top + 0.2 + i * 0.35, d / 2 + 0.45 - i * 0.24] });
   }
   // Porte en arc, auvent, fenêtres à volets bleus.
   const fz = d / 2;
   s.add(G.box(1.3, 2.0, 0.1), trim, { pos: [0, 0.4 + 1.0, fz + 0.02] });
   s.add(new THREE.CylinderGeometry(0.65, 0.65, 0.1, 16, 1, false, -Math.PI / 2, Math.PI), trim, { pos: [0, 0.4 + 2.0, fz + 0.02], rot: [Math.PI / 2, 0, 0] });
-  s.add(G.box(1.0, 1.9, 0.14), '#3f7fb8', { pos: [0, 0.4 + 0.95, fz + 0.05] });
+  s.add(G.box(1.0, 1.9, 0.14), '#3f7fb8', { pos: [0, 0.4 + 0.95, fz + 0.05], surf: SURF.planks });
   s.add(new THREE.CylinderGeometry(0.5, 0.5, 0.14, 16, 1, false, -Math.PI / 2, Math.PI), '#3f7fb8', { pos: [0, 0.4 + 1.9, fz + 0.05], rot: [Math.PI / 2, 0, 0] });
   s.add(G.sphere(0.06, 8, 6), '#ffd166', { pos: [0.3, 0.4 + 0.95, fz + 0.15] });
   for (let i = 0; i < 6; i++) {
-    s.add(G.box(0.34, 0.05, 0.95), i % 2 ? '#ffffff' : awning, { pos: [-0.85 + i * 0.34, 0.4 + 2.55, fz + 0.45], rot: [0.35, 0, 0] });
+    s.add(G.box(0.34, 0.05, 0.95), i % 2 ? '#ffffff' : awning, { pos: [-0.85 + i * 0.34, 0.4 + 2.55, fz + 0.45], rot: [0.35, 0, 0], surf: SURF.plain });
   }
   const win = (x, y, z, rotY) => {
     const f = new Shape();
     f.add(G.box(0.95, 1.1, 0.1), trim, {});
     for (const sx of [-0.7, 0.7]) {
-      f.add(G.box(0.4, 1.1, 0.08), shutter, { pos: [sx, 0, 0] });
+      f.add(G.box(0.4, 1.1, 0.08), shutter, { pos: [sx, 0, 0], surf: SURF.wood });
       for (const yy of [-0.3, 0, 0.3]) f.add(G.box(0.34, 0.04, 0.1), new THREE.Color(shutter).multiplyScalar(0.8).getStyle(), { pos: [sx, yy, 0.01] });
     }
     f.add(G.box(1.0, 0.22, 0.34), '#d98a62', { pos: [0, -0.68, 0.16] });
@@ -899,7 +900,7 @@ export class IslandVillages {
       }
       const px = Pt.x + Math.cos(a + Math.PI / 4) * 8.5;
       const pz = Pt.z + Math.sin(a + Math.PI / 4) * 8.5;
-      const pot = new Shape().add(G.cyl(0.6, 0.5, 0.7, 10), '#d98a62', { pos: [0, 0.35, 0] }).add(G.torus(0.6, 0.06, 5, 14), '#fff3d6', { pos: [0, 0.7, 0], rot: [Math.PI / 2, 0, 0] });
+      const pot = new Shape().add(G.cyl(0.6, 0.5, 0.7, 10), '#d98a62', { pos: [0, 0.35, 0], surf: SURF.plaster }).add(G.torus(0.6, 0.06, 5, 14), '#fff3d6', { pos: [0, 0.7, 0], rot: [Math.PI / 2, 0, 0] });
       this.add(id, pot.build(), px, y0, pz);
       this.world.colliders.addCircle(px, pz, 0.7);
       (this.pots ||= []).push([px, y0 + 0.6, pz]);

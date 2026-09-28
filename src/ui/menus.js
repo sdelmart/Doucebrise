@@ -651,7 +651,7 @@ export class Credits {
       <div class="credits-list">
         <p><b>Un jeu fait avec ♥</b><br>pour les soirées douces, les amis à poils et les grandes balades.</p>
         <p><b>Conception, programmation, graphismes, sons</b><br>Maisons, habitants, animaux, meubles, ciel, eau, bruitages et ambiances sont générés en direct par le jeu.</p>
-        <p><b>Modèles 3D et textures (CC0)</b><br>Personnages et forêt : KayKit, Kay Lousberg · Nature Kit : Kenney · Textures du sol et écorces : Poly Haven, TextureCan</p>
+        <p><b>Modèles 3D et textures (CC0)</b><br>Personnages et forêt : KayKit, Kay Lousberg · Nature Kit : Kenney · Textures du sol, du décor et écorces : Poly Haven, TextureCan</p>
         <p><b>Arbres réalistes</b><br>Générateur et rameaux adaptés d'EZ-Tree, Daniel Greenheck (licence MIT)</p>
         <p><b>Technologies</b><br>Three.js (moteur 3D) · Vite · Electron (applications Windows et macOS)</p>
         <p><b>Police</b><br>Nunito — SIL Open Font License</p>

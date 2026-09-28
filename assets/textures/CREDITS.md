@@ -25,4 +25,18 @@ Les deux images du jeu sont ces textures (1K, cartes *diff*, *nor_gl* et *disp*)
 | `trees-bark.jpg`, `trees-bark-normal.jpg` | Écorces de chêne, de bouleau et de pin (couleur 1024 px, relief 512 px, empilées) | Chêne : Poly Haven, Bark Brown 02 — https://polyhaven.com/a/bark_brown_02 (CC0). Bouleau et pin : TextureCan — https://www.texturecan.com/details/221/ et https://www.texturecan.com/details/588/ (CC0) |
 | `trees-leaves.jpg` + `trees-leaves-alpha.png` | Huit rameaux (couleur, et transparence à part) : chêne, frêne, tremble doré, pin, puis des variantes recolorées (cerisier rose, bouleau, pommier, arbre tropical) | Rameaux du projet EZ-Tree de Daniel Greenheck — https://github.com/dgreenheck/ez-tree (licence MIT, voir `LICENSE-EZ-Tree.txt`) |
 
-Les formes des arbres sont générées au lancement par `src/world/treeGen.js`, adapté de l'algorithme d'EZ-Tree (licence MIT).
+Les formes des arbres sont générées au lancement par `src/world/treeGen.js`, adapté de l'algorithme d'EZ-Tree (licence MIT). Les buissons reprennent les réglages des buissons d'EZ-Tree ; la palme des palmiers est dessinée par le jeu.
+
+## Décor (maisons, mobilier)
+
+`decor-detail.jpg` : cinq textures de **Poly Haven** (CC0), en niveaux de gris (512 × 512 par couche, empilées) — seul le grain est gardé, les couleurs restent celles du jeu :
+
+| Couche | Texture Poly Haven |
+| --- | --- |
+| Enduit | Painted Plaster Wall — https://polyhaven.com/a/painted_plaster_wall |
+| Bois | Rough Wood — https://polyhaven.com/a/rough_wood |
+| Planches (bardage) | Brown Planks 05 — https://polyhaven.com/a/brown_planks_05 |
+| Tuiles | Roof Tiles 14 — https://polyhaven.com/a/roof_tiles_14 |
+| Pierre | Stone Wall — https://polyhaven.com/a/stone_wall |
+
+Les rochers utilisent la couche « Roche » du sol.

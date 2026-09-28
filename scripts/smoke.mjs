@@ -91,10 +91,12 @@ try {
       g.world.vegetation.group.traverse((o) => {
         if (o.isVariants || o.userData?.model) models++;
       });
+      // Rendu réaliste : arbres, buissons et palmiers sont générés (types de plantes des forêts).
+      for (const f of Object.values(g.world.vegetation.forests || {})) models += f.kinds.length;
       return { avatar: g.character.isModel, models };
     });
     if (!r.avatar) throw new Error('le personnage importé n\'est pas chargé');
-    if (r.models < 5) throw new Error(`végétation importée incomplète (${r.models} types)`);
+    if (r.models < 5) throw new Error(`végétation incomplète (${r.models} types)`);
   });
   await step('Habitants 3D animés', async () => {
     const r = await page.evaluate(() => {
@@ -115,7 +117,7 @@ try {
     if (!r.draw) throw new Error('volume englobant des habitants absent');
     if (!(r.verts > 1000)) throw new Error(`habitant vide (${r.verts} sommets)`);
   });
-  await step('Rendu réaliste (sol détaillé, herbe dense, arbres)', async () => {
+  await step('Rendu réaliste (sol détaillé, herbe dense, arbres, décor)', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;
       const f = g.world.vegetation.forests || {};
@@ -126,6 +128,10 @@ try {
         grass: g.world.grassField.geometry.instanceCount,
         trees: Object.values(f).reduce((n, x) => n + (x.bark ? x.trees.length : 0), 0),
         pins: f.pins?.leaves?.instanceCount || 0,
+        palms: (f.corail?.kinds || []).filter((k) => k.species === 'palm').reduce((n, k) => n + k.count, 0),
+        bushes: (f.main?.kinds || []).filter((k) => k.species === 'bush').reduce((n, k) => n + k.count, 0),
+        rocks: !!g.world.vegetation.rockMat,
+        decor: !!g.world.village.group.children.find((m) => m.geometry?.attributes.aSurf),
       };
     });
     if (r.style !== 'realiste') throw new Error(`style de rendu : ${r.style}`);
@@ -133,6 +139,9 @@ try {
     if (!r.ground) throw new Error('textures du sol non chargées');
     if (!(r.grass > 1000)) throw new Error(`tapis d'herbe vide (${r.grass})`);
     if (!(r.trees > 500 && r.pins > 300)) throw new Error(`arbres générés absents (${r.trees}, île des Pins : ${r.pins})`);
+    if (!(r.palms > 50 && r.bushes > 10)) throw new Error(`palmiers ou buissons générés absents (${r.palms}, ${r.bushes})`);
+    if (!r.rocks) throw new Error('rochers générés absents');
+    if (!r.decor) throw new Error('matières du décor (enduit, tuiles…) absentes');
   });
   await step('Qualité automatique (tous les paliers)', async () => {
     const r = await page.evaluate(() => {

@@ -217,9 +217,19 @@ function normalizeGeo(geo) {
     geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
   }
   for (const name of Object.keys(geo.attributes)) {
-    if (!['position', 'normal', 'uv', 'color'].includes(name)) geo.deleteAttribute(name);
+    if (!['position', 'normal', 'uv', 'color', 'aSurf'].includes(name)) geo.deleteAttribute(name);
   }
   if (!geo.attributes.normal) geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Matière d'une pièce du décor (enduit, bois, tuiles… voir SURF dans world/decor.js) :
+ * elle choisit le grain posé sur sa couleur. Sans étiquette, la matière se devine d'après
+ * la couleur (bois pour les bruns).
+ */
+export function setSurf(geo, surf) {
+  geo.setAttribute('aSurf', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count).fill(surf), 1));
   return geo;
 }
 
@@ -251,6 +261,7 @@ export class Shape {
     } else {
       paint(geo, color);
     }
+    if (t.surf !== undefined) setSurf(geo, t.surf);
     this.parts.push(normalizeGeo(geo));
     return this;
   }
@@ -267,6 +278,8 @@ export class Shape {
 
   build() {
     if (this.parts.length === 0) return new THREE.BufferGeometry();
+    // Matières : si une pièce en a une, les autres reçoivent « à deviner » (0).
+    if (this.parts.some((p) => p.attributes.aSurf)) for (const p of this.parts) if (!p.attributes.aSurf) setSurf(p, 0);
     const merged = mergeGeometries(this.parts, false);
     for (const p of this.parts) p.dispose();
     this.parts = [];

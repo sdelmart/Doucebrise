@@ -10,6 +10,7 @@ import { Vegetation } from './vegetation.js';
 import { Ambient } from './ambient.js';
 import { Weather } from './weather.js';
 import { globalUniforms } from '../core/materials.js';
+import { decorUniforms } from './decor.js';
 
 // Le monde : assemble terrain, ciel, eau, village, végétation et vie ambiante,
 // et répond aux questions du gameplay (hauteur du sol, obstacles, zones libres).
@@ -142,6 +143,8 @@ export class World {
     const u = this.terrainMesh.userData;
     const m = on && u.detailed ? u.detailed : u.plain;
     if (m && this.terrainMesh.material !== m) this.terrainMesh.material = m;
+    // Grain des maisons et du mobilier : coupé avec le sol détaillé (petits ordinateurs).
+    decorUniforms.uDecor.value = on ? 1 : 0;
   }
 
   update(dt, elapsed, focus, grassRadius = 80, camera = null) {

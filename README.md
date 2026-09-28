@@ -120,7 +120,13 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 - **Arbres réalistes** (rendu réaliste) : chênes, bouleaux, cerisiers, pommiers, arbres dorés, pins, sapins et arbres tropicaux, **générés au lancement** (tronc et branches qui poussent selon l'essence, `src/world/treeGen.js`, d'après EZ-Tree) avec des **écorces** et des **rameaux photographiés**. Plusieurs variantes par essence ; le vent fait bouger l'arbre et frémir les feuilles.
   - **Saisons** : feuilles rousses à l'automne (quelques-unes tombent), **branches nues** l'hiver avec la neige posée dessus, feuillage revenu au printemps ; les cerisiers sont roses, les sapins d'altitude gardent leur neige.
   - **Vue dégagée** : les branches entre la caméra et le personnage s'effacent, la vue n'est jamais bouchée en forêt.
-- **Buissons, fleurs, champignons et rochers** importés (KayKit Forest, Kenney Nature Kit), recolorés dans la palette du jeu. En style Cartoon, les arbres sont aussi ceux de ces packs (plus légers).
+- **Décor homogène** (rendu réaliste) : tout le décor suit le style des arbres.
+  - **Palmiers** générés : tronc courbe annelé, couronne de palmes qui retombent (palme dessinée par le jeu), noix de coco sous chaque couronne.
+  - **Buissons à baies et myrtilliers** générés comme les arbres (mêmes rameaux photographiés, vent, saisons), baies posées sur chaque forme.
+  - **Rochers** générés (`src/world/rocks.js`) : formes bosselées à arêtes, roche photographiée du sol projetée sans étirement, mousse sur le dessus, neige l'hiver.
+  - **Maisons et mobilier** (`src/world/decor.js`) : grain des matières sur leurs couleurs — enduit des murs, tuiles des toits, bardage des chalets, bois des portes, volets, bancs et pontons, moellons des soubassements et cheminées — avec un léger relief. Coupé avec « Sol détaillé » sur les petits ordinateurs.
+  - **Fleurs, tulipes et champignons** construits plus finement (`src/world/flowers.js`) : pétales courbés en dégradé, tige souple, feuilles.
+  - En style Cartoon, buissons, fleurs, champignons, rochers et palmiers restent ceux des packs importés (KayKit Forest, Kenney Nature Kit), recolorés dans la palette du jeu, comme les arbres.
 - **Eau** : houle et vaguelettes, reflet du ciel selon l'angle (Fresnel), éclat du soleil, écume en dentelle sur les rivages, lagon turquoise.
 - **Halo lumineux** (lanternes, fenêtres et étoiles qui brillent la nuit), étalonnage et vignette.
 - Ombres jusqu'à 4096 px, anticrénelage FXAA / SMAA / MSAA.
@@ -129,6 +135,7 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 - `terrain-albedo.jpg` (couleurs) et `terrain-normal-height.jpg` (rouge/vert : normale, bleu : hauteur) : sept textures de 1024 px (normales en 512 px) empilées de haut en bas, dans l'ordre de `GROUND_LAYERS` (`src/world/terrainTextures.js`) : herbe (*leafy_grass*), sous-bois (*forrest_ground_01*), terre (*park_dirt*), sable (*sand_01*), roche (*rock_face*), pavés (*cobblestone_floor_01*), neige (*snow_02*). Toutes viennent de [Poly Haven](https://polyhaven.com/textures) (CC0) ; crédits : `assets/textures/CREDITS.md`.
 - Sans ces fichiers (ou avec « Sol détaillé » désactivé), le terrain garde ses couleurs unies.
 - `trees-bark.jpg` / `trees-bark-normal.jpg` : écorces de chêne, bouleau et pin (Poly Haven, TextureCan — CC0) ; `trees-leaves.jpg` + `trees-leaves-alpha.png` : huit rameaux (chêne, frêne, tremble, pin, et des variantes recolorées : cerisier, bouleau, pommier, tropical) du projet EZ-Tree (MIT). Sans eux, le jeu reprend les arbres des packs de modèles.
+- `decor-detail.jpg` : grain des matières du décor (enduit, bois, planches, tuiles, pierre), cinq textures Poly Haven (CC0) en niveaux de gris empilées ; l'ordre est celui de `SURF` (`src/world/decor.js`). Une pièce construite reçoit sa matière avec l'option `surf` de `Shape.add` ; sans elle, les bruns deviennent du bois et les teintes claires de l'enduit.
 
 ### 🧱 Modèles 3D (dossier `assets/models/`)
 ```

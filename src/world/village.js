@@ -4,6 +4,7 @@ import { createRng } from '../core/math.js';
 import { LANDMARKS, ZONES } from './layout.js';
 import { buildHome, fencePoints, DEFAULT_HOME, HOME_SIZES } from './home.js';
 import { vehicleModel, wheelGeo } from './vehicleModels.js';
+import { addDecor, SURF } from './decor.js';
 
 // Le village et les grands décors : maisons, place et fontaine, lampadaires,
 // moulin, phare, ponton, étang, pique-nique, plage… Tout le statique est fusionné
@@ -34,10 +35,10 @@ export function cottage({ w = 5.2, d = 4.6, h = 3.0, wall, roof, trim = '#fffaf0
   const s = new Shape();
   const glass = new Shape();
   const top = 0.5 + h;
-  s.add(G.box(w + 0.5, 0.5, d + 0.5), '#cfc4b3', { pos: [0, 0.25, 0] });
-  s.add(G.box(w, h, d), wall, { pos: [0, 0.5 + h / 2, 0] });
+  s.add(G.box(w + 0.5, 0.5, d + 0.5), '#cfc4b3', { pos: [0, 0.25, 0], surf: SURF.stone });
+  s.add(G.box(w, h, d), wall, { pos: [0, 0.5 + h / 2, 0], surf: SURF.plaster });
   for (const sx of [-1, 1]) {
-    for (const sz of [-1, 1]) s.add(G.box(0.24, h, 0.24), trim, { pos: [sx * (w / 2), 0.5 + h / 2, sz * (d / 2)] });
+    for (const sz of [-1, 1]) s.add(G.box(0.24, h, 0.24), trim, { pos: [sx * (w / 2), 0.5 + h / 2, sz * (d / 2)], surf: SURF.wood });
   }
   s.add(G.box(w + 0.12, 0.2, d + 0.12), trim, { pos: [0, top, 0] });
 
@@ -46,33 +47,34 @@ export function cottage({ w = 5.2, d = 4.6, h = 3.0, wall, roof, trim = '#fffaf0
   const tri = new THREE.Shape([new THREE.Vector2(-d / 2, 0), new THREE.Vector2(d / 2, 0), new THREE.Vector2(0, rh)]);
   const gable = new THREE.ExtrudeGeometry(tri, { depth: w - 0.02, bevelEnabled: false });
   gable.rotateY(Math.PI / 2);
-  s.add(gable, wall, { pos: [-(w - 0.02) / 2, top + 0.1, 0] });
+  s.add(gable, wall, { pos: [-(w - 0.02) / 2, top + 0.1, 0], surf: SURF.plaster });
   const a = Math.atan2(rh, d / 2);
   const L = Math.hypot(d / 2, rh) + 0.7;
   for (const side of [-1, 1]) {
     s.add(G.box(w + 0.9, 0.3, L), roof, {
       pos: [0, top + 0.1 + rh / 2 + 0.2, side * (d / 4 + 0.12)],
       rot: [side * a, 0, 0],
+      surf: SURF.tiles,
     });
   }
-  s.add(G.cyl(0.24, 0.24, w + 1.0, 8), roof, { pos: [0, top + rh + 0.33, 0], rot: [0, 0, Math.PI / 2] });
-  s.add(G.box(0.7, 1.8, 0.7), '#c77b62', { pos: [w * 0.26, top + rh * 0.75, -d * 0.18] });
-  s.add(G.box(0.85, 0.18, 0.85), '#a8604c', { pos: [w * 0.26, top + rh * 0.75 + 0.95, -d * 0.18] });
+  s.add(G.cyl(0.24, 0.24, w + 1.0, 8), roof, { pos: [0, top + rh + 0.33, 0], rot: [0, 0, Math.PI / 2], surf: SURF.tiles });
+  s.add(G.box(0.7, 1.8, 0.7), '#c77b62', { pos: [w * 0.26, top + rh * 0.75, -d * 0.18], surf: SURF.stone });
+  s.add(G.box(0.85, 0.18, 0.85), '#a8604c', { pos: [w * 0.26, top + rh * 0.75 + 0.95, -d * 0.18], surf: SURF.stone });
 
   // Porte, perron, fenêtres, jardinières.
   const fz = d / 2;
-  s.add(G.box(1.4, 2.2, 0.1), trim, { pos: [0, 0.5 + 1.1, fz + 0.02] });
-  s.add(G.box(1.1, 1.95, 0.14), door, { pos: [0, 0.5 + 0.98, fz + 0.05] });
+  s.add(G.box(1.4, 2.2, 0.1), trim, { pos: [0, 0.5 + 1.1, fz + 0.02], surf: SURF.wood });
+  s.add(G.box(1.1, 1.95, 0.14), door, { pos: [0, 0.5 + 0.98, fz + 0.05], surf: SURF.wood });
   s.add(G.sphere(0.07, 8, 6), '#ffd166', { pos: [0.35, 0.5 + 0.95, fz + 0.15] });
-  s.add(G.box(1.8, 0.28, 0.9), '#cfc4b3', { pos: [0, 0.14, fz + 0.65] });
+  s.add(G.box(1.8, 0.28, 0.9), '#cfc4b3', { pos: [0, 0.14, fz + 0.65], surf: SURF.stone });
   const win = (x, y, z, rotY) => {
     const f = new Shape();
-    f.add(G.box(1.15, 1.15, 0.1), trim, { pos: [0, 0, 0] });
-    f.add(G.box(0.08, 1.0, 0.14), trim, { pos: [0, 0, 0.02] });
-    f.add(G.box(1.0, 0.08, 0.14), trim, { pos: [0, 0, 0.02] });
+    f.add(G.box(1.15, 1.15, 0.1), trim, { pos: [0, 0, 0], surf: SURF.wood });
+    f.add(G.box(0.08, 1.0, 0.14), trim, { pos: [0, 0, 0.02], surf: SURF.wood });
+    f.add(G.box(1.0, 0.08, 0.14), trim, { pos: [0, 0, 0.02], surf: SURF.wood });
     if (shutter) {
-      f.add(G.box(0.45, 1.1, 0.08), shutter, { pos: [-0.85, 0, 0] });
-      f.add(G.box(0.45, 1.1, 0.08), shutter, { pos: [0.85, 0, 0] });
+      f.add(G.box(0.45, 1.1, 0.08), shutter, { pos: [-0.85, 0, 0], surf: SURF.planks });
+      f.add(G.box(0.45, 1.1, 0.08), shutter, { pos: [0.85, 0, 0], surf: SURF.planks });
     }
     f.add(G.box(1.2, 0.26, 0.36), WOOD, { pos: [0, -0.72, 0.18] });
     const cols = ['#ff8fb1', '#ffd84d', '#c9a0ff', '#ffffff'];
@@ -415,7 +417,7 @@ export class Village {
 
     this.windowMat = new THREE.MeshBasicMaterial({ color: '#bfe6f5' });
     this.glowMat = new THREE.MeshBasicMaterial({ color: '#fff3c4' });
-    this.staticMat = addSeason(toon('#ffffff', { vertexColors: true }), { snowLo: 0.5, snowHi: 0.8, key: 'village' });
+    this.staticMat = addDecor(addSeason(toon('#ffffff', { vertexColors: true }), { snowLo: 0.5, snowHi: 0.8, key: 'village' }));
     this.glassExtra = new Shape();
     this.buildPlaza();
     this.buildHouses();
@@ -652,21 +654,21 @@ export class Village {
     const roof = '#b69cf0';
     const top = 0.5 + h;
     s.add(G.box(w + 0.5, 0.5, d + 0.5), '#e7dac2', { pos: [0, 0.25, 0] });
-    s.add(G.box(w, h, d), wall, { pos: [0, 0.5 + h / 2, 0] });
+    s.add(G.box(w, h, d), wall, { pos: [0, 0.5 + h / 2, 0], surf: SURF.plaster });
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) s.add(G.box(0.24, h, 0.24), trim, { pos: [sx * (w / 2), 0.5 + h / 2, sz * (d / 2)] });
     s.add(G.box(w + 0.12, 0.2, d + 0.12), trim, { pos: [0, top, 0] });
     const rh = d * 0.42;
     const tri = new THREE.Shape([new THREE.Vector2(-d / 2, 0), new THREE.Vector2(d / 2, 0), new THREE.Vector2(0, rh)]);
     const gable = new THREE.ExtrudeGeometry(tri, { depth: w - 0.02, bevelEnabled: false });
     gable.rotateY(Math.PI / 2);
-    s.add(gable, wall, { pos: [-(w - 0.02) / 2, top + 0.1, 0] });
+    s.add(gable, wall, { pos: [-(w - 0.02) / 2, top + 0.1, 0], surf: SURF.plaster });
     const ang = Math.atan2(rh, d / 2);
     const L = Math.hypot(d / 2, rh) + 0.7;
-    for (const side of [-1, 1]) s.add(G.box(w + 0.9, 0.3, L), roof, { pos: [0, top + 0.1 + rh / 2 + 0.2, side * (d / 4 + 0.12)], rot: [side * ang, 0, 0] });
-    s.add(G.cyl(0.24, 0.24, w + 1.0, 8), roof, { pos: [0, top + rh + 0.33, 0], rot: [0, 0, Math.PI / 2] });
+    for (const side of [-1, 1]) s.add(G.box(w + 0.9, 0.3, L), roof, { pos: [0, top + 0.1 + rh / 2 + 0.2, side * (d / 4 + 0.12)], rot: [side * ang, 0, 0], surf: SURF.tiles });
+    s.add(G.cyl(0.24, 0.24, w + 1.0, 8), roof, { pos: [0, top + rh + 0.33, 0], rot: [0, 0, Math.PI / 2], surf: SURF.tiles });
     // Oreilles de chat sur le toit !
     for (const sx of [-1.3, 1.3]) {
-      s.add(G.cone(0.55, 0.9, 4), roof, { pos: [sx, top + rh + 0.75, 0], rot: [0, Math.PI / 4, sx > 0 ? -0.25 : 0.25], scale: [1, 1, 0.45] });
+      s.add(G.cone(0.55, 0.9, 4), roof, { pos: [sx, top + rh + 0.75, 0], rot: [0, Math.PI / 4, sx > 0 ? -0.25 : 0.25], scale: [1, 1, 0.45], surf: SURF.tiles });
       s.add(G.cone(0.32, 0.55, 4), '#ffb3c7', { pos: [sx, top + rh + 0.7, 0.12], rot: [0, Math.PI / 4, sx > 0 ? -0.25 : 0.25], scale: [1, 1, 0.35] });
     }
     // Porte, grande vitrine, auvent rayé.

@@ -23,9 +23,13 @@ export const TREE_KINDS = {
   pine: { species: 'pine', variants: 3 },
   fir: { species: 'fir', variants: 3 },
   pineSnow: { species: 'pine', variants: 3, snow: 0.6, seed: 5 },
+  bush: { species: 'bush', variants: 3 },
+  bushBlue: { species: 'blueberry', variants: 2 },
+  palm: { species: 'palm', variants: 4 },
+  palmCoco: { species: 'palm', variants: 2, seed: 3 },
 };
 
-const LEAF_LAYERS = 8;
+const LEAF_LAYERS = 8; // couches de l'image des rameaux (la palme, dessinée, s'y ajoute)
 const BARK_LAYERS = 3;
 const LEAF_SIZE = 512; // côté d'une couche de rameau (px)
 let textures = null;
@@ -63,7 +67,11 @@ export async function loadTreeTextures() {
     const pa = pixelsOf(alpha);
     for (let i = 3; i < px.length; i += 4) px[i] = pa[i - 3];
     const w = leaves.naturalWidth;
-    const tex = new THREE.DataArrayTexture(new Uint8Array(px.buffer), w, leaves.naturalHeight / LEAF_LAYERS, LEAF_LAYERS);
+    const lh = leaves.naturalHeight / LEAF_LAYERS;
+    const all = new Uint8Array(px.length + w * lh * 4);
+    all.set(px);
+    all.set(frondLayer(w, lh), px.length);
+    const tex = new THREE.DataArrayTexture(all, w, lh, LEAF_LAYERS + 1);
     tex.format = THREE.RGBAFormat;
     tex.type = THREE.UnsignedByteType;
     tex.wrapS = THREE.ClampToEdgeWrapping;
@@ -82,6 +90,62 @@ export async function loadTreeTextures() {
 }
 
 export const treeTextures = () => textures;
+
+/**
+ * Palme dessinée (couche ajoutée aux rameaux) : nervure centrale et folioles serrées,
+ * plus longues au milieu, inclinées vers la pointe. Pied en bas de l'image, pointe en haut.
+ */
+function frondLayer(w, h) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const greens = ['#3d7a2c', '#4a8a33', '#57963a', '#447f30', '#5f9c3f'];
+  const N = 44;
+  for (let side = -1; side <= 1; side += 2) {
+    for (let i = 0; i < N; i++) {
+      const t = (i + 0.5) / N; // 0 : pied, 1 : pointe
+      const y = h * (1 - t);
+      const len = w * 0.47 * Math.pow(Math.sin(Math.PI * (0.08 + 0.9 * t)), 0.75) * (0.9 + rnd() * 0.15);
+      const ang = (58 + rnd() * 10) * (Math.PI / 180);
+      const ex = w / 2 + side * Math.sin(ang) * len;
+      const ey = y - Math.cos(ang) * len * 0.55;
+      const lw = (h / N) * (0.55 + 0.25 * Math.sin(Math.PI * t));
+      ctx.fillStyle = greens[Math.floor(rnd() * greens.length)];
+      ctx.beginPath();
+      ctx.moveTo(w / 2, y);
+      ctx.quadraticCurveTo((w / 2 + ex) / 2, (y + ey) / 2 - lw, ex, ey);
+      ctx.quadraticCurveTo((w / 2 + ex) / 2, (y + ey) / 2 + lw, w / 2, y + lw * 0.8);
+      ctx.fill();
+      // Nervure de la foliole.
+      ctx.strokeStyle = 'rgba(160, 190, 90, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(w / 2, y + lw * 0.3);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+    }
+  }
+  // Nervure centrale.
+  ctx.strokeStyle = '#8a8a4a';
+  ctx.lineWidth = Math.max(3, w / 90);
+  ctx.beginPath();
+  ctx.moveTo(w / 2, h);
+  ctx.lineTo(w / 2, 0);
+  ctx.stroke();
+  const d = ctx.getImageData(0, 0, w, h).data;
+  // Pixels transparents : couleur moyenne de la palme (pas de liseré sombre au loin).
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) {
+      d[i] = 74;
+      d[i + 1] = 130;
+      d[i + 2] = 50;
+    }
+  }
+  return d;
+}
 
 // --- Matériaux -----------------------------------------------------------------
 
@@ -374,14 +438,24 @@ class TreeKind {
   }
 
   push(x, y, z, rotY, scale, color) {
-    const h = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453);
     this.n++;
-    return this.forest.pushTree(this, Math.floor(h) % this.seeds.length, x, y, z, rotY, scale, color);
+    return this.forest.pushTree(this, this.variantAt(x, z), x, y, z, rotY, scale, color);
   }
 
-  /** Points pour des fruits sur la couronne (variante 0). */
-  spots(count, opts) {
-    return crownSpots(treeOf(this.species, this.seeds[0]), count, opts);
+  /** Variante prise par un arbre placé en (x, z) (même tirage que push). */
+  variantAt(x, z) {
+    const h = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453);
+    return Math.floor(h) % this.seeds.length;
+  }
+
+  /** Sommet du tronc d'une variante (palmiers : noix de coco). */
+  top(variant = 0) {
+    return treeOf(this.species, this.seeds[variant]).top || new THREE.Vector3(0, 3, 0);
+  }
+
+  /** Points pour des fruits sur la couronne d'une variante. */
+  spots(count, opts, variant = 0) {
+    return crownSpots(treeOf(this.species, this.seeds[variant]), count, opts);
   }
 
   finish() {}
