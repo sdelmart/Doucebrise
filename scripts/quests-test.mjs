@@ -515,7 +515,9 @@ const STEPS = {
   },
   collection: async () => {
     const g = window.game;
-    // Insectes de jour, de nuit, sous la pluie : on parcourt les heures et les lieux.
+    // Insectes de jour, de nuit, sous la pluie : on parcourt les heures et les lieux. Les
+    // insectes sont appelés tout de suite : leur apparition au fil du temps suit la vitesse
+    // d'affichage, très lente sur les machines de test sans carte graphique.
     const plan = [[11, 'clair'], [22, 'clair'], [14, 'pluie'], [10, 'clair'], [23, 'clair'], [15, 'pluie']];
     const zones = ['prairie', 'verger', 'foret', 'village', 'colline', 'pinede', 'bourg', 'palmeraie', 'lagon', 'port', 'etang', 'lac'];
     for (const [hour, weather] of [...plan, ...plan]) {
@@ -524,13 +526,16 @@ const STEPS = {
       for (const z of zones) {
         if (Object.keys(g.insects.caught).length >= 6) return;
         await QT.goZone(z);
-        await QT.wait(1200);
+        for (let i = g.insects.active.length; i < 7; i++) g.insects.spawn();
+        await QT.frames(2);
         for (let k = 0; k < 6; k++) {
-          const b = g.insects.closest();
-          if (!b || b.pos.distanceTo(g.player.pos) > 60) break;
+          // Une espèce pas encore attrapée, en attendant la fin du coup de filet précédent.
+          const b = g.insects.active.find((x) => !g.insects.caught[x.def.id] && x.flee <= 0);
+          if (!b) break;
           g.player.teleport(b.pos.x + 0.5, b.pos.z + 0.5, 0);
           await QT.frames(2);
           g.insects.catch(b);
+          await QT.wait(550);
         }
       }
     }
