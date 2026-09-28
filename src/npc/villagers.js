@@ -2,9 +2,13 @@ import * as THREE from 'three';
 import { Character } from '../player/character.js';
 import { normalizeAppearance, OPTIONS } from '../player/appearance.js';
 import { createVillagerBody } from './villagerBody.js';
+import { JOBS } from './jobGestures.js';
 import { ITEMS } from '../game/items.js';
 import { damp, lerpAngle } from '../core/math.js';
 import { PATHS } from '../world/layout.js';
+
+const _right = new THREE.Vector3();
+const _dir = new THREE.Vector3();
 
 // Les habitants de Doucebrise : apparence, emploi du temps, goûts et répliques.
 
@@ -880,6 +884,17 @@ export class Villager {
       const sx = fz * side;
       const sz = -fx * side;
       L.work = loc([s.x, s.z], [[s.x + fx * 2.2 + sx, s.z + fz * 2.2 + sz], [s.x + sx, s.z + sz]], s.rot);
+      // Au travail, le marchand se tient à côté de son étal (côté opposé au panneau), un
+      // peu tourné vers lui : derrière, le comptoir le cachait, lui et ses gestes.
+      const cx = s.x + fx * 1.0;
+      const cz = s.z + fz * 1.0;
+      const out = this.def.shop === 'marche' ? 2.25 : 1.6;
+      const wx = cx - fz * out + fx * 0.25;
+      const wz = cz + fx * out + fz * 0.25;
+      const free = this.game.world.colliders.resolve(wx, wz, 0.35);
+      if (Math.hypot(free.x - wx, free.z - wz) < 0.05 && this.game.world.heightAt(wx, wz) > 0.3) {
+        L.work = loc([wx, wz], [[cx + fx * 1.6 - fz * out, cz + fz * 1.6 + fx * out]], s.rot + 0.45);
+      }
     } else if (this.def.id === 'marin') {
       const f = this.game.world.fishingSpots.find((sp) => sp.habitat === 'mer');
       const path = PATHS[4].slice(1).map((p) => [p[0], p[1]]);
@@ -958,6 +973,7 @@ export class Villager {
       this.root.position.copy(this.pos);
       this.root.rotation.y = this.rotY;
       this.character.setUmbrella(false);
+      this.character.setWork?.(null);
       this.character.setDistance?.(this.pos.distanceTo(this.game.camera.position));
       this.character.update(dt, { speed: 0, running: false, grounded: true, vy: 0 });
       return;
@@ -1017,7 +1033,9 @@ export class Villager {
         }
       }
       const pd = Math.hypot(player.pos.x - this.pos.x, player.pos.z - this.pos.z);
-      if (pd < 4 && !loc.sit && !loc.fishing) {
+      // Au travail, on ne s'interrompt que si le joueur vient vraiment parler.
+      const near = JOBS[this.def.id] && this.locName === 'work' ? 2.4 : 4;
+      if (pd < near && !loc.sit && !loc.fishing) {
         this.rotY = lerpAngle(this.rotY, Math.atan2(player.pos.x - this.pos.x, player.pos.z - this.pos.z), 1 - Math.exp(-4 * dt));
       } else if (!loc.wander) {
         this.rotY = lerpAngle(this.rotY, loc.rot, 1 - Math.exp(-3 * dt));
@@ -1025,6 +1043,11 @@ export class Villager {
     }
     this.speed = damp(this.speed, speed, 10, dt);
     this.character.setUmbrella(raining && !this.home && !this.loc?.fishing, '#ff8fab');
+    // Gestes de métier : à son poste, sans parapluie, sauf pendant une conversation.
+    const talking = this.game.dialogue?.villager === this;
+    const playerDist = Math.hypot(player.pos.x - this.pos.x, player.pos.z - this.pos.z);
+    const working = !!JOBS[this.def.id] && this.locName === 'work' && !this.path.length && !this.home && !this.loc?.sit && !this.loc?.fishing && !raining && !talking && playerDist >= 2.4;
+    this.character.setWork?.(working ? this.def.id : null);
     const far = this.pos.distanceTo(player.pos) > 80;
     this.root.visible = !this.home && !far;
     if (this.root.visible) {
@@ -1032,7 +1055,22 @@ export class Villager {
       this.root.rotation.y = this.rotY;
       this.character.setDistance?.(this.pos.distanceTo(this.game.camera.position));
       this.character.update(dt, { speed: this.speed, running: false, grounded: true, vy: 0 });
+      const hit = this.character.takeWorkHit?.();
+      if (hit) this.toolSound(hit);
     }
+  }
+
+  /** Bruit d'un outil (marteau, scie…), entendu de près, placé à gauche ou à droite. */
+  toolSound(kind) {
+    const g = this.game;
+    const a = g.audio;
+    if (!a.ctx || g.indoors || g.state !== 'play') return;
+    const d = this.pos.distanceTo(g.player.pos);
+    if (d > 16) return;
+    const cam = g.camera;
+    const right = _right.set(1, 0, 0).applyQuaternion(cam.quaternion);
+    const dir = _dir.copy(this.pos).sub(cam.position).setY(0).normalize();
+    a.soundscape.tool(kind, dir.dot(right) * 0.8, Math.min(0.85, d / 18));
   }
 
   // --- Relations -------------------------------------------------------------

@@ -127,6 +127,7 @@ Le premier jour de chaque saison (sauf le tout premier jour de la partie) :
 - **Tapis d'herbe dense** autour du joueur : des dizaines de milliers de brins animés par le vent, qui s'écartent à ton passage, dorés en automne et tassés sous la neige (réglage « Herbe »).
 - **Personnage 3D animé** (KayKit Adventurers) : Mage, Chevalier, Barbare, Rôdeur, Voleur, Voleur à capuche — ou le style **Classique** entièrement personnalisable (onglet Style du créateur). Marche, course, saut, cueillette, caresses via les animations KayKit ; s'asseoir, saluer, danser, applaudir, pêcher sont posés en code.
 - **Habitants 3D animés** (`src/npc/villagerBody.js`) : les 16 habitants utilisent les mêmes modèles et animations que le joueur (marche, attente, assis sur les bancs, salut, joie, pêche, parapluie), **repeints à leurs couleurs** — peau, cheveux (ou barbe), haut, bas, chaussures — et coiffés de **leurs chapeaux, lunettes, écharpes et sacs** d'avant, ajustés à la forme de la tête et du torse. Chaque habitant est fusionné en un seul maillage animé avec un matériau partagé (un appel de dessin), n'est pas dessiné hors champ, et s'anime moins souvent au loin. Sans les modèles, le jeu reprend les habitants construits en code.
+- **Gestes de métier** (`src/npc/jobGestures.js`) : pendant leurs heures de travail, les habitants s'activent à côté de leur étal ou à leur poste, un outil en main — Bruno cloue et scie, Rose arrose ses semis, Pomme range ses fruits et appelle les clients, Lila coud, Mimi essuie le comptoir et sert, Léo visse, Élise étale la pâte et fouette, Hugo sculpte, Aurèle balaie, Sacha lit sa carte et montre les sommets, Noé scrute l'horizon aux jumelles, Nérée à la longue-vue, Coralie nettoie son masque, Paco secoue ses cocktails, Maëlys peint (Marin, lui, pêche). Gestes en alternance avec des pauses, bruits d'outils entendus de près ; ils s'interrompent quand on vient leur parler.
 - **Arbres réalistes** (rendu réaliste) : chênes, bouleaux, cerisiers, pommiers, arbres dorés, pins, sapins et arbres tropicaux, **générés au lancement** (tronc et branches qui poussent selon l'essence, `src/world/treeGen.js`, d'après EZ-Tree) avec des **écorces** et des **rameaux photographiés**. Plusieurs variantes par essence ; le vent fait bouger l'arbre et frémir les feuilles.
   - **Saisons** : feuilles rousses à l'automne (quelques-unes tombent), **branches nues** l'hiver avec la neige posée dessus, feuillage revenu au printemps ; les cerisiers sont roses, les sapins d'altitude gardent leur neige.
   - **Vue dégagée** : les branches entre la caméra et le personnage s'effacent, la vue n'est jamais bouchée en forêt.
@@ -214,7 +215,8 @@ src/
   player/                Personnage classique, personnage importé animé (avatar.js), visage,
                          apparence, déplacement, caméra
   animals/               Espèces (modèles 3D), comportement, gestion
-  npc/                   Habitants : apparence, emploi du temps, trajets, goûts et répliques
+  npc/                   Habitants : apparence, emploi du temps, trajets, goûts et répliques,
+                         gestes de métier (jobGestures.js)
   house/                 Maison : pièce, meubles, papiers peints, mode décoration, visites chez les habitants
   game/                  Objets, potager, cueillette, pêche, insectes, cuisine, histoire, quêtes des
                          habitants, progression, petits boulots, véhicules, calendrier, fêtes de saison

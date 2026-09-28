@@ -1,7 +1,7 @@
 {
   "name": "doucebrise",
   "private": true,
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Doucebrise — un jeu 3D cosy : un archipel à explorer, des animaux à apprivoiser, une maison à construire, des villages et une histoire.",
   "type": "module",
   "scripts": {

@@ -117,6 +117,50 @@ try {
     if (!r.draw) throw new Error('volume englobant des habitants absent');
     if (!(r.verts > 1000)) throw new Error(`habitant vide (${r.verts} sommets)`);
   });
+  await step('Gestes de métier (outils en main, pose, bruit)', async () => {
+    const issues = await page.evaluate(() => {
+      const g = window.game;
+      const out = [];
+      for (const v of g.villagers.list) {
+        const ch = v.character;
+        ch.setWork?.(v.def.id);
+        if (!ch.work) continue;
+        for (const m of ch.work.job.moves) {
+          const wk = ch.work;
+          // Pose de repos (sans geste), puis le geste.
+          wk.move = null;
+          wk.last = null;
+          wk.restT = 99;
+          ch.anim.overlay.work = 0;
+          ch.update(0.05, { speed: 0, running: false, grounded: true, vy: 0 });
+          const r0 = ch.bones['upperarm.r'].quaternion.clone();
+          const l0 = ch.bones['upperarm.l'].quaternion.clone();
+          wk.move = m;
+          wk.last = m;
+          wk.t = 0;
+          wk.dur = 99;
+          wk.played.clear();
+          ch.anim.overlay.work = 1;
+          ch.every = 1;
+          for (let i = 0; i < 3; i++) ch.update(0.05, { speed: 0, running: false, grounded: true, vy: 0 });
+          for (const side of ['r', 'l']) {
+            const name = m.props?.[side];
+            if (name && !wk.meshes[`${side}:${name}`]?.visible) out.push(`${v.def.id} « ${m.name} » : outil ${name} absent`);
+          }
+          if (!m.clips && ch.bones['upperarm.r'].quaternion.angleTo(r0) < 0.05 && ch.bones['upperarm.l'].quaternion.angleTo(l0) < 0.05) out.push(`${v.def.id} « ${m.name} » : pas de pose`);
+        }
+        ch.setWork(null);
+        for (let i = 0; i < 20; i++) ch.update(0.05, { speed: 0, running: false, grounded: true, vy: 0 });
+        if (Object.values(ch.work.meshes).some((x) => x.visible)) out.push(`${v.def.id} : outil encore visible après le travail`);
+      }
+      const n = g.villagers.list.filter((v) => v.character.work).length;
+      if (n < 15) out.push(`seulement ${n} habitants ont un geste de métier`);
+      g.audio.ensure();
+      if (g.audio.ctx) for (const k of ['knock', 'saw', 'swish', 'scrape', 'shake']) g.audio.soundscape.tool(k, 0, 0.3);
+      return out;
+    });
+    if (issues.length) throw new Error(issues.join(' ; '));
+  });
   await step('Rendu réaliste (sol détaillé, herbe dense, arbres, décor)', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;

@@ -457,6 +457,35 @@ export class Soundscape {
     }
   }
 
+  // --- Outils des habitants (gestes de métier) ----------------------------------------------
+
+  tool(kind, pan = 0, far = 0) {
+    const o = { pan, far };
+    switch (kind) {
+      case 'knock':
+        // Marteau sur le bois : coup mat et petite résonance.
+        this.sing([[0, 0.07, 190, 120]], { ...o, vol: 0.07 });
+        this.hiss({ ...o, attack: 0.002, dur: 0.05, f: 950, q: 4, vol: 0.05 });
+        this.hiss({ ...o, attack: 0.001, dur: 0.015, type: 'highpass', f: 3500, vol: 0.03 });
+        break;
+      case 'saw':
+        this.hiss({ ...o, attack: 0.06, dur: 0.22, f: 1700, f1: 2600, q: 1.6, vol: 0.035 });
+        break;
+      case 'swish':
+        this.hiss({ ...o, attack: 0.08, dur: 0.25, f: 2600, f1: 1400, q: 0.6, vol: 0.022 });
+        break;
+      case 'scrape':
+        this.hiss({ ...o, attack: 0.02, dur: 0.1, type: 'highpass', f: 3200, q: 0.7, vol: 0.02 });
+        break;
+      case 'shake':
+        // Glaçons dans le shaker.
+        for (let i = 0; i < 3; i++) this.hiss({ ...o, t: i * 0.025, attack: 0.002, dur: 0.03, type: 'highpass', f: 3800 + i * 500, vol: 0.03 });
+        break;
+      default:
+        break;
+    }
+  }
+
   // --- Mise à jour ------------------------------------------------------------------------
 
   /**

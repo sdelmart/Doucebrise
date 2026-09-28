@@ -4,6 +4,7 @@ import { Character } from './character.js';
 import { modelsIn, getModel } from '../core/models.js';
 import { Shape, G, getGradientMap, outlineMaterial, vertexColorToon, shadedMaterial, isRealistic } from '../core/materials.js';
 import { damp } from '../core/math.js';
+import { JOBS, buildProp } from '../npc/jobGestures.js';
 
 // Apparence du joueur : un personnage KayKit importé (assets/models/characters/, animé par
 // un AnimationMixer) ou le personnage « classique » construit en code (coiffures, tenues…).
@@ -138,6 +139,8 @@ const RUN_REF = 7;
 const STEP_OFFSET = { walk: 0.03, run: 0.78 };
 const POSED_BONES = ['upperleg.l', 'upperleg.r', 'lowerleg.l', 'lowerleg.r', 'upperarm.l', 'upperarm.r', 'lowerarm.l', 'lowerarm.r'];
 const BONE_NAMES = [...POSED_BONES, 'hips', 'spine', 'chest', 'head', 'hand.l', 'hand.r', 'handslot.l', 'handslot.r'];
+// Os remis au repos avant chaque image (les gestes de métier tournent aussi le buste et la tête).
+const REST_BONES = [...POSED_BONES, 'chest', 'head'];
 const OUTLINE = 0.011;
 // Canne et filet tenus vers l'avant et un peu vers le haut (repère du personnage).
 const HELD = new THREE.Quaternion().setFromEuler(new THREE.Euler(1.2, 0, 0));
@@ -145,6 +148,7 @@ const _q = new THREE.Quaternion();
 const _mq = new THREE.Quaternion();
 const _pq = new THREE.Quaternion();
 const _e = new THREE.Euler();
+const _e2 = new THREE.Euler(0, 0, 0, 'YXZ');
 const _v = new THREE.Vector3();
 
 function toonFrom(mat) {
@@ -197,7 +201,7 @@ export class ModelBody {
     this.unit = this.targetHeight / Math.max(0.01, this.measureHeight());
     // Os retouchés par les poses construites en code : on repart de leur position de repos.
     this.rest = {};
-    for (const n of POSED_BONES) if (this.bones[n]) this.rest[n] = this.bones[n].quaternion.clone();
+    for (const n of REST_BONES) if (this.bones[n]) this.rest[n] = this.bones[n].quaternion.clone();
     // Contour dessiné (comme le reste du jeu), qui suit le squelette.
     if (!isRealistic()) this.addOutlines();
     this.applyScale();
@@ -383,6 +387,103 @@ export class ModelBody {
 
   setExpression() {}
 
+  /** Gestes de métier (habitant à son poste) : id de l'habitant, ou null pour arrêter. */
+  setWork(id) {
+    const job = id ? JOBS[id] : null;
+    if (!this.work) {
+      if (!job) return;
+      this.work = { job, on: false, move: null, last: null, t: 0, dur: 0, restT: 1 + Math.random() * 3, played: new Set(), clip: false, beatN: 0, hit: null, meshes: {} };
+    }
+    this.work.on = !!job;
+  }
+
+  /** Bruit du dernier coup d'outil (marteau, scie…), lu une seule fois. */
+  takeWorkHit() {
+    const h = this.work?.hit || null;
+    if (h) this.work.hit = null;
+    return h;
+  }
+
+  startMove(wk) {
+    const moves = wk.job.moves;
+    const m = moves[Math.floor(Math.random() * moves.length)];
+    wk.move = m;
+    wk.last = m;
+    wk.t = 0;
+    wk.dur = m.dur[0] + Math.random() * (m.dur[1] - m.dur[0]);
+    wk.played.clear();
+    wk.beatN = 0;
+  }
+
+  /** Cycle du travail (geste, pause, geste…) et outils en main. */
+  updateWork(dt, blocked) {
+    const wk = this.work;
+    const active = wk.on && !blocked;
+    if (!active) {
+      wk.move = null;
+      wk.restT = Math.max(wk.restT, 0.8);
+    } else if (wk.move) {
+      wk.t += dt;
+      // Animations importées du geste (ramasser, poser…).
+      for (const c of wk.move.clips || []) {
+        if (!wk.played.has(c) && wk.t >= c[1]) {
+          wk.played.add(c);
+          wk.clip = true;
+          this.play(c[0], 1.3);
+        }
+      }
+      if (wk.move.beat) {
+        const n = Math.floor(wk.t * wk.move.beat);
+        if (n !== wk.beatN) {
+          wk.beatN = n;
+          if (wk.move.sound) wk.hit = wk.move.sound;
+        }
+      }
+      if (wk.t >= wk.dur) {
+        wk.move = null;
+        wk.restT = wk.job.rest[0] + Math.random() * (wk.job.rest[1] - wk.job.rest[0]);
+      }
+    } else {
+      wk.restT -= dt;
+      if (wk.restT <= 0) this.startMove(wk);
+    }
+    if (!wk.move && !this.anim.action) wk.clip = false;
+    const o = this.anim.overlay;
+    o.work = damp(o.work || 0, wk.move ? 1 : 0, 6, dt);
+    const w = o.work;
+    const m = wk.move || wk.last;
+    let orient = {};
+    if (m && w > 0.01) orient = m.pose(wk.t, (b, x, y, z) => this.turn(b, x, y, z, w)) || {};
+    // Outils : visibles pendant le geste, tenus dans le repère du personnage.
+    for (const side of ['r', 'l']) {
+      const name = m?.props?.[side];
+      for (const [key, mesh] of Object.entries(wk.meshes)) {
+        if (key.startsWith(`${side}:`) && key !== `${side}:${name}`) mesh.visible = false;
+      }
+      if (!name) continue;
+      const key = `${side}:${name}`;
+      let mesh = wk.meshes[key];
+      if (!mesh) {
+        mesh = buildProp(name);
+        if (!mesh) continue;
+        mesh.scale.setScalar(1 / (this.unit * (this.appearance.height || 1)));
+        mesh.castShadow = true;
+        (side === 'r' ? this.hand : this.handL).add(mesh);
+        wk.meshes[key] = mesh;
+      }
+      mesh.visible = w > 0.35;
+      if (mesh.visible) this.alignHeldEuler(mesh, orient[side] || [0, 0, 0]);
+    }
+  }
+
+  /** Outil orienté dans le repère du personnage (angles : tangage, lacet, roulis). */
+  alignHeldEuler(mesh, [x, y, z]) {
+    this.model.getWorldQuaternion(_mq);
+    mesh.parent.getWorldQuaternion(_pq);
+    _q.setFromEuler(_e2.set(x, y, z, 'YXZ'));
+    mesh.quaternion.copy(_pq.invert().multiply(_mq).multiply(_q));
+  }
+
   /** Oriente un objet tenu en main dans le repère du personnage (quelle que soit la main). */
   alignHeld(mesh) {
     this.model.getWorldQuaternion(_mq);
@@ -480,6 +581,9 @@ export class ModelBody {
     const rideW = want('ride', !!an.ride && !an.action);
     this.turn('upperarm.l', -1.0, 0, 0, rideW * (an.ride?.pose === 'balloon' ? 0.4 : 1));
     this.turn('upperarm.r', -1.0, 0, 0, rideW * (an.ride?.pose === 'balloon' ? 0.4 : 1));
+
+    // Gestes de métier (pas en marchant, assis, à la pêche, sous le parapluie…).
+    if (this.work) this.updateWork(dt, seated || !!an.ride || s.speed > 0.2 || an.fishing || an.umbrella || (!!an.action && !this.work.clip));
 
     if (this.rod.visible) this.alignHeld(this.rod);
     if (this.net?.visible) this.alignHeld(this.net);
