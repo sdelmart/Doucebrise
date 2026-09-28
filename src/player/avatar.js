@@ -159,10 +159,16 @@ function toonFrom(mat) {
   return m;
 }
 
-class ModelBody {
-  constructor(id, appearance) {
+export class ModelBody {
+  /**
+   * @param {string} id modèle (ex. 'characters/Mage')
+   * @param {object} appearance
+   * @param {object} [opts] options lues par les variantes (habitants)
+   */
+  constructor(id, appearance, opts = {}) {
     const gltf = getModel(id);
     this.id = id;
+    this.opts = opts;
     this.appearance = { ...appearance };
     this.root = new THREE.Group();
     this.pivot = new THREE.Group(); // assis, en selle, rebond
@@ -173,40 +179,25 @@ class ModelBody {
     // Os rangés sous leur nom d'origine (« upperarm.r ») : le chargeur de Three.js retire
     // les points des noms (« upperarmr »), on retrouve donc chaque os par son nom nettoyé.
     this.bones = {};
-    this.meshes = [];
-    const byName = {};
+    this.byName = {};
     this.model.traverse((o) => {
-      if (o.isBone) byName[o.name] = o;
-      if (o.isMesh) {
-        o.material = toonFrom(o.material);
-        o.castShadow = true;
-        o.receiveShadow = true;
-        o.frustumCulled = false;
-        this.meshes.push(o);
-      }
+      if (o.isBone) this.byName[o.name] = o;
     });
     for (const n of BONE_NAMES) {
-      const b = byName[THREE.PropertyBinding.sanitizeNodeName(n)] || byName[n];
+      const b = this.byName[THREE.PropertyBinding.sanitizeNodeName(n)] || this.byName[n];
       if (b) this.bones[n] = b;
     }
+    this.model.updateMatrixWorld(true);
+    this.meshes = this.prepareMeshes();
 
     // Taille : même gabarit que les autres personnages du jeu.
     this.model.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(this.model);
-    this.unit = TARGET_HEIGHT / Math.max(0.01, box.max.y - box.min.y);
+    this.unit = this.targetHeight / Math.max(0.01, this.measureHeight());
     // Os retouchés par les poses construites en code : on repart de leur position de repos.
     this.rest = {};
     for (const n of POSED_BONES) if (this.bones[n]) this.rest[n] = this.bones[n].quaternion.clone();
     // Contour dessiné (comme le reste du jeu), qui suit le squelette.
-    for (const m of this.meshes) {
-      if (!m.isSkinnedMesh || isRealistic()) continue;
-      const o = new THREE.SkinnedMesh(m.geometry, outlineMaterial(OUTLINE / this.unit));
-      o.name = 'outline';
-      o.bind(m.skeleton, m.bindMatrix);
-      o.frustumCulled = false;
-      o.raycast = () => {};
-      m.parent.add(o);
-    }
+    if (!isRealistic()) this.addOutlines();
     this.applyScale();
 
     // Animations.
@@ -239,6 +230,45 @@ class ModelBody {
     this.rod.add(this.rodTip);
     this.hand = hand;
     this.handL = handL;
+  }
+
+  /** Maillages du personnage, prêts à dessiner (matériaux du jeu, ombres). */
+  prepareMeshes() {
+    const meshes = [];
+    this.model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material = toonFrom(o.material);
+      o.castShadow = true;
+      o.receiveShadow = true;
+      o.frustumCulled = false;
+      meshes.push(o);
+    });
+    return meshes;
+  }
+
+  /** Taille voulue à l'échelle 1, en mètres. */
+  get targetHeight() {
+    return TARGET_HEIGHT;
+  }
+
+  /** Hauteur du modèle d'origine (unités du fichier). */
+  measureHeight() {
+    const box = new THREE.Box3().setFromObject(this.model);
+    return box.max.y - box.min.y;
+  }
+
+  addOutlines() {
+    for (const m of this.meshes) {
+      if (!m.isSkinnedMesh) continue;
+      const o = new THREE.SkinnedMesh(m.geometry, outlineMaterial(OUTLINE / this.unit));
+      o.name = 'outline';
+      o.bind(m.skeleton, m.bindMatrix);
+      o.frustumCulled = m.frustumCulled;
+      if (m.boundingSphere) o.boundingSphere = m.boundingSphere;
+      if (m.boundingBox) o.boundingBox = m.boundingBox;
+      o.raycast = () => {};
+      m.parent.add(o);
+    }
   }
 
   /** Hauteur d'un os au repos, en mètres (échelle du jeu). */

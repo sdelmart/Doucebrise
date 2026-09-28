@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Character } from '../player/character.js';
 import { normalizeAppearance, OPTIONS } from '../player/appearance.js';
+import { createVillagerBody } from './villagerBody.js';
 import { ITEMS } from '../game/items.js';
 import { damp, lerpAngle } from '../core/math.js';
 import { PATHS } from '../world/layout.js';
@@ -823,7 +824,9 @@ export class Villager {
   constructor(def, game) {
     this.def = def;
     this.game = game;
-    this.character = new Character(normalizeAppearance({ ...def.appearance, name: def.name }));
+    // Personnage importé animé (KayKit) ; à défaut, le personnage construit en code.
+    const appearance = normalizeAppearance({ ...def.appearance, name: def.name });
+    this.character = createVillagerBody(def.id, appearance) || new Character(appearance);
     this.root = this.character.root;
     this.pos = new THREE.Vector3();
     this.rotY = 0;
@@ -955,6 +958,7 @@ export class Villager {
       this.root.position.copy(this.pos);
       this.root.rotation.y = this.rotY;
       this.character.setUmbrella(false);
+      this.character.setDistance?.(this.pos.distanceTo(this.game.camera.position));
       this.character.update(dt, { speed: 0, running: false, grounded: true, vy: 0 });
       return;
     }
@@ -1026,6 +1030,7 @@ export class Villager {
     if (this.root.visible) {
       this.root.position.copy(this.pos);
       this.root.rotation.y = this.rotY;
+      this.character.setDistance?.(this.pos.distanceTo(this.game.camera.position));
       this.character.update(dt, { speed: this.speed, running: false, grounded: true, vy: 0 });
     }
   }

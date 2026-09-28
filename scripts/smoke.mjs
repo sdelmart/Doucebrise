@@ -96,6 +96,25 @@ try {
     if (!r.avatar) throw new Error('le personnage importé n\'est pas chargé');
     if (r.models < 5) throw new Error(`végétation importée incomplète (${r.models} types)`);
   });
+  await step('Habitants 3D animés', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const list = g.villagers.list;
+      const models = list.filter((v) => v.character.mixer && v.character.meshes?.length === 1 && v.character.meshes[0].isSkinnedMesh);
+      // Un habitant sur la place, animé : il marche puis salue.
+      const v = list[0];
+      v.override = { x: g.player.pos.x + 2, z: g.player.pos.z, rot: 0 };
+      v.update(0.016, 10, false);
+      v.character.play('wave', 1);
+      for (let i = 0; i < 10; i++) v.character.update(0.05, { speed: 2.3, running: false, grounded: true, vy: 0 });
+      v.override = null;
+      const m = models[0]?.character.meshes[0];
+      return { n: list.length, models: models.length, draw: m ? m.frustumCulled && !!m.boundingSphere : false, verts: m?.geometry.attributes.position.count || 0 };
+    });
+    if (r.models !== r.n) throw new Error(`${r.n - r.models} habitant(s) sans modèle animé`);
+    if (!r.draw) throw new Error('volume englobant des habitants absent');
+    if (!(r.verts > 1000)) throw new Error(`habitant vide (${r.verts} sommets)`);
+  });
   await step('Rendu réaliste (sol détaillé, herbe dense, arbres)', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;

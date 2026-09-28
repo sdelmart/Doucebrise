@@ -134,7 +134,8 @@ export function enableShadows(root, cast = true, receive = true) {
 // mêmes matériaux que le reste du décor : vent, saisons, neige et un seul appel de dessin.
 
 const pixelCache = new Map();
-function pixelsOf(texture) {
+/** Pixels d'une texture chargée : { w, h, px (RGBA), flipY } (mis en cache). */
+export function pixelsOf(texture) {
   const img = texture?.image;
   if (!img) return null;
   if (pixelCache.has(img)) return pixelCache.get(img);

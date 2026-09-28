@@ -14,6 +14,8 @@ const HC = [0, 0.3, 0]; // centre de la tête dans le repère du groupe tête
 const HEAD_SCALE = [1.04, 0.97, 1.0];
 const OUTLINE = 0.011;
 const RIBBON = '#ff8fa3';
+/** Repères de la tête et du torse (repris pour habiller les habitants importés). */
+export const CLASSIC_FRAME = { R, HC, HEAD_SCALE, eyes: [0.118, 0.23, 0.37], torsoHalf: [0.215, 0.185], neck: 0.44 };
 
 const TORSO_PROFILE = [
   [0.0, -0.05], [0.16, -0.045], [0.205, 0.02], [0.215, 0.12], [0.205, 0.24],
