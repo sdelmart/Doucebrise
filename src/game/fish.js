@@ -2,8 +2,11 @@ import * as THREE from 'three';
 import { ITEMS } from './items.js';
 import { Shape, G, vertexColorToon } from '../core/materials.js';
 
-// Pêche : 24 espèces (rareté, lieu, heures, saisons, météo), mini-jeu de ferrage,
-// cannes à pêche, appâts, bouteilles à la mer et records de taille.
+// Pêche : 38 espèces (rareté, lieu, heures, saisons, météo), cannes à pêche, appâts,
+// bouteilles à la mer et records de taille. L'ombre du poisson approche du flotteur (sa
+// taille trahit la prise), quelques touches trompeuses avant la vraie morsure, puis un
+// combat au moulinet : on mouline en maintenant E et on relâche quand le poisson tire,
+// sinon la ligne casse.
 
 export const RARITY = [
   { label: 'Commun', color: '#9a8574', xp: 12, weight: 60 },
@@ -83,15 +86,22 @@ for (const f of FISH) {
   ITEMS[f.id] = { label: f.label, emoji: f.emoji, cat: 'fish', price: f.price, feed: true, tag: 'poisson', rarity: f.rarity };
 }
 
+// wait : attente, rare : chance de poissons rares, strength : tension (plus bas = ligne plus
+// solide), reel : vitesse du moulinet.
 export const RODS = {
-  bambou: { label: 'Canne en bambou', wait: 1, rare: 1, zone: 0, strikes: 2 },
-  fibre: { label: 'Canne en fibre', wait: 0.8, rare: 1.5, zone: 0.05, strikes: 2, price: 800 },
-  doree: { label: 'Canne dorée', wait: 0.62, rare: 2.2, zone: 0.1, strikes: 3, price: 3000 },
+  bambou: { label: 'Canne en bambou', wait: 1, rare: 1, strength: 1, reel: 1 },
+  fibre: { label: 'Canne en fibre', wait: 0.8, rare: 1.5, strength: 0.85, reel: 1.1, price: 800 },
+  doree: { label: 'Canne dorée', wait: 0.62, rare: 2.2, strength: 0.72, reel: 1.2, price: 3000 },
 };
 
-const HITS = [1, 2, 2, 3];
-const ZONE = [0.3, 0.24, 0.18, 0.13];
-const SPEED = [0.9, 1.15, 1.45, 1.8];
+// Combat selon la rareté : vitesse du moulinet, force et fréquence des tirages du poisson.
+const FIGHT = [
+  { reel: 0.38, pull: 0.55, calm: [1.8, 3], rush: [0.4, 0.7], window: 1.5 },
+  { reel: 0.27, pull: 1.05, calm: [1.4, 2.5], rush: [0.6, 1.1], window: 1.3 },
+  { reel: 0.22, pull: 1.3, calm: [1.1, 2.1], rush: [0.7, 1.3], window: 1.1 },
+  { reel: 0.17, pull: 1.55, calm: [0.9, 1.7], rush: [0.8, 1.5], window: 0.95 },
+];
+const rand = (a, b) => a + Math.random() * (b - a);
 
 function inHours(h, [a, b]) {
   return a <= b ? h >= a && h < b : h >= a || h < b;
@@ -115,10 +125,36 @@ export class Fishing {
     game.scene.add(this.bobber, this.line);
     this.best = {};
     this.rod = 'bambou';
+    // Ombre du poisson sous la surface.
+    const sg = new THREE.CircleGeometry(0.5, 20);
+    sg.rotateX(-Math.PI / 2);
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 64;
+    const cx = cv.getContext('2d');
+    const grd = cx.createRadialGradient(32, 32, 4, 32, 32, 32);
+    grd.addColorStop(0, 'rgba(255,255,255,1)');
+    grd.addColorStop(0.55, 'rgba(255,255,255,0.8)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    cx.fillStyle = grd;
+    cx.fillRect(0, 0, 64, 64);
+    this.shadow = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: '#0a1c26', map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0, depthWrite: false }));
+    this.shadow.renderOrder = 3;
+    this.shadow.visible = false;
+    game.scene.add(this.shadow);
     this.el = document.createElement('div');
     this.el.className = 'reel hidden';
-    this.el.innerHTML = '<div class="reel-title"></div><div class="reel-track"><div class="reel-zone"></div><div class="reel-cursor"></div></div><div class="reel-info"></div>';
+    this.el.innerHTML = `<div class="reel-title"></div>
+      <div class="reel-track"><div class="reel-water"></div><div class="reel-fish">🐟</div></div>
+      <div class="reel-tension"><div class="reel-tension-fill"></div><span>Tension</span></div>
+      <div class="reel-info"></div>`;
     document.body.appendChild(this.el);
+    // Au doigt ou à la souris : appuyer longuement sur le panneau mouline aussi.
+    const hold = (on) => (e) => {
+      this.pointerHold = on;
+      if (on) e.preventDefault();
+    };
+    this.el.addEventListener('pointerdown', hold(true));
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) this.el.addEventListener(ev, hold(false));
   }
 
   get active() {
@@ -158,7 +194,7 @@ export class Fishing {
     this.spot = spot;
     this.state = 'wait';
     const lvl = g.progress.perk('peche');
-    let wait = (2.5 + Math.random() * 4) * this.rodInfo.wait * (1 - lvl * 0.04);
+    let wait = (3 + Math.random() * 4) * this.rodInfo.wait * (1 - lvl * 0.04);
     this.bait = false;
     if (g.inventory.appat > 0) {
       g.inventory.appat -= 1;
@@ -167,6 +203,10 @@ export class Fishing {
       g.ui.refreshInventory();
     }
     this.t = wait;
+    this.waitTotal = wait;
+    // La prise est tirée au lancer : son ombre approche du flotteur.
+    this.catch = this.roll();
+    this.planNibbles(wait);
     g.player.frozen = true;
     g.player.face(spot.x + spot.dirX * 10, spot.z + spot.dirZ * 10);
     g.player.character.setFishing(true);
@@ -174,8 +214,29 @@ export class Fishing {
     this.bobber.position.copy(this.bobberPos);
     this.bobber.visible = true;
     this.line.visible = true;
+    this.showShadow();
     g.audio?.play('cast');
     if (this.bait) g.ui.toast('🪱 Appât accroché : ça va mordre plus vite !', 1600);
+  }
+
+  /** Touches trompeuses avant la vraie morsure (le poisson goûte l'appât). */
+  planNibbles(wait) {
+    const n = Math.floor(Math.random() * 3.2);
+    this.nibbles = Array.from({ length: n }, () => wait * rand(0.08, 0.45)).sort((a, b) => b - a);
+    this.nibbleT = 0;
+  }
+
+  /** Ombre du poisson : taille selon la prise, part de loin et s'approche. */
+  showShadow() {
+    const c = this.catch;
+    const len = c.fish ? THREE.MathUtils.clamp((c.fish.size[0] + c.fish.size[1]) / 2 / 55, 0.3, 2.6) : 0.55;
+    this.shadowLen = len;
+    const a = Math.atan2(this.spot.dirX, this.spot.dirZ) + rand(-1.3, 1.3);
+    this.shadowFrom = { a, r: rand(3.2, 4.6) };
+    this.shadow.scale.set(len * 0.42, 1, len);
+    this.shadow.material.opacity = 0;
+    this.shadow.visible = true;
+    this.shadowPos = new THREE.Vector3();
   }
 
   stop() {
@@ -183,7 +244,9 @@ export class Fishing {
     this.state = 'off';
     this.bobber.visible = false;
     this.line.visible = false;
+    this.shadow.visible = false;
     this.el.classList.add('hidden');
+    this.pointerHold = false;
     g.player.frozen = false;
     g.player.character.setFishing(false);
   }
@@ -212,73 +275,105 @@ export class Fishing {
     if (this.state === 'bite') {
       this.startReel();
     } else if (this.state === 'reel') {
-      this.reelPress();
+      // Le moulinet se commande en maintenant E (voir update).
+    } else if (this.nibbleT > 0) {
+      // Ferré sur une simple touche : le poisson se méfie et repart.
+      g.ui.toast('Trop tôt ! Ce n\'était qu\'une touche : le poisson se méfie… 🐟', 2200);
+      g.audio?.play('splash');
+      this.nibbleT = 0;
+      const wait = rand(3, 5.5) * this.rodInfo.wait;
+      this.t = wait;
+      this.waitTotal = wait;
+      this.planNibbles(wait);
+      this.shadowFrom = { a: this.shadowFrom.a + rand(-0.8, 0.8), r: rand(3.5, 4.8) };
     } else {
-      g.ui.toast('Trop tôt ! Attends que le flotteur plonge… 🎣');
+      g.ui.toast('Tu remontes ta ligne. 🎣');
       this.stop();
     }
   }
 
   startReel() {
-    const catchInfo = this.roll();
-    this.catch = catchInfo;
-    const rar = catchInfo.fish ? catchInfo.fish.rarity : 0;
+    const c = this.catch;
+    const rar = c.fish ? c.fish.rarity : 0;
+    const F = FIGHT[rar];
     this.state = 'reel';
     this.reel = {
-      hits: 0,
-      need: catchInfo.fish ? HITS[rar] : 1,
-      strikes: 0,
-      zone: ZONE[rar] + this.rodInfo.zone + this.game.progress.perk('peche') * 0.006,
-      zoneX: 0.2 + Math.random() * 0.5,
-      speed: SPEED[rar],
-      x: 0,
-      dir: 1,
-      timer: 4,
       rarity: rar,
+      progress: 0.22,
+      tension: 0.2,
+      rush: false,
+      phaseT: rand(...F.calm) * 0.6,
+      slack: 0,
+      tick: 0,
     };
     this.el.classList.remove('hidden');
+    this.el.querySelector('.reel-fish').textContent = c.fish ? c.fish.emoji : c.bottle ? '🍾' : '❔';
     this.renderReel();
   }
 
   renderReel() {
     const r = this.reel;
     const rar = RARITY[r.rarity];
-    this.el.querySelector('.reel-title').innerHTML = `🎣 Ferre ! <span style="color:${rar.color}">${this.catch.fish ? rar.label : '???'}</span>`;
-    const zone = this.el.querySelector('.reel-zone');
-    zone.style.left = `${r.zoneX * 100}%`;
-    zone.style.width = `${r.zone * 100}%`;
-    this.el.querySelector('.reel-info').textContent = `Appuie sur E dans la zone verte · ${'💚'.repeat(r.hits)}${'🤍'.repeat(r.need - r.hits)} · ratés : ${r.strikes}/${this.rodInfo.strikes}`;
+    this.el.querySelector('.reel-title').innerHTML = `🎣 ${r.rush ? 'Il tire ! Relâche !' : 'Mouline !'} <span style="color:${rar.color}">${this.catch.fish ? rar.label : '???'}</span>`;
+    // Le poisson se rapproche (vers la gauche) à mesure qu'on mouline.
+    this.el.querySelector('.reel-fish').style.left = `${(1 - r.progress) * 88 + 2}%`;
+    this.el.querySelector('.reel-fish').classList.toggle('rush', r.rush);
+    const fill = this.el.querySelector('.reel-tension-fill');
+    fill.style.width = `${Math.round(r.tension * 100)}%`;
+    fill.style.background = r.tension > 0.8 ? '#ef6f94' : r.tension > 0.55 ? '#f4b860' : '#7fd1b9';
+    this.el.classList.toggle('danger', r.tension > 0.8);
+    this.el.querySelector('.reel-info').textContent = r.rush
+      ? '💦 Le poisson tire : relâche E pour ne pas casser la ligne !'
+      : 'Maintiens E (ou appuie ici) pour mouliner · relâche quand il tire';
   }
 
-  reelPress() {
-    const r = this.reel;
+  /** Combat au moulinet, à chaque image. */
+  updateReel(dt, holding) {
     const g = this.game;
-    if (r.x >= r.zoneX && r.x <= r.zoneX + r.zone) {
-      r.hits++;
-      g.audio.play('bite');
-      if (r.hits >= r.need) {
-        this.finish();
-        return;
+    const r = this.reel;
+    const F = FIGHT[r.rarity];
+    const rod = this.rodInfo;
+    const lvl = g.progress.perk('peche');
+    // Le poisson alterne calme et tirages.
+    r.phaseT -= dt;
+    if (r.phaseT <= 0) {
+      r.rush = !r.rush;
+      r.phaseT = r.rush ? rand(...F.rush) : rand(...F.calm);
+      if (r.rush) {
+        g.audio?.play('fishpull');
+        g.particles.emit('drop', this.shadowPos.clone().setY(0.1), { count: 3, spread: 0.6, rise: 0.8, size: 0.2 });
       }
-      r.zoneX = 0.05 + Math.random() * (0.9 - r.zone);
-      r.speed *= 1.1;
-      r.timer = 4;
+    }
+    const strength = rod.strength * (1 - lvl * 0.02);
+    if (holding) {
+      r.progress += F.reel * rod.reel * (r.rush ? 0.3 : 1) * dt;
+      r.tension += (r.rush ? F.pull : 0.22) * strength * dt;
+      r.tick -= dt;
+      if (r.tick <= 0) {
+        r.tick = r.rush ? 0.11 : 0.07;
+        g.audio?.play('reeltick');
+      }
     } else {
-      this.miss();
-      if (this.state !== 'reel') return;
+      r.tension -= 0.55 * dt;
+      r.progress -= (r.rush ? 0.09 : 0.02) * dt;
+    }
+    r.tension = Math.max(0, r.tension);
+    if (r.tension >= 1) {
+      g.audio?.play('snap');
+      g.ui.toast('Clac ! La ligne a cassé… Relâche quand le poisson tire ! 🎣', 2800);
+      this.stop();
+      return;
+    }
+    if (r.progress <= 0) {
+      g.ui.toast('Il a filé au large… Réessaie ! 🐟💨');
+      this.stop();
+      return;
+    }
+    if (r.progress >= 1) {
+      this.finish();
+      return;
     }
     this.renderReel();
-  }
-
-  miss() {
-    const r = this.reel;
-    r.strikes++;
-    r.timer = 4;
-    this.game.audio.play('ui');
-    if (r.strikes >= this.rodInfo.strikes) {
-      this.game.ui.toast('Il s\'est échappé… Réessaie ! 🐟💨');
-      this.stop();
-    }
   }
 
   finish() {
@@ -326,34 +421,53 @@ export class Fishing {
     this.t -= dt;
     const time = performance.now() / 1000;
     let dip = Math.sin(time * 2.2) * 0.02;
-    if (this.state === 'wait' && this.t <= 0) {
-      this.state = 'bite';
-      this.t = 1.4;
-      g.particles.emit('alert', this.bobberPos.clone().setY(0.5), { size: 0.45 });
-      g.particles.emit('drop', this.bobberPos.clone().setY(0.1), { count: 4, spread: 0.5, rise: 0.6, size: 0.18 });
-      g.audio?.play('bite');
+    // Ombre : loin au lancer, elle s'approche du flotteur pendant l'attente.
+    let near = 1 - this.t / this.waitTotal;
+    let wiggle = 0.25;
+    if (this.state === 'wait') {
+      this.nibbleT = Math.max(0, this.nibbleT - dt);
+      if (this.nibbles.length && this.t <= this.nibbles[0]) {
+        this.nibbles.shift();
+        this.nibbleT = 0.5;
+        g.audio?.play('nibble');
+        g.particles.emit('drop', this.bobberPos.clone().setY(0.05), { count: 1, spread: 0.2, rise: 0.3, size: 0.12 });
+      }
+      if (this.nibbleT > 0) dip = -0.05 * Math.sin((0.5 - this.nibbleT) * Math.PI * 4);
+      if (this.t <= 0) {
+        this.state = 'bite';
+        this.t = FIGHT[this.catch.fish ? this.catch.fish.rarity : 0].window;
+        g.particles.emit('alert', this.bobberPos.clone().setY(0.5), { size: 0.45 });
+        g.particles.emit('drop', this.bobberPos.clone().setY(0.1), { count: 4, spread: 0.5, rise: 0.6, size: 0.18 });
+        g.audio?.play('bite');
+      }
     } else if (this.state === 'bite') {
+      near = 1;
       dip = -0.12 + Math.sin(time * 25) * 0.05;
       if (this.t <= 0) {
-        g.ui.toast('Il s\'est échappé… Réessaie ! 🐟💨');
+        g.ui.toast('Il s\'est échappé… Il fallait ferrer quand le flotteur a plongé ! 🐟💨');
         this.stop();
         return;
       }
     } else if (this.state === 'reel') {
       const r = this.reel;
-      dip = -0.18 + Math.sin(time * 30) * 0.08;
-      r.x += r.dir * r.speed * dt;
-      if (r.x > 1) {
-        r.x = 1;
-        r.dir = -1;
-      } else if (r.x < 0) {
-        r.x = 0;
-        r.dir = 1;
-      }
-      r.timer -= dt;
-      if (r.timer <= 0) this.miss();
-      if (this.state === 'reel') this.el.querySelector('.reel-cursor').style.left = `${r.x * 100}%`;
+      near = 1;
+      wiggle = r.rush ? 1.4 : 0.5;
+      dip = -0.18 + Math.sin(time * (r.rush ? 40 : 22)) * (r.rush ? 0.1 : 0.05);
+      this.updateReel(dt, this.pointerHold || input.down('KeyE'));
+      if (!this.active) return;
     }
+    // Ombre : distance au flotteur, petit balancement, orientée vers sa route.
+    const from = this.shadowFrom;
+    const rr = THREE.MathUtils.lerp(from.r, 0.25, THREE.MathUtils.smoothstep(near, 0, 1));
+    const a = from.a + Math.sin(time * 0.9) * wiggle * 0.4;
+    const reelPull = this.state === 'reel' && this.reel.rush ? 0.9 + Math.sin(time * 3) * 0.3 : 0;
+    const sx = this.bobberPos.x + Math.sin(a) * (rr + reelPull);
+    const sz = this.bobberPos.z + Math.cos(a) * (rr + reelPull);
+    const prev = this.shadowPos.clone();
+    this.shadowPos.set(sx, 0.015, sz);
+    this.shadow.position.copy(this.shadowPos);
+    if (prev.distanceToSquared(this.shadowPos) > 1e-6) this.shadow.rotation.y = Math.atan2(sx - prev.x, sz - prev.z);
+    this.shadow.material.opacity = Math.min(0.6, this.shadow.material.opacity + dt * 0.4);
     this.bobber.position.set(this.bobberPos.x, this.bobberPos.y + dip, this.bobberPos.z);
     const tip = new THREE.Vector3();
     g.player.character.rodTip.getWorldPosition(tip);

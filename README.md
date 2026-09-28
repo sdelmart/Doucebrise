@@ -29,7 +29,7 @@ Version de production (fichiers statiques dans `dist/`, déployables sur n'impor
 
 `npm run build && npm run test:smoke` lance le jeu dans Chromium sans écran : écran titre, nouvelle partie, fenêtres principales, déplacement, course de luge, sauvegarde et reprise. Le test échoue à la moindre erreur JavaScript. Il tourne aussi sur GitHub à chaque envoi (workflow **Test du jeu**, captures d'écran en *Artifacts*).
 
-`npm run build && npm run test:quests` **joue toute l'histoire** (les 45 quêtes des 11 chapitres, avec les vraies actions du jeu : parler, planter, pêcher, cuisiner, acheter, décorer, adopter, cérémonies de nuit…), puis **les 51 quêtes des habitants** (proposition, objectifs, remise, récompenses), les **six petits boulots**, deux semaines de demandes et de défis (aucune répétition d'un jour à l'autre), et vérifie la cohérence des données (objets, meubles, recettes, habitants, prérequis) et la sauvegarde. Il tourne aussi sur GitHub à chaque envoi.
+`npm run build && npm run test:quests` **joue toute l'histoire** (les 45 quêtes des 11 chapitres, avec les vraies actions du jeu : parler, planter, pêcher, cuisiner, acheter, décorer, adopter, cérémonies de nuit…), puis **les 56 quêtes des habitants** (proposition, objectifs, remise, récompenses), les **six petits boulots**, deux semaines de demandes et de défis (aucune répétition d'un jour à l'autre), et vérifie la cohérence des données (objets, meubles, recettes, habitants, prérequis) et la sauvegarde. Il tourne aussi sur GitHub à chaque envoi.
 
 ## Commandes
 
@@ -70,7 +70,7 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 - Une **astuce** apparaît la première fois qu'on découvre quelque chose (voyages, vœux, source chaude, luge, visites…).
 - **Guide** : balise lumineuse, flèche au bord de l'écran avec la distance et étoile sur la mini-carte — dorée pour l'histoire, violette pour les quêtes des habitants, bleue pour les petits boulots.
 
-### 💞 16 habitants et 51 quêtes
+### 💞 16 habitants et 56 quêtes
 - **Doucebrise** : Mamie Rose (graines), Pomme (marché), Bruno (menuiserie, travaux), Lila (couture), Marin (pêcheur), Noé (explorateur), Mimi (Café des Chats), Léo (garage).
 - **Bourg-Sapin** : Grand-père Aurèle (source chaude), Élise (pâtisserie), Hugo (atelier du bois), Sacha (guide de montagne).
 - **Port-Corail** : Capitaine Nérée (capitainerie), Coralie (club de plongée), Paco (paillote), Maëlys (galerie de peinture).
@@ -88,7 +88,17 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 - **Étoiles filantes** : appuie sur `F` pour faire un vœu… et trouve parfois un fragment d'étoile au courrier. Pluie d'étoiles pendant la Nuit des Étoiles.
 - **Aurores boréales** les nuits d'hiver (encore plus belles sur l'île des Pins).
 - **Météo** : soleil, nuages, pluie, **orages** (éclairs et tonnerre), **brouillard** matinal, neige, arc-en-ciel ; **pétales** de cerisier au printemps, **feuilles** qui tombent en automne. Prévisions du lendemain au survol de l'horloge.
-- **4 saisons** de 3 jours et **8 fêtes** : Fête des Fleurs, Concours de pêche, Fête des Récoltes et Nuit des Étoiles à Doucebrise ; Pique-nique des cerisiers, **Fête du Port** (voiliers dans la baie, poissons plus chers, boutiques en promo), **Fête des Lanternes** (lanternes flottantes sur le Lac Miroir) et **Marché d'hiver de Bourg-Sapin** dans les îles.
+- **4 saisons** de 3 jours et **11 fêtes** : Fête des Fleurs, Concours de pêche, Fête des Récoltes et Nuit des Étoiles à Doucebrise ; Pique-nique des cerisiers, **Fête du Port** (voiliers dans la baie, poissons plus chers, boutiques en promo), **Fête des Lanternes** (lanternes flottantes sur le Lac Miroir) et **Marché d'hiver de Bourg-Sapin** dans les îles.
+
+### 🎉 Fêtes de saison et mini-jeux (`src/game/festivals.js`)
+Le premier jour de chaque saison (sauf le tout premier jour de la partie) :
+- **Chasse aux œufs** (printemps) : 14 œufs peints cachés au village, dans la prairie, au verger, sur la colline, dans la forêt, à la plage et près de l'étang, qui scintillent de temps en temps. Montre-les à Mamie Rose : classement contre Noé, Mimi, Léo et Pomme, œufs en chocolat et **panier d'œufs peints** pour le gagnant.
+- **Fête de l'été** : grand **feu d'artifice** sur la plage de 21 h à 23 h (pivoines, saules dorés, anneaux, **cœurs**, étoiles crépitantes, bouquet final ; la détonation arrive avec le retard du son). Les habitants du village viennent regarder, et une **caisse de fusées** sur le sable permet de lancer les siennes dès 19 h.
+- **Concours de cuisine** (automne) : présente un plat au jury (Mimi, Élise, Pomme) devant le café, après un petit jeu de **dressage de l'assiette** (trois garnitures à poser au bon moment). Note selon le goût, la présentation, les goûts du jury et les saveurs d'automne ; **trophée** et titre « Grand·e chef » pour le gagnant.
+
+### 🔊 Sons (tout est synthétisé, `src/core/soundscape.js` et `footsteps.js`)
+- **Bruits de pas selon le sol** : herbe, sous-bois, terre, sable, pierre et pavés, bois (ponts, pontons, maisons), neige, eau peu profonde ; un peu mouillés sous la pluie ; au rythme des pieds de l'animation, pas plus appuyé à la réception d'un saut. Désactivables (Paramètres → Audio).
+- **Ambiance vivante** selon l'heure, la saison et le lieu : **chœur des oiseaux à l'aube** (merle, mésange, pinson, rouge-gorge, moineaux, alouette), plus calme à l'heure de la sieste ; tourterelle, coucou au printemps, pic qui tambourine en forêt, loriot sous les tropiques, corneilles l'hiver ; **mouettes** et **vagues qui déferlent** au bord de la mer ; **grillons** le soir, **grenouilles** près de l'étang, du lac et de la source (et sous la pluie), **chouette** la nuit ; **cigales** l'été dans les lieux ensoleillés ; feuillage au vent en forêt ; cris des animaux proches (moutons, chèvres, canards, poules et le coq au lever du jour, chats, chiens). Sons étouffés à l'intérieur.
 
 ### 🎵 Musique
 - **Une ambiance musicale par moment du jeu**, avec fondus enchaînés : la chanson reprend là où elle s'était arrêtée quand on revient dans une ambiance.
@@ -169,7 +179,8 @@ assets/models/
 - **7 métiers** à 10 niveaux, **3 défis par jour**, **76 succès**, **titres**, carnet d'étoiles de 30 paliers, petits boulots, **record de luge**.
 
 ### 🌱 Activités
-- **Potager**, **cueillette** (baies, pommes, myrtilles, noix de coco, cristaux, corail et perles…), **pêche** (**38 poissons** entre mer, étang, Lac Miroir et Lagon Turquoise), **insectes** (**22 espèces**), **cuisine** (15 recettes), boutiques dans les trois villages.
+- **Potager**, **cueillette** (baies, pommes, myrtilles, noix de coco, cristaux, corail et perles…), **pêche** (**38 poissons** entre mer, étang, Lac Miroir et Lagon Turquoise), **insectes** (**22 espèces**), **cuisine** (16 recettes), boutiques dans les trois villages.
+- **Pêche au moulinet** : l'**ombre du poisson** approche du flotteur (sa taille trahit la prise), quelques **touches** trompeuses avant la vraie morsure (ferrer trop tôt fait fuir le poisson), puis le **combat** : maintiens `E` (ou le panneau, au doigt) pour mouliner, relâche quand le poisson tire, sinon la ligne casse. Plus la prise est rare, plus elle se débat ; les meilleures cannes ont une ligne plus solide.
 
 ### 🛋️ Maison et décoration
 - Maison agrandissable (2 agrandissements), façades, toits, couleurs et extras.
@@ -193,19 +204,21 @@ src/
   main.js, game.js       Démarrage, boucle, états, interactions, récompenses, sauvegarde
   core/                  Maths, matériaux (réaliste ou cartoon), fusion des modèles articulés (rig.js),
                          qualité automatique (autoquality.js), entrées (touches, manette), paramètres,
-                         post-traitement, particules, sons et musique, sauvegarde (profils), mises à jour,
+                         post-traitement, particules, sons, paysage sonore (soundscape.js), bruits de pas
+                         (footsteps.js), musique, sauvegarde (profils), mises à jour,
                          chargement des modèles 3D (models.js)
   world/                 Terrain de l'archipel (et sol détaillé : terrainTextures.js), ciel, météo,
                          eau, villages, îles, végétation (modèles importés : natureModels.js ;
                          arbres générés : treeGen.js, trees.js),
-                         tapis d'herbe (grassField.js), collisions
+                         tapis d'herbe (grassField.js), feux d'artifice (fireworks.js), collisions
   player/                Personnage classique, personnage importé animé (avatar.js), visage,
                          apparence, déplacement, caméra
   animals/               Espèces (modèles 3D), comportement, gestion
   npc/                   Habitants : apparence, emploi du temps, trajets, goûts et répliques
   house/                 Maison : pièce, meubles, papiers peints, mode décoration, visites chez les habitants
   game/                  Objets, potager, cueillette, pêche, insectes, cuisine, histoire, quêtes des
-                         habitants, progression, petits boulots, véhicules, calendrier, voyages, luge
+                         habitants, progression, petits boulots, véhicules, calendrier, fêtes de saison
+                         (festivals.js), voyages, luge
   ui/                    HUD, guide, menus (titre, pause, paramètres), carte, dialogues, boutiques,
                          journal, photo, compteur FPS
 ```

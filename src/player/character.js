@@ -1133,6 +1133,11 @@ export class Character {
    * @param {number} dt
    * @param {{speed:number, running:boolean, grounded:boolean, vy:number}} s
    */
+  /** Avancée des pas (les pieds se posent aux extrémités du balancement des jambes). */
+  stepPhase() {
+    return (this.anim.phase / Math.PI + 0.5) % 2;
+  }
+
   update(dt, s = { speed: 0, running: false, grounded: true, vy: 0 }) {
     const an = this.anim;
     an.t += dt;

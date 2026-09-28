@@ -383,7 +383,7 @@ export class UI {
     let list;
     const veh = g.player.vehicle;
     if (g.sitting) list = [[K('interact'), 'Se lever']];
-    else if (g.fishing.active) list = [[K('interact'), 'Ferrer / remonter']];
+    else if (g.fishing.active) list = g.fishing.state === 'reel' ? [[K('interact'), 'Maintenir : mouliner'], [move, 'Lâcher la ligne']] : [[K('interact'), 'Ferrer / remonter']];
     else if (veh) list = [[move, 'Conduire'], [K('run'), 'Accélérer'], [K('interact'), veh.def.mode === 'air' ? 'Atterrir' : 'Descendre']];
     else if (g.indoors) list = [[move, 'Marcher'], [K('interact'), 'Interagir'], ...(g.house.inside ? [[K('decor'), 'Décorer']] : []), [K('bag'), 'Sac'], [keyLabel('Escape'), 'Menu']];
     else {

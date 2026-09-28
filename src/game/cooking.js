@@ -65,7 +65,7 @@ export class Cooking {
         .join(' ');
       row.innerHTML = `<div class="cook-em">${known ? it.emoji : '❔'}</div>
         <div class="cook-info"><div class="cook-name">${known ? escapeHtml(it.label) : 'Recette inconnue'}</div>
-        <div class="cook-needs">${known ? needs : `Apprise auprès de ${escapeHtml(r.from)} (amitié)`}</div></div>
+        <div class="cook-needs">${known ? needs : `Apprise auprès de ${escapeHtml(r.from)} (${escapeHtml(r.how || 'amitié')})`}</div></div>
         <div class="cook-price">${known ? `🪙 ${it.price}` : ''}</div>`;
       if (known) {
         const b = document.createElement('button');

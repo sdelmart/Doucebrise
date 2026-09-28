@@ -1243,6 +1243,66 @@ def('trophee-peche', {
   },
 });
 
+// --- Récompenses des fêtes de saison ------------------------------------------------------
+def('panier-oeufs', {
+  label: 'Panier d\'œufs peints', emoji: '🧺', price: 0, w: 0.6, d: 0.45, color: '#c98b58', cat: 'deco', where: 'both', noShop: true,
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.26, 0.2, 0.22, 14), c, { pos: [0, 0.11, 0], scale: [1.15, 1, 0.85] });
+    s.add(G.torus(0.26, 0.025, 6, 16), light(c, 0.2), { pos: [0, 0.22, 0], rot: [Math.PI / 2, 0, 0], scale: [1.15, 0.85, 1] });
+    s.add(G.torus(0.25, 0.02, 6, 16, Math.PI), light(c, 0.2), { pos: [0, 0.22, 0], rot: [0, Math.PI / 2, 0] });
+    const cols = ['#ff8fab', '#ffd84d', '#8fd6e8', '#b69cf0', '#7fd1b9'];
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      s.add(G.sphere(0.07, 10, 8), cols[i], { pos: [Math.cos(a) * 0.14, 0.26, Math.sin(a) * 0.1], scale: [1, 1.3, 1], rot: [0.3 * Math.sin(a), 0, 0.3 * Math.cos(a)] });
+    }
+    return s.build();
+  },
+});
+def('trophee-cuisine', {
+  label: 'Trophée du concours de cuisine', emoji: '🏆', price: 0, w: 0.45, d: 0.45, color: '#ffd84d', cat: 'deco', where: 'both', noShop: true,
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(0.3, 0.12, 0.3), '#6b4a2e', { pos: [0, 0.06, 0] });
+    s.add(G.cyl(0.05, 0.07, 0.16, 10), c, { pos: [0, 0.2, 0] });
+    s.add(G.cyl(0.17, 0.06, 0.26, 16), c, { pos: [0, 0.41, 0] });
+    for (const x of [-1, 1]) s.add(G.torus(0.07, 0.018, 6, 12), c, { pos: [x * 0.19, 0.43, 0], rot: [0, 0, Math.PI / 2] });
+    // Toque de chef gravée.
+    s.add(G.sphere(0.06, 10, 8), '#fffaf2', { pos: [0, 0.42, 0.15], scale: [1.2, 0.9, 0.3] });
+    return s.build();
+  },
+});
+def('lampions', {
+  label: 'Guirlande de lampions', emoji: '🏮', price: 0, w: 1.8, d: 0.2, color: '#ff8fab', cat: 'deco', wall: true, mountY: 2.4, noShop: true,
+  build(c) {
+    const s = new Shape();
+    const pts = [];
+    for (let i = 0; i <= 12; i++) pts.push(new THREE.Vector3(-0.9 + (i / 12) * 1.8, -Math.sin((i / 12) * Math.PI) * 0.18, 0.06));
+    s.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.008, 4), '#3d3744');
+    const cols = [c, '#ffd84d', '#8fd6e8', '#b69cf0', '#7fd1b9'];
+    for (let i = 1; i < 12; i += 2) {
+      const x = -0.9 + (i / 12) * 1.8;
+      const y = -Math.sin((i / 12) * Math.PI) * 0.18 - 0.12;
+      s.add(G.sphere(0.08, 10, 8), cols[(i >> 1) % cols.length], { pos: [x, y, 0.08], scale: [1, 1.25, 1] });
+      s.add(G.cyl(0.03, 0.03, 0.03, 8), '#3d3744', { pos: [x, y + 0.1, 0.08] });
+    }
+    return s.build();
+  },
+});
+def('nichoir', {
+  label: 'Nichoir à mésanges', emoji: '🐦', price: 0, w: 0.5, d: 0.5, color: '#8fd6e8', cat: 'jardin', where: 'out', noShop: true,
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.05, 0.06, 1.4, 8), '#8a5a33', { pos: [0, 0.7, 0] });
+    s.add(G.box(0.34, 0.36, 0.3), c, { pos: [0, 1.56, 0] });
+    s.add(G.box(0.42, 0.04, 0.36), '#e5484d', { pos: [0, 1.8, -0.08], rot: [0, 0, 0.5], scale: [0.62, 1, 1] });
+    s.add(G.box(0.42, 0.04, 0.36), '#e5484d', { pos: [0, 1.8, -0.08], rot: [0, 0, -0.5], scale: [0.62, 1, 1] });
+    s.add(G.cyl(0.055, 0.055, 0.02, 12), '#3d3744', { pos: [0, 1.6, 0.151], rot: [Math.PI / 2, 0, 0] });
+    s.add(G.cyl(0.012, 0.012, 0.1, 5), '#8a5a33', { pos: [0, 1.49, 0.18], rot: [Math.PI / 2, 0, 0] });
+    return s.build();
+  },
+});
+
 // --- Nouveautés : animaux -------------------------------------------------------------
 def('lit-chat', {
   label: 'Lit douillet pour chat', emoji: '🐱', price: 220, w: 0.7, d: 0.7, color: '#b69cf0', cat: 'animaux', where: 'both', petBed: true,

@@ -61,6 +61,7 @@ export const ITEMS = {
   chocolat: { label: 'Chocolat chaud', emoji: '☕', cat: 'dish', price: 35 },
   glace: { label: 'Glace', emoji: '🍦', cat: 'dish', price: 30 },
   cocktail: { label: 'Cocktail de fruits', emoji: '🍹', cat: 'dish', price: 40 },
+  'tarte-citrouille': { label: 'Tarte à la citrouille', emoji: '🥧', cat: 'dish', price: 160 },
 };
 
 export const CATEGORIES = [
@@ -94,6 +95,7 @@ export const RECIPES = [
   { id: 'jus-coco', needs: { 'noix-coco': 1, fraise: 1 }, known: false, from: 'Paco' },
   { id: 'brochette', needs: { poisson: 2, tomate: 1 }, known: false, from: 'Nérée' },
   { id: 'salade-tropicale', needs: { 'noix-coco': 1, pomme: 1, fraise: 1 }, known: false, from: 'Coralie' },
+  { id: 'tarte-citrouille', needs: { citrouille: 1, pomme: 1, baie: 2 }, known: false, from: 'Mimi', how: 'concours de cuisine' },
 ];
 
 export function itemLabel(id, n = 1) {

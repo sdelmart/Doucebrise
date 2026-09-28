@@ -436,6 +436,7 @@ export class SettingsPanel {
       this.row('Musique', this.range('audio.music', a.music, 0, 1, 0.05, pct(a.music))),
       this.row('Effets sonores', this.range('audio.sfx', a.sfx, 0, 1, 0.05, pct(a.sfx))),
       this.row('Ambiance (oiseaux, vagues, pluie…)', this.range('audio.ambience', a.ambience, 0, 1, 0.05, pct(a.ambience))),
+      this.row('Bruits de pas', this.toggle('footsteps', this.s.footsteps !== false), 'Selon le sol : herbe, sable, bois, pierre, neige, eau'),
       this.row('Musique', this.toggle('musicOn', this.game.audio.musicOn), 'Elle change selon l\'endroit, l\'heure, la météo et les fêtes'),
       this.row('Titre de la chanson', this.toggle('musicTitles', this.s.musicTitles !== false), 'Un petit message quand une chanson commence'),
     ].join('') + this.myMusic();

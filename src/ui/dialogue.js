@@ -169,7 +169,7 @@ export class Dialogue {
     const v = this.villager;
     const g = this.game;
     const day = g.world.sky.day;
-    const list = [...g.quests.dialogueChoices(v, this), ...g.sideQuests.dialogueChoices(v, this), ...g.jobs.dialogueChoices(v, this)];
+    const list = [...g.quests.dialogueChoices(v, this), ...g.sideQuests.dialogueChoices(v, this), ...g.jobs.dialogueChoices(v, this), ...g.festivals.dialogueChoices(v, this)];
     list.push({ label: '💬 Discuter', action: () => this.render(v.line('chat')) });
     const c = g.calendar;
     if (v.def.id === 'marin' && c.contestActive && c.contest && !c.contest.done) {

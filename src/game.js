@@ -11,6 +11,8 @@ import { VillagerManager } from './npc/villagers.js';
 import { ITEMS, RECIPES, createInventory } from './game/items.js';
 import { Fishing, FISH, fishWhere } from './game/fish.js';
 import { Insects, INSECTS } from './game/insects.js';
+import { Footsteps } from './core/footsteps.js';
+import { Festivals } from './game/festivals.js';
 import { Resources } from './game/activities.js';
 import { Progress } from './game/progress.js';
 import { Vehicles, VEHICLES } from './game/vehicles.js';
@@ -123,9 +125,11 @@ export class Game {
     this.resources = new Resources(this);
     this.fishing = new Fishing(this);
     this.insects = new Insects(this);
+    this.footsteps = new Footsteps(this);
     this.vehicles = new Vehicles(this);
     this.jobs = new Jobs(this);
     this.calendar = new Calendar(this);
+    this.festivals = new Festivals(this);
     this.garden = new Garden(this);
     this.house = new House(this);
     this.visits = new Visits(this);
@@ -384,7 +388,7 @@ export class Game {
   }
 
   get busy() {
-    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden');
+    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || !!this.festivals.plating || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden');
   }
 
   openPanel(name) {
@@ -552,7 +556,7 @@ export class Game {
       if (e.code === 'Escape') this.closePanels();
       return;
     }
-    if (this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden')) return;
+    if (this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || this.festivals.plating || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden')) return;
     if (this.decor.active) return;
     if (this.photo.active) {
       if (e.code === 'Escape' || e.code === 'KeyO') this.photo.exit();
@@ -757,8 +761,8 @@ export class Game {
           { id: 'acheter', label: '🧺 Acheter', items: () => [item('friandise', 60), item('baie', 14), item('pomme', 22), item('carotte', 26), item('graine', 10), item('poisson', 40), item('appat', 12)] },
           { id: 'outils', label: '🧰 Outils', items: () => [
             unlock('tool:filet', 'Filet à papillons', '🥅', 200, 'Pour attraper les insectes (E).'),
-            { id: 'rod:fibre', label: 'Canne en fibre', emoji: '🎣', price: 800, desc: 'Ça mord plus vite, zone plus large.', owned: ['fibre', 'doree'].includes(this.fishing.rod), buy: () => this.setRod('fibre') },
-            { id: 'rod:doree', label: 'Canne dorée', emoji: '✨', price: 3000, desc: 'La meilleure : poissons rares plus fréquents.', owned: this.fishing.rod === 'doree', buy: () => this.setRod('doree') },
+            { id: 'rod:fibre', label: 'Canne en fibre', emoji: '🎣', price: 800, desc: 'Ça mord plus vite, ligne plus solide.', owned: ['fibre', 'doree'].includes(this.fishing.rod), buy: () => this.setRod('fibre') },
+            { id: 'rod:doree', label: 'Canne dorée', emoji: '✨', price: 3000, desc: 'La meilleure : poissons rares plus fréquents, ligne très solide.', owned: this.fishing.rod === 'doree', buy: () => this.setRod('doree') },
           ] },
         ];
       case 'menuiserie': {
@@ -821,8 +825,8 @@ export class Game {
         return [
           { id: 'marine', label: '⚓ Déco marine', items: shopFurn('capitainerie') },
           { id: 'peche', label: '🎣 Pêche', items: () => [item('appat', 12), item('poisson', 40),
-            { id: 'rod:fibre', label: 'Canne en fibre', emoji: '🎣', price: 800, desc: 'Ça mord plus vite, zone plus large.', owned: ['fibre', 'doree'].includes(this.fishing.rod), buy: () => this.setRod('fibre') },
-            { id: 'rod:doree', label: 'Canne dorée', emoji: '✨', price: 3000, desc: 'La meilleure : poissons rares plus fréquents.', owned: this.fishing.rod === 'doree', buy: () => this.setRod('doree') }] },
+            { id: 'rod:fibre', label: 'Canne en fibre', emoji: '🎣', price: 800, desc: 'Ça mord plus vite, ligne plus solide.', owned: ['fibre', 'doree'].includes(this.fishing.rod), buy: () => this.setRod('fibre') },
+            { id: 'rod:doree', label: 'Canne dorée', emoji: '✨', price: 3000, desc: 'La meilleure : poissons rares plus fréquents, ligne très solide.', owned: this.fishing.rod === 'doree', buy: () => this.setRod('doree') }] },
           { id: 'recettes', label: '📖 Recettes', items: () => recipes(['brochette', 'maki']) },
           { id: 'vendre', label: '💰 Vendre' },
         ];
@@ -986,7 +990,8 @@ export class Game {
     if (this.fishing.active) {
       const bite = this.fishing.state === 'bite';
       const reel = this.fishing.state === 'reel';
-      this.ui.setPrompt({ pos: this.player.pos.clone().add(up), title: reel ? '🎣 Dans la zone verte !' : bite ? '🎣 Ça mord !' : '🎣 Patience…', actions: [{ key: 'E', label: reel ? 'Ferrer' : bite ? 'Ferrer !' : 'Remonter la ligne' }] });
+      const nibble = this.fishing.nibbleT > 0;
+      this.ui.setPrompt({ pos: this.player.pos.clone().add(up), title: reel ? '🎣 Mouline !' : bite ? '🎣 Ça mord !' : nibble ? '🎣 Ça touche… attends !' : '🎣 Patience…', actions: [{ key: 'E', label: reel ? 'Maintenir : mouliner' : bite ? 'Ferrer !' : 'Remonter la ligne' }] });
       if (input.hit('KeyE')) this.fishing.action();
       return;
     }
@@ -1059,6 +1064,8 @@ export class Game {
       }
       return;
     }
+
+    if (this.festivals.interact(input)) return;
 
     const bug = this.insects.nearest();
     if (bug) {
@@ -1445,6 +1452,7 @@ export class Game {
     if (!free) this.player.frozen = true;
     this.player.update(dt, this.input, this.cam.yaw);
     this.player.frozen = frozen;
+    this.footsteps.update(dt);
     if (this.state === 'title') this.world.sky.hour = 10 + Math.sin(this.elapsed * 0.02) * 0.5;
 
     // En pause (menu Échap, paramètres en cours de partie), le temps s'arrête.
@@ -1466,6 +1474,7 @@ export class Game {
     this.sled.update(sdt);
     this.jobs.update(sdt);
     this.calendar.update(sdt);
+    this.festivals.update(sdt);
     this.house.update(sdt, this.elapsed, this.camera);
     this.decor.update();
     this.music.update(dt, this.musicMood());
@@ -1588,7 +1597,7 @@ export class Game {
         const a = (i / 8) * Math.PI * 2;
         if (w.heightAt(p.x + Math.cos(a) * 14, p.z + Math.sin(a) * 14) < -0.3) wet++;
       }
-      this.atmo = { sea: wet / 8, altitude: w.heightAt(p.x, p.z), island };
+      this.atmo = { sea: wet / 8, altitude: w.heightAt(p.x, p.z), island, animals: this.nearbyAnimalVoices() };
       this.audio.setMood(sky.isNight ? 'nuit' : island === 'pins' ? 'pins' : island === 'corail' ? 'corail' : 'village');
       // Astuces de première fois.
       if (this.state === 'play' && !this.busy && !this.panel) {
@@ -1597,11 +1606,36 @@ export class Game {
         if (this.playtime > 240) this.tips.show('pause');
         this.ui.refreshBuffs();
       }
+      // Chœur de l'aube : une fois par jour, dehors au petit matin, là où les oiseaux chantent.
+      const zid = this.zone?.id;
+      if (this.state === 'play' && !this.indoors && sky.hour >= 5 && sky.hour < 7.5 && ['foret', 'verger', 'prairie', 'colline', 'pinede'].includes(zid) && this.dawnDay !== sky.day && w.weather.rainAmt < 0.3 && w.weather.seasonIndex !== 3) {
+        this.dawnDay = sky.day;
+        this.emit('dawn', { zone: zid });
+        this.ui.toast('🐦 Chut… écoute : le chœur des oiseaux de l\'aube !', 3200);
+      }
     }
     const a = this.atmo || { sea: 0, altitude: 0 };
     this.audio.updateAmbience(dt, {
-      night: sky.isNight, rain: w.weather.rainAmt, sea: a.sea, altitude: a.altitude,
+      hour: sky.hour, season: w.weather.seasonIndex, rain: w.weather.rainAmt, sea: a.sea, altitude: a.altitude,
       storm: w.weather.isStorm, inside: this.indoors, active: this.state === 'play',
+      zone: this.zone?.id || null, island: a.island, animals: a.animals || [],
+    });
+  }
+
+  /** Animaux proches qui peuvent se faire entendre (le plus proche de chaque espèce). */
+  nearbyAnimalVoices() {
+    const p = this.player.pos;
+    const cam = this.camera;
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+    const best = {};
+    for (const a of this.animals.animals) {
+      const d = a.pos.distanceTo(p);
+      if (d > 22 || (best[a.species] && best[a.species].d < d)) continue;
+      best[a.species] = { d, a };
+    }
+    return Object.entries(best).map(([species, { d, a }]) => {
+      const dir = a.pos.clone().sub(cam.position).setY(0).normalize();
+      return { species, pan: dir.dot(right) * 0.8, far: Math.min(0.85, d / 24) };
     });
   }
 
@@ -1656,6 +1690,7 @@ export class Game {
       visits: this.visits.serialize(),
       sideQuests: this.sideQuests.serialize(),
       sled: this.sled.serialize(),
+      festivals: this.festivals.serialize(),
       stats: { playtime: Math.round(this.playtime || 0) },
     });
   }
@@ -1691,6 +1726,7 @@ export class Game {
     this.visits.restore(s.visits);
     this.sideQuests.restore(s.sideQuests);
     this.sled.restore(s.sled);
+    this.festivals.restore(s.festivals);
     this.playtime = s.stats?.playtime || 0;
   }
 }

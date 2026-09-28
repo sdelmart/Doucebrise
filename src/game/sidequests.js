@@ -478,6 +478,48 @@ export const SIDE_QUESTS = [
     thanks: 'Voilà… C\'est toi, comme je te vois. Garde-le. Et reviens me voir souvent, d\'accord ?',
     reward: { coins: 500, furniture: { portrait: 1 }, stars: 10 },
   }),
+
+  // --- Fêtes de saison, pêche au moulinet, chœur de l'aube --------------------------------
+  S('rose-oeufs', 'rose', 'La grande chasse aux œufs', {
+    req: { seasons: [0], festival: 'oeufs' },
+    offer: ['Chaque premier jour du printemps, je cache des œufs peints partout sur l\'île. C\'est ma petite tradition !', 'Cette année, j\'aimerais tant que tu participes… Trouves-en six avant ce soir, et je te réserve une douceur.'],
+    desc: 'Trouve 6 œufs peints pendant la Chasse aux œufs (aujourd\'hui, de 7 h à 20 h), puis reviens voir Mamie Rose.',
+    goals: [on('egg', 6, 'Œufs peints trouvés')],
+    thanks: 'Six œufs ! Tu as des yeux de lynx, mon petit. Tiens, des œufs en chocolat : ils sont encore meilleurs que les vrais !',
+    reward: { coins: 200, items: { 'oeuf-choco': 3 }, friends: { rose: 5 } },
+  }),
+  S('leo-feux', 'leo', 'Un ciel qui pétille', {
+    req: { seasons: [1], festival: 'ete' },
+    offer: ['C\'est la Fête de l\'été ! Ce soir, le ciel au-dessus de la plage va s\'illuminer.', 'J\'ai laissé une caisse de fusées sur le sable. Lances-en trois, à deux c\'est encore plus beau… je dis ça, je dis rien !'],
+    desc: 'Lance 3 fusées depuis la caisse de la plage (Fête de l\'été, dès 19 h).',
+    goals: [on('firework', 3, 'Fusées lancées')],
+    thanks: 'Tu as vu ce cœur dans le ciel ?! Magnifique. Tiens, des lampions pour que l\'été dure un peu plus longtemps chez toi.',
+    reward: { coins: 250, furniture: { lampions: 1 }, stars: 3 },
+  }),
+  S('mimi-concours', 'mimi', 'Le concours de cuisine', {
+    req: { seasons: [2], festival: 'cuisine' },
+    offer: ['Aujourd\'hui, c\'est le concours de cuisine ! Je suis dans le jury, avec Élise et Pomme.', 'Tu viens nous présenter un plat ? Même un tout simple : ce qui compte, c\'est d\'y mettre du cœur… et une jolie présentation !'],
+    desc: 'Présente un plat au jury du concours de cuisine (devant le café, de 9 h à 18 h).',
+    goals: [on('cookcontest', 1, 'Plat présenté au jury')],
+    thanks: 'Quel courage ! Pour te remercier, voilà ma recette secrète : la tarte à la citrouille. Chut, c\'est entre nous !',
+    reward: { coins: 250, recipe: 'tarte-citrouille', friends: { mimi: 8, elise: 5, pomme: 5 } },
+  }),
+  S('marin-combat', 'marin', 'Le combat du siècle', {
+    req: { after: 'marin-legende' },
+    offer: ['Moussaillon, un vrai pêcheur ne se contente pas de sardines. Il faut sentir la ligne se tendre, tenir bon, relâcher au bon moment…', 'Ramène-moi un poisson d\'au moins un mètre. Là, on parlera de toi dans les tavernes !'],
+    desc: 'Pêche un poisson d\'au moins 1 m (100 cm) : mouline, et relâche quand il tire !',
+    goals: [on('catch', 1, 'Poisson d\'au moins 1 m', (d) => d.size >= 100)],
+    thanks: 'Un mètre ! Tu as tenu bon, hein ? Je le savais. Tiens, des appâts de compétition : les gros poissons en raffolent.',
+    reward: { coins: 350, items: { appat: 12 }, stars: 5 },
+  }),
+  S('noe-aube', 'noe', 'Le chœur de l\'aube', {
+    req: { after: 'noe-papillons' },
+    offer: ['Tu savais qu\'à l\'aube, tous les oiseaux chantent en même temps ? Le merle, la mésange, le pinson…', 'Lève-toi tôt et va écouter dans la forêt, au verger, dans la prairie ou sur la colline, entre 5 h et 7 h 30. Pas l\'hiver, ils sont trop frileux !'],
+    desc: 'Écoute le chœur des oiseaux à l\'aube (forêt, verger, prairie ou colline, entre 5 h et 7 h 30, hors hiver).',
+    goals: [on('dawn', 1, 'Chœur de l\'aube écouté')],
+    thanks: 'Alors, tu as entendu le coucou ? Et le pic qui tambourine ? J\'ai fabriqué un nichoir pour ton jardin : peut-être qu\'une mésange viendra y chanter !',
+    reward: { coins: 200, furniture: { nichoir: 1 }, stars: 3 },
+  }),
 ];
 
 const BY_ID = Object.fromEntries(SIDE_QUESTS.map((q) => [q.id, q]));
@@ -490,7 +532,7 @@ export class SideQuests {
     this.active = {}; // id → { p: [progress…] }
     this.done = new Set();
     this.tracked = null;
-    for (const e of ['sell', 'catch', 'insect', 'zone', 'pet', 'ride', 'bathe', 'stargaze', 'wish', 'travel', 'photo', 'emote', 'talk', 'cook', 'gather']) {
+    for (const e of ['sell', 'catch', 'insect', 'zone', 'pet', 'ride', 'bathe', 'stargaze', 'wish', 'travel', 'photo', 'emote', 'talk', 'cook', 'gather', 'egg', 'firework', 'cookcontest', 'dawn']) {
       game.on(e, (d) => this.onEvent(e, d || {}));
     }
   }
@@ -518,6 +560,8 @@ export class SideQuests {
     if (r.unlock && !g.unlocks.has(r.unlock)) return false;
     // Quêtes de saison : proposées seulement quand c'est faisable.
     if (r.seasons && !r.seasons.includes(g.world.weather.seasonIndex)) return false;
+    // Quêtes de fête : proposées le jour de la fête.
+    if (r.festival && g.calendar.festival?.id !== r.festival) return false;
     // Une seule quête proposée à la fois par habitant.
     return !SIDE_QUESTS.some((o) => o.giver === q.giver && this.active[o.id]);
   }

@@ -206,6 +206,90 @@ try {
     });
     if (r.active) throw new Error('la descente ne se termine pas');
   });
+  await step('Sons, pêche et fêtes (pas, ambiance, moulinet, œufs, feu d\'artifice, concours)', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const out = [];
+      const sky = g.world.sky;
+      const day0 = sky.day;
+      const hour0 = sky.hour;
+      g.audio.ensure();
+      // Pas : chaque surface se joue ; la surface sous les pieds est reconnue.
+      const Fs = g.footsteps.constructor;
+      for (const s of ['grass', 'leaves', 'dirt', 'sand', 'stone', 'wood', 'snow', 'water']) Fs.sound(g.audio, s, {});
+      const surf = g.footsteps.surfaceAt();
+      if (!['grass', 'leaves', 'dirt', 'sand', 'stone', 'wood', 'snow', 'water'].includes(surf)) out.push(`surface inconnue : ${surf}`);
+      // Ambiance : chœur de l'aube au village.
+      const S = g.audio.soundscape;
+      let birds = 0;
+      const bird = S.bird.bind(S);
+      S.bird = (...a) => {
+        birds++;
+        bird(...a);
+      };
+      if (g.audio.ctx) for (let i = 0; i < 100; i++) S.update(0.1, { hour: 6.5, season: 0, zone: 'village', out: 1 });
+      S.bird = bird;
+      if (g.audio.ctx && birds < 3) out.push(`trop peu d'oiseaux à l'aube (${birds})`);
+      // Pêche : combat au moulinet, en relâchant quand le poisson tire.
+      const F = g.fishing;
+      const spot = g.world.fishingSpots.find((s) => s.habitat === 'mer');
+      g.player.teleport(spot.x, spot.z, 0);
+      let caught = null;
+      const off = g.on('catch', (d) => (caught = d));
+      let hold = false;
+      const input = { moveVector: () => ({ x: 0, y: 0 }), down: () => hold };
+      for (let n = 0; n < 5 && !caught; n++) {
+        F.start(spot);
+        F.catch = { fish: F.available(spot)[0] };
+        F.t = 0;
+        F.nibbles = [];
+        F.update(1 / 30, input);
+        if (F.state !== 'bite') throw new Error(`pas de morsure (état ${F.state})`);
+        F.action();
+        for (let i = 0; i < 1800 && F.state === 'reel'; i++) {
+          const rl = F.reel;
+          hold = rl.rush ? rl.tension < 0.2 : rl.tension < 0.75;
+          F.update(1 / 30, input);
+        }
+        if (F.active) F.stop();
+      }
+      off?.();
+      if (!caught) out.push('aucun poisson pris au moulinet');
+      // Chasse aux œufs (printemps, jour 1 de la 2e année).
+      const Fe = g.festivals;
+      sky.day = 13;
+      sky.hour = 10;
+      g.calendar.onNewDay(false);
+      if (Fe.eggs.length < 10) out.push(`seulement ${Fe.eggs.length} œufs cachés`);
+      Fe.pickEgg(Fe.eggs[0]);
+      const hunt = Fe.huntResults();
+      if (!hunt.rank) out.push('pas de classement de la chasse aux œufs');
+      // Fête de l'été : feu d'artifice et caisse de fusées.
+      sky.day = 16;
+      sky.hour = 21.5;
+      g.calendar.onNewDay(false);
+      if (!Fe.showOn) out.push('pas de feu d\'artifice à 21 h 30 le jour de la Fête de l\'été');
+      Fe.update(0.1);
+      Fe.crateCd = 0;
+      Fe.launchOwn();
+      for (let i = 0; i < 40; i++) Fe.fireworks.update(0.05, g.camera);
+      if (!Fe.fireworks.busy) out.push('les fusées ne partent pas');
+      Fe.releaseAudience();
+      // Concours de cuisine.
+      sky.day = 19;
+      sky.hour = 11;
+      g.calendar.onNewDay(false);
+      if (!Fe.contestOpen) out.push('concours de cuisine fermé le jour de la fête');
+      g.inventory.soupe = (g.inventory.soupe || 0) + 1;
+      const c = Fe.contestResults('soupe', 5);
+      if (!c.rank || !c.total) out.push('pas de note au concours de cuisine');
+      sky.day = day0;
+      sky.hour = hour0;
+      g.calendar.onNewDay(false);
+      return { issues: out, surf, birds, fish: caught?.fish, eggs: hunt.rank, cook: `${c.rank}e (${c.total})` };
+    });
+    if (r.issues.length) throw new Error(r.issues.join(' ; '));
+  });
   await step('Sauvegarde et reprise', async () => {
     await page.evaluate(() => window.game.saveNow());
     await page.reload({ waitUntil: 'load' });

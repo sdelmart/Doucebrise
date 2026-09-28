@@ -1,5 +1,7 @@
-// Sons synthétisés (aucun fichier audio) : effets doux, ambiances (oiseaux, grillons,
-// vagues, vent, pluie, tonnerre) et musique générative qui change selon l'île et l'heure
+import { Soundscape } from './soundscape.js';
+
+// Sons synthétisés (aucun fichier audio) : effets doux, ambiances (pluie, vent, tonnerre,
+// houle ; oiseaux, insectes, vagues et animaux dans soundscape.js) et musique générative qui change selon l'île et l'heure
 // (jouée seulement quand aucune chanson n'est disponible, voir music.js).
 // Trois bus réglables séparément : musique, effets, ambiance (plus un volume général).
 
@@ -24,7 +26,7 @@ export class Audio {
     this.musicTimer = null;
     this.mood = 'village';
     this.levels = { master: 0.8, music: 0.6, sfx: 0.9, ambience: 0.7 };
-    this.amb = { birdT: 2, cricketT: 1, level: {} };
+    this.soundscape = new Soundscape(this);
   }
 
   get sfxOn() {
@@ -45,8 +47,13 @@ export class Audio {
       this.buses = {};
       for (const b of ['music', 'sfx', 'ambience']) {
         this.buses[b] = this.ctx.createGain();
-        if (b !== 'music') this.buses[b].connect(this.master);
+        if (b === 'sfx') this.buses[b].connect(this.master);
       }
+      // Ambiance : étouffée quand on est à l'intérieur (les murs filtrent les aigus).
+      this.muffle = this.ctx.createBiquadFilter();
+      this.muffle.type = 'lowpass';
+      this.muffle.frequency.value = 15000;
+      this.buses.ambience.connect(this.muffle).connect(this.master);
       // Musique : creux dans les médiums (présence des voix), aigus adoucis, puis un
       // atténuateur pour la baisser encore pendant les dialogues.
       const ctx = this.ctx;
@@ -166,6 +173,24 @@ export class Audio {
         this.tone(NOTES.G5, { dur: 0.08, type: 'square', vol: 0.06 });
         this.tone(NOTES.G5, { t: 0.1, dur: 0.08, type: 'square', vol: 0.06 });
         break;
+      case 'nibble':
+        // Le flotteur frémit : petit « plic ».
+        this.tone(900, { dur: 0.06, type: 'sine', vol: 0.05, slide: 1.6 });
+        this.noise({ dur: 0.08, vol: 0.03, freq: 2200 });
+        break;
+      case 'fishpull':
+        // Le poisson tire : remous et ligne qui siffle.
+        this.noise({ dur: 0.35, vol: 0.12, freq: 1300 });
+        this.tone(1400, { dur: 0.3, type: 'sawtooth', vol: 0.012, slide: 1.3 });
+        break;
+      case 'reeltick':
+        // Cliquetis du moulinet.
+        this.noise({ dur: 0.018, vol: 0.035, freq: 5200, type: 'highpass' });
+        break;
+      case 'snap':
+        this.tone(1900, { dur: 0.14, type: 'sawtooth', vol: 0.05, slide: 0.25 });
+        this.noise({ dur: 0.12, vol: 0.08, freq: 4000, type: 'highpass' });
+        break;
       case 'splash':
         this.noise({ dur: 0.4, vol: 0.18, freq: 900 });
         this.tone(NOTES.C6, { t: 0.15, dur: 0.2, type: 'triangle', vol: 0.1 });
@@ -215,6 +240,28 @@ export class Audio {
     this.tone(48, { t: delay, dur: 2.5, type: 'sine', vol: 0.25, bus: 'ambience', attack: 0.08 });
   }
 
+  /**
+   * Feux d'artifice : départ (sifflement qui monte), détonation (grave, longue) ou
+   * crépitement ; delay = retard du son, dist = distance (volume), pan = gauche / droite.
+   */
+  firework(kind, { delay = 0, dist = 30, pan = 0 } = {}) {
+    if (!this.ensure()) return;
+    const S = this.soundscape;
+    const k = Math.min(1, 45 / Math.max(10, dist));
+    const far = Math.min(0.8, dist / 140);
+    const o = { pan, far, bus: 'sfx' };
+    if (kind === 'launch') {
+      S.hiss({ ...o, attack: 0.9, dur: 0.35, f: 500, fPeak: 3200, f1: 2600, q: 2, vol: 0.05 * k });
+    } else if (kind === 'boom') {
+      S.hiss({ ...o, t: delay, attack: 0.008, dur: 1.8, type: 'lowpass', f: 900, f1: 90, q: 0.5, vol: 0.32 * k });
+      S.hiss({ ...o, t: delay, attack: 0.004, dur: 0.25, f: 1500, f1: 600, q: 0.8, vol: 0.12 * k });
+      S.sing([[0, 1.2, 70, 38]], { ...o, delay, vol: 0.18 * k });
+    } else if (kind === 'crackle') {
+      S.hiss({ ...o, t: delay, attack: 0.006, dur: 1.2, type: 'lowpass', f: 700, f1: 90, q: 0.5, vol: 0.2 * k });
+      for (let i = 0; i < 26; i++) S.hiss({ ...o, t: delay + 0.35 + Math.random() * 1.2, attack: 0.002, dur: 0.02, type: 'highpass', f: 2500 + Math.random() * 3000, vol: (0.03 + Math.random() * 0.05) * k, pan: pan + (Math.random() - 0.5) * 0.4 });
+    }
+  }
+
   // --- Boucles d'ambiance -----------------------------------------------------------------
 
   loop(id, { freq = 1800, type = 'bandpass', q = 0.6 } = {}) {
@@ -250,36 +297,21 @@ export class Audio {
   }
 
   /**
-   * Ambiance selon le lieu et l'heure : oiseaux le jour, grillons la nuit,
-   * vagues près de la mer, vent en altitude ou pendant l'orage.
+   * Ambiance selon le lieu, l'heure et la saison : houle et vent en boucle ici, oiseaux,
+   * insectes, grenouilles, vagues et animaux dans le paysage sonore.
    */
-  updateAmbience(dt, { night = false, rain = 0, sea = 0, altitude = 0, storm = false, inside = false, active = true } = {}) {
+  updateAmbience(dt, { hour = 12, season = 1, rain = 0, sea = 0, altitude = 0, storm = false, inside = false, active = true, zone = null, island = 'main', animals = [] } = {}) {
     if (!this.ctx) return;
     const out = inside || !active ? 0.15 : 1;
     const now = this.ctx.currentTime;
-    // Vagues : houle lente.
-    const w = this.setLoop('waves', sea * 0.07 * out * (0.65 + Math.sin(now * 0.7) * 0.35), { freq: 500, type: 'lowpass', q: 0.3 });
-    void w;
+    this.muffle.frequency.setTargetAtTime(inside ? 700 : 15000, now, 0.3);
+    // Houle de fond (les vagues qui déferlent viennent en plus).
+    this.setLoop('waves', sea * 0.045 * out * (0.65 + Math.sin(now * 0.7) * 0.35), { freq: 420, type: 'lowpass', q: 0.3 });
     // Vent : en montagne et pendant les orages.
     const wind = Math.min(1, Math.max(0, (altitude - 9) / 12)) + (storm ? 0.6 : 0);
     const wl = this.setLoop('wind', wind * 0.05 * out * (0.7 + Math.sin(now * 0.37) * 0.3), { freq: 420, type: 'bandpass', q: 1.2 });
     if (wl) wl.filter.frequency.setTargetAtTime(380 + Math.sin(now * 0.23) * 140, now, 0.5);
-    if (!active || inside) return;
-    // Oiseaux (jour, beau temps).
-    this.amb.birdT -= dt;
-    if (!night && rain < 0.3 && this.amb.birdT <= 0) {
-      this.amb.birdT = 1.5 + Math.random() * 5;
-      const base = 2200 + Math.random() * 1600;
-      const n = 2 + Math.floor(Math.random() * 4);
-      for (let i = 0; i < n; i++) this.tone(base * (1 + Math.random() * 0.15), { t: i * 0.11, dur: 0.09, type: 'sine', vol: 0.025, slide: Math.random() < 0.5 ? 1.35 : 0.8, bus: 'ambience' });
-    }
-    // Grillons (nuit).
-    this.amb.cricketT -= dt;
-    if (night && rain < 0.3 && this.amb.cricketT <= 0) {
-      this.amb.cricketT = 0.6 + Math.random() * 1.4;
-      const f = 4200 + Math.random() * 500;
-      for (let i = 0; i < 3; i++) this.tone(f, { t: i * 0.05, dur: 0.035, type: 'square', vol: 0.006, bus: 'ambience' });
-    }
+    this.soundscape.update(active ? dt : 0, { hour, season, rain, storm, sea, zone, island, animals: inside ? [] : animals, out });
   }
 
   /** Petite mélodie au piano (touches pentatoniques). */

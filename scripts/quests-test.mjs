@@ -148,12 +148,15 @@ await page.evaluate(() => {
         g.fishing.action();
         let caught = null;
         const off = g.on('catch', (d) => (caught = d));
-        for (let i = 0; i < 20 && g.fishing.state === 'reel'; i++) {
+        // Combat au moulinet : on mouline (appui maintenu) sans laisser la ligne se tendre.
+        for (let i = 0; i < 30 && g.fishing.state === 'reel'; i++) {
           const r = g.fishing.reel;
-          r.x = r.zoneX + r.zone / 2;
-          g.fishing.action();
+          r.progress = Math.max(r.progress, 0.995);
+          r.tension = 0;
+          g.fishing.pointerHold = true;
           await frames(1);
         }
+        g.fishing.pointerHold = false;
         off?.();
         if (caught) return caught;
         await wait(200);
@@ -648,6 +651,10 @@ const sideReport = await page.evaluate(async () => {
     bathe: () => [{}],
     stargaze: () => [{}],
     wish: () => [{}],
+    egg: () => [{ count: 1 }],
+    firework: () => [{ zone: 'plage' }],
+    cookcontest: () => [{ rank: 1, score: 130, dish: 'soupe' }],
+    dawn: () => [{ zone: 'foret' }],
   };
   const seasonDay = (season) => 1 + season * 3;
   for (let round = 0; round < 8 && sq.done.size < d.SIDE_QUESTS.length; round++) {
@@ -658,6 +665,11 @@ const sideReport = await page.evaluate(async () => {
       const giver = g.villagers.get(q.giver);
       if (r.f && giver.friendship < r.f) g.dialogue.addFriendship(giver, r.f - giver.friendship);
       if (r.seasons && !r.seasons.includes(g.world.weather.seasonIndex)) g.world.sky.day = seasonDay(r.seasons[0]) + Math.floor((g.world.sky.day - 1) / 12) * 12;
+      // Quête de fête : le jour de la fête (le premier jour de la saison, sauf le tout premier jour du jeu).
+      if (r.festival && g.calendar.festival?.id !== r.festival) {
+        g.world.sky.day = seasonDay(r.seasons[0]) + Math.max(1, Math.floor((g.world.sky.day - 1) / 12)) * 12;
+        g.calendar.onNewDay(false);
+      }
       g.world.sky.hour = 11;
       try {
         if (!sq.isAvailable(q)) throw new Error('non proposée alors que les conditions sont remplies');

@@ -84,6 +84,7 @@ export function defaultSettings() {
     musicOn: true,
     musicHidden: [], // chansons intégrées masquées (Ma musique)
     musicTitles: true, // afficher le titre de la chanson qui commence
+    footsteps: true, // bruits de pas
     keys: {}, // action → code physique (absent = défaut)
     daySpeed: 'normale',
     fullscreen: false,

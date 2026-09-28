@@ -134,6 +134,8 @@ function umbrellaMesh(color) {
 const TARGET_HEIGHT = 1.62; // hauteur à l'échelle 1 (le personnage classique mesure ~1,55 m)
 const WALK_REF = 3.4;
 const RUN_REF = 7;
+// Moment où un pied touche le sol dans les animations KayKit (en demi-cycles).
+const STEP_OFFSET = { walk: 0.03, run: 0.78 };
 const POSED_BONES = ['upperleg.l', 'upperleg.r', 'lowerleg.l', 'lowerleg.r', 'upperarm.l', 'upperarm.r', 'lowerarm.l', 'lowerarm.r'];
 const BONE_NAMES = [...POSED_BONES, 'hips', 'spine', 'chest', 'head', 'hand.l', 'hand.r', 'handslot.l', 'handslot.r'];
 const OUTLINE = 0.011;
@@ -405,6 +407,17 @@ export class ModelBody {
     b.updateMatrixWorld(true);
   }
 
+  /**
+   * Avancée des pas dans l'animation de marche ou de course : la partie entière change à
+   * chaque appui d'un pied (bruits de pas).
+   */
+  stepPhase() {
+    const run = this.base === this.actions.run && this.actions.run;
+    const act = run || this.actions.walk;
+    if (!act) return this.anim.t * 2.5;
+    return ((act.time / act.getClip().duration) * 2 + (run ? STEP_OFFSET.run : STEP_OFFSET.walk)) % 2;
+  }
+
   update(dt, s = { speed: 0, running: false, grounded: true, vy: 0 }) {
     const an = this.anim;
     an.t += dt;
@@ -542,6 +555,10 @@ export class Avatar {
 
   update(dt, s) {
     this.impl.update(dt, s);
+  }
+
+  stepPhase() {
+    return this.impl.stepPhase();
   }
 
   play(action, duration) {
