@@ -241,12 +241,12 @@ export class Game {
 
   applySettings(save = true) {
     const st = this.settings;
-    // Réglages graphiques changés à la main : la qualité automatique repart de zéro.
+    // Réglages graphiques changés à la main : la qualité automatique garde son palier
+    // (sur une petite carte graphique, repartir de zéro faisait tomber le jeu à 20 images/s
+    // le temps de se réajuster) et reprend ses mesures ; elle remonte d'elle-même s'il y a
+    // de la marge.
     const sig = JSON.stringify(st.graphics);
-    if (this.graphicsSig !== undefined && sig !== this.graphicsSig) {
-      st.autoLevel = 0;
-      this.autoQuality.restart(0);
-    }
+    if (this.graphicsSig !== undefined && sig !== this.graphicsSig) this.autoQuality.restart(st.autoLevel || 0);
     this.graphicsSig = sig;
     this.applyGraphics();
     this.camera.fov = st.fov;
