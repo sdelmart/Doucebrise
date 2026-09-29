@@ -962,3 +962,23 @@ body.hud-min.tray-open .tray-btn { opacity: 1; }
 body.photo-mode .morning { display: none; }
 @media (max-width: 720px) { .morning { top: auto; bottom: 120px; transform: none; } .morning.out { transform: translateX(-12px); } @keyframes morningIn { from { transform: translateX(-14px); } } }
 @media (prefers-reduced-motion: reduce) { .morning { animation: none; } }
+
+/* ---------- v0.16 : Fête des neiges ---------- */
+/* Bonhomme de neige : la carte reste sur le côté pour voir le bonhomme dans la prairie. */
+.snowman-modal { display: flex; background: transparent; justify-content: flex-end; align-items: center; padding-right: 24px; pointer-events: none; }
+.snowman-card { width: min(420px, calc(100vw - 32px)); pointer-events: auto; }
+.sm-step { font-weight: 900; font-size: 17px; text-align: center; margin: 2px 0 4px; }
+.sm-roll { user-select: none; -webkit-user-select: none; touch-action: none; cursor: pointer; }
+.sm-row { margin: 8px 0; }
+.sm-label { font-weight: 900; font-size: 13px; margin-bottom: 4px; }
+.sm-row .chips { flex-wrap: wrap; }
+.sm-actions { display: flex; justify-content: center; margin-top: 10px; }
+@media (max-width: 720px) { .snowman-modal { justify-content: center; align-items: flex-end; padding: 0 0 12px; } }
+/* Boule de neige reçue : une tache blanche qui s'efface. */
+.snow-splat {
+  position: fixed; inset: 0; pointer-events: none; z-index: 36; opacity: 0;
+  background: radial-gradient(circle at var(--sx, 50%) var(--sy, 50%), rgba(255, 255, 255, 0.95) 0, rgba(255, 255, 255, 0.85) 9%, rgba(235, 244, 255, 0.4) 16%, rgba(255, 255, 255, 0) 24%);
+}
+.snow-splat.on { animation: snowSplat 1s ease-out forwards; }
+@keyframes snowSplat { 0% { opacity: 1; } 60% { opacity: 0.7; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .snow-splat.on { animation-duration: 0.4s; } }

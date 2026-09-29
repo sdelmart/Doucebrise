@@ -3,7 +3,7 @@
 // la direction choisie), A / Entrée valide, B / Échap revient, LB / RB changent d'onglet.
 
 // Fenêtres, de la plus haute à la plus basse.
-const LAYERS = ['#dialog', '#settings', '#credits', '#help', '#pause', '#chapter', '#letters', '#travel', '#vehicles', '#jobs', '#shop', '#cooking', '#dialogue', '#map', '#journal', '#bag', '#pets', '#creator', '#title'];
+const LAYERS = ['#dialog', '#settings', '#credits', '#help', '#pause', '#chapter', '#letters', '#travel', '#vehicles', '#jobs', '#shop', '#cooking', '#snowman', '#dialogue', '#map', '#journal', '#bag', '#pets', '#creator', '#title'];
 const FOCUSABLE = 'button:not(:disabled), input:not([type="hidden"]):not([hidden]), select, label.btn, [tabindex]:not([tabindex="-1"])';
 const DIRS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
 

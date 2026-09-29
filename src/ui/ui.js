@@ -517,6 +517,7 @@ export class UI {
     let list;
     const veh = g.player.vehicle;
     if (g.sitting) list = [[K('interact'), 'Se lever']];
+    else if (g.festivals.snow?.fight) list = [[K('interact'), 'Lancer une boule'], [move, 'Esquiver']];
     else if (g.fishing.active) list = g.fishing.state === 'reel' ? [[K('interact'), 'Maintenir : mouliner'], [move, 'Lâcher la ligne']] : [[K('interact'), 'Ferrer / remonter']];
     else if (veh) list = [[move, 'Conduire'], [K('run'), 'Accélérer'], [K('interact'), veh.def.mode === 'air' ? 'Atterrir' : 'Descendre']];
     else if (!basics) list = [];

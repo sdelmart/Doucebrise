@@ -423,6 +423,81 @@ try {
     });
     if (r.issues.length) throw new Error(r.issues.join(' ; '));
   });
+  await step('Fêtes des habitants (répliques avant / après, feu d\'artifice de tout l\'archipel, fête des neiges)', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const out = [];
+      const sky = g.world.sky;
+      const day0 = sky.day;
+      const hour0 = sky.hour;
+      const rose = g.villagers.get('rose');
+      // Lendemain de la Fête de l'été, avec des fusées lancées : on en parle.
+      g.festivals.summer = { day: 4, launched: 6 };
+      sky.day = 5;
+      let memo = false;
+      for (let i = 0; i < 40 && !memo; i++) memo = /fusées/.test(rose.greeting());
+      if (!memo) out.push('personne ne parle des fusées de la veille');
+      // Feu d'artifice : les 16 habitants sur la plage.
+      sky.day = 4;
+      sky.hour = 21.5;
+      g.calendar.onNewDay();
+      g.festivals.update(0.05);
+      if (g.festivals.gathered.size !== g.villagers.list.length) out.push(`public du feu d'artifice : ${g.festivals.gathered.size}/${g.villagers.list.length}`);
+      // Fête des neiges (hiver, jour 1).
+      sky.day = 10;
+      sky.hour = 10.5;
+      g.calendar.onNewDay();
+      g.festivals.update(0.05);
+      const sn = g.festivals.snow;
+      if (g.calendar.festival?.id !== 'neige') out.push(`pas de fête des neiges (${g.calendar.festival?.id})`);
+      if (sn.group.children.length < 8) out.push(`décor de la fête des neiges incomplet (${sn.group.children.length})`);
+      if (!g.villagers.get('hugo').override?.snow) out.push('Hugo n\'est pas au jury');
+      // Bonhomme : trois boules bien roulées, un style, et le jugement de Hugo.
+      sn.startBuild();
+      for (let i = 0; i < 3; i++) {
+        const b = sn.building;
+        b.wait = 0;
+        b.x = b.zoneX + b.zone / 2;
+        sn.rollPress();
+      }
+      sn.showDeco();
+      sn.building.o = { nose: 'pomme-pin', hat: 'haut-de-forme', scarf: 'rouge' };
+      sn.present();
+      if (!sn.state.snowman?.rank) out.push('bonhomme non jugé');
+      g.dialogue.close();
+      // Bataille : quelques secondes, adversaires sortis, on lance.
+      sn.startFight();
+      const f = sn.fight;
+      f.count = 0;
+      for (const o of f.opp) {
+        o.up = true;
+        o.timer = 99;
+        o.dy = 0;
+      }
+      const fire = { hit: (k) => k === 'KeyE' };
+      // La visée suit la caméra (derrière la joueuse, tournée vers les murets).
+      for (let i = 0; i < 160; i++) {
+        g.villagers.update(0.05);
+        sn.update(0.05);
+        g.cam.update(0.05, g.player, g.input, g.elapsed);
+        g.camera.updateMatrixWorld();
+        sn.fightInput(fire);
+      }
+      if (!(f.my > 0)) out.push('aucune boule de neige ne touche');
+      f.t = 0;
+      sn.update(0.05);
+      if (sn.fight || !sn.state.fight) out.push('la bataille ne se termine pas');
+      g.dialogue.close();
+      g.ui.setPrompt(null);
+      sky.day = day0;
+      sky.hour = hour0;
+      g.calendar.onNewDay();
+      g.lastDay = day0;
+      g.festivals.update(0.05);
+      return out.join(' ; ');
+    });
+    if (r) throw new Error(r);
+  });
   await step('Sauvegarde et reprise', async () => {
     await page.evaluate(() => window.game.saveNow());
     await page.reload({ waitUntil: 'load' });

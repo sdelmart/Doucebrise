@@ -390,7 +390,7 @@ export class Game {
   }
 
   get busy() {
-    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || !!this.festivals.plating || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden');
+    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || !!this.festivals.plating || !!this.festivals.snow?.building || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden');
   }
 
   openPanel(name) {
@@ -988,6 +988,11 @@ export class Game {
   updateInteractions() {
     const input = this.input;
     const up = new THREE.Vector3(0, 2.3, 0);
+    // Bataille de boules de neige : E lance une boule, rien d'autre.
+    if (this.festivals.snow?.fight) {
+      this.festivals.snow.fightInput(input);
+      return;
+    }
 
     if (this.sitting) {
       const mv = input.moveVector();

@@ -5,13 +5,15 @@ import { Shape, G, vertexColorToon } from '../core/materials.js';
 import { createRng } from '../core/math.js';
 import { Fireworks, FIREWORK_COLORS } from '../world/fireworks.js';
 import { escapeHtml } from '../ui/ui.js';
+import { SnowFestival } from './snowfest.js';
 
 // Fêtes de saison avec leur mini-jeu (le premier jour de chaque saison) :
 // - printemps : Chasse aux œufs — des œufs peints cachés sur l'île, à montrer à Mamie Rose ;
 // - été : Fête de l'été — grand feu d'artifice sur la plage (21 h – 23 h), et une caisse de
 //   fusées pour lancer les siennes ; les habitants viennent regarder ;
 // - automne : Concours de cuisine — un plat présenté au jury (Mimi, Élise, Pomme) après un
-//   petit jeu de dressage de l'assiette.
+//   petit jeu de dressage de l'assiette ;
+// - hiver : Fête des neiges — bonshommes de neige et bataille de boules de neige (snowfest.js).
 
 ITEMS['oeuf-peint'] = { label: 'Œuf peint', emoji: '🥚', cat: 'forage', price: 15, desc: 'Caché pendant la Chasse aux œufs du printemps. Montre-les à Mamie Rose !' };
 ITEMS['oeuf-choco'] = { label: 'Œuf en chocolat', emoji: '🍫', cat: 'dish', price: 45 };
@@ -98,6 +100,7 @@ export class Festivals {
     this.gathered = new Set();
     this.today = null;
     this.buildPlating();
+    this.snow = new SnowFestival(game, this);
   }
 
   get festivalId() {
@@ -177,6 +180,7 @@ export class Festivals {
       }
       if (this.jury) this.jury.visible = true;
     }
+    this.snow.onNewDay();
   }
 
   // --- Chasse aux œufs ----------------------------------------------------------------
@@ -272,6 +276,7 @@ export class Festivals {
     const all = [...rivals, { name: g.character.appearance.name, n: mine, me: true }].sort((a, b) => b.n - a.n || (a.me ? -1 : 1));
     const rank = all.findIndex((x) => x.me) + 1;
     h.done = true;
+    h.rank = rank;
     g.inventory['oeuf-peint'] = Math.max(0, (g.inventory['oeuf-peint'] || 0) - mine);
     const prizes = {
       1: { coins: 500, furniture: { 'panier-oeufs': 1 }, items: { 'oeuf-choco': 3 }, stars: 8 },
@@ -319,19 +324,34 @@ export class Festivals {
     g.requestSave();
   }
 
-  /** Les habitants du village viennent voir le feu d'artifice sur la plage. */
+  /**
+   * Tout l'archipel vient voir le feu d'artifice sur la plage : les habitants du village
+   * devant, ceux de Bourg-Sapin et de Port-Corail juste derrière, en rangs décalés.
+   */
   gatherAudience() {
     const g = this.game;
+    const w = g.world;
     const b = this.beach();
     const c = b.crate;
-    MAIN_VILLAGERS.forEach((id, i) => {
+    const others = g.villagers.list.map((v) => v.def.id).filter((id) => !MAIN_VILLAGERS.includes(id));
+    const PER_ROW = 6;
+    [...MAIN_VILLAGERS, ...others].forEach((id, i) => {
       const v = g.villagers.get(id);
-      if (!v || v.override || this.gathered.has(id)) return;
-      const k = (i - (MAIN_VILLAGERS.length - 1) / 2) * 1.6;
-      const back = 3 + (i % 2) * 1.2;
-      const x = c.x + b.side.x * k - b.dir.x * back;
-      const z = c.z + b.side.z * k - b.dir.z * back;
-      v.override = { x, z, rot: Math.atan2(b.launch.x - x, b.launch.z - z) };
+      if (!v || this.gathered.has(id) || (v.override && !v.override.audience)) return;
+      const row = Math.floor(i / PER_ROW);
+      const k = ((i % PER_ROW) - (PER_ROW - 1) / 2) * 1.7 + (row % 2) * 0.85;
+      const back = 3 + row * 1.6;
+      let x = c.x + b.side.x * k - b.dir.x * back;
+      let z = c.z + b.side.z * k - b.dir.z * back;
+      // Ni dans l'eau, ni dans un rocher ou un palmier.
+      for (let n = 0; n < 4 && w.heightAt(x, z) < 0.3; n++) {
+        x -= b.dir.x * 1.5;
+        z -= b.dir.z * 1.5;
+      }
+      const res = w.colliders.resolve(x, z, 0.4);
+      x = res.x;
+      z = res.z;
+      v.override = { x, z, rot: Math.atan2(b.launch.x - x, b.launch.z - z), audience: true };
       this.gathered.add(id);
     });
   }
@@ -564,6 +584,7 @@ export class Festivals {
         },
       });
     }
+    out.push(...this.snow.dialogueChoices(v, dialogue));
     if (id === 'mimi' && this.contestOpen) {
       const has = this.dishes().length > 0;
       out.push({
@@ -645,12 +666,13 @@ export class Festivals {
       }
     } else if (this.gathered.size && !this.showOn) this.releaseAudience();
     this.fireworks.update(dt, g.camera);
+    this.snow.update(dt);
   }
 
   // --- Sauvegarde ------------------------------------------------------------------------
 
   serialize() {
-    return { hunt: this.hunt, cook: this.cook, summer: this.summer };
+    return { hunt: this.hunt, cook: this.cook, summer: this.summer, snow: this.snow.serialize() };
   }
 
   restore(d) {
@@ -658,5 +680,6 @@ export class Festivals {
     this.hunt = d.hunt || null;
     this.cook = d.cook || null;
     this.summer = d.summer || null;
+    this.snow.restore(d.snow);
   }
 }

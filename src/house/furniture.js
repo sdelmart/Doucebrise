@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Shape, G } from '../core/materials.js';
+import { snowmanShape } from '../world/snowman.js';
 
 // Catalogue des meubles : taille au sol (m), où on peut les poser, prix,
 // couleurs possibles et modèle 3D. Tous regardent vers +Z.
@@ -1269,6 +1270,15 @@ def('trophee-cuisine', {
     for (const x of [-1, 1]) s.add(G.torus(0.07, 0.018, 6, 12), c, { pos: [x * 0.19, 0.43, 0], rot: [0, 0, Math.PI / 2] });
     // Toque de chef gravée.
     s.add(G.sphere(0.06, 10, 8), '#fffaf2', { pos: [0, 0.42, 0.15], scale: [1.2, 0.9, 0.3] });
+    return s.build();
+  },
+});
+def('bonhomme-neige', {
+  label: 'Bonhomme de neige du concours', emoji: '☃️', price: 0, w: 0.9, d: 0.9, color: '#e5484d', cat: 'deco', where: 'out', noShop: true,
+  build(c) {
+    // Le bonhomme gagnant de la Fête des neiges, sur son petit socle : il ne fond jamais !
+    const s = snowmanShape({ nose: 'pomme-pin', hat: 'haut-de-forme', scarf: 'rouge', sizes: [0.85, 0.85, 0.85] });
+    s.add(G.cyl(0.46, 0.5, 0.06, 18), '#dfe8f2', { pos: [0, 0.03, 0] });
     return s.build();
   },
 });

@@ -12,6 +12,7 @@ export const FESTIVALS = [
   { id: 'oeufs', season: 0, day: 1, label: 'Chasse aux œufs', emoji: '🥚', desc: 'De 7 h à 20 h, 14 œufs peints sont cachés sur l\'île : trouve-les et montre-les à Mamie Rose !' },
   { id: 'ete', season: 1, day: 1, label: 'Fête de l\'été', emoji: '🎆', desc: 'Grand feu d\'artifice sur la plage de 21 h à 23 h ! Dès 19 h, une caisse de fusées t\'attend sur le sable.' },
   { id: 'cuisine', season: 2, day: 1, label: 'Concours de cuisine', emoji: '👩‍🍳', desc: 'De 9 h à 18 h, présente ton meilleur plat au jury (Mimi, Élise et Pomme) devant le café !' },
+  { id: 'neige', season: 3, day: 1, label: 'Fête des neiges', emoji: '☃️', desc: 'De 9 h à 17 h à la Prairie aux Fleurs : concours de bonshommes de neige jugé par Hugo, et bataille de boules de neige contre l\'équipe de Noé !' },
   { id: 'fleurs', season: 0, day: 2, label: 'Fête des Fleurs', emoji: '🌸', desc: 'Les fleurs se vendent le double et les habitants sont ravis d\'en recevoir.' },
   { id: 'peche', season: 1, day: 2, label: 'Concours de pêche', emoji: '🎣', desc: 'De 6 h à 18 h : pêche le plus gros poisson possible et présente-le à Marin !' },
   { id: 'recolte', season: 2, day: 2, label: 'Fête des Récoltes', emoji: '🎃', desc: 'Pomme rachète récoltes et plats 50 % plus cher.' },

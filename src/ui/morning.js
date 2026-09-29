@@ -53,7 +53,7 @@ export class Morning {
     // Demain : fête à venir.
     const day = g.world.sky.day;
     const next = cal.festivalOn(Math.floor(day / DAYS_PER_SEASON) % 4, (day % DAYS_PER_SEASON) + 1);
-    if (next && !f) out.push(['📅', `Demain : ${next.emoji} ${escapeHtml(next.label)}`]);
+    if (next) out.push(['📅', `Demain : ${next.emoji} ${escapeHtml(next.label)}`]);
     // Potager.
     const gd = g.garden;
     const planted = (gd?.plots || []).filter((p) => p.crop);

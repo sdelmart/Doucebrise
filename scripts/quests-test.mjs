@@ -655,6 +655,8 @@ const sideReport = await page.evaluate(async () => {
     firework: () => [{ zone: 'plage' }],
     cookcontest: () => [{ rank: 1, score: 130, dish: 'soupe' }],
     dawn: () => [{ zone: 'foret' }],
+    snowball: () => [{ hits: 1 }],
+    snowman: () => [{ rank: 1, score: 110 }],
   };
   const seasonDay = (season) => 1 + season * 3;
   for (let round = 0; round < 8 && sq.done.size < d.SIDE_QUESTS.length; round++) {

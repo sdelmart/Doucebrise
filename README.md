@@ -29,7 +29,7 @@ Version de production (fichiers statiques dans `dist/`, déployables sur n'impor
 
 `npm run build && npm run test:smoke` lance le jeu dans Chromium sans écran : écran titre, nouvelle partie, fenêtres principales, déplacement, course de luge, sauvegarde et reprise. Le test échoue à la moindre erreur JavaScript. Il tourne aussi sur GitHub à chaque envoi (workflow **Test du jeu**, captures d'écran en *Artifacts*).
 
-`npm run build && npm run test:quests` **joue toute l'histoire** (les 45 quêtes des 11 chapitres, avec les vraies actions du jeu : parler, planter, pêcher, cuisiner, acheter, décorer, adopter, cérémonies de nuit…), puis **les 56 quêtes des habitants** (proposition, objectifs, remise, récompenses), les **six petits boulots**, deux semaines de demandes et de défis (aucune répétition d'un jour à l'autre), et vérifie la cohérence des données (objets, meubles, recettes, habitants, prérequis) et la sauvegarde. Il tourne aussi sur GitHub à chaque envoi.
+`npm run build && npm run test:quests` **joue toute l'histoire** (les 45 quêtes des 11 chapitres, avec les vraies actions du jeu : parler, planter, pêcher, cuisiner, acheter, décorer, adopter, cérémonies de nuit…), puis **les 58 quêtes des habitants** (proposition, objectifs, remise, récompenses), les **six petits boulots**, deux semaines de demandes et de défis (aucune répétition d'un jour à l'autre), et vérifie la cohérence des données (objets, meubles, recettes, habitants, prérequis) et la sauvegarde. Il tourne aussi sur GitHub à chaque envoi.
 
 ## Commandes
 
@@ -83,7 +83,7 @@ L'écran reste dégagé pour profiter de l'île (Paramètres → Affichage → I
 - Une **astuce** apparaît la première fois qu'on découvre quelque chose (voyages, vœux, source chaude, luge, visites…).
 - **Guide** : balise lumineuse, flèche au bord de l'écran avec la distance et étoile sur la mini-carte — dorée pour l'histoire, violette pour les quêtes des habitants, bleue pour les petits boulots.
 
-### 💞 16 habitants et 56 quêtes
+### 💞 16 habitants et 58 quêtes
 - **Doucebrise** : Mamie Rose (graines), Pomme (marché), Bruno (menuiserie, travaux), Lila (couture), Marin (pêcheur), Noé (explorateur), Mimi (Café des Chats), Léo (garage).
 - **Bourg-Sapin** : Grand-père Aurèle (source chaude), Élise (pâtisserie), Hugo (atelier du bois), Sacha (guide de montagne).
 - **Port-Corail** : Capitaine Nérée (capitainerie), Coralie (club de plongée), Paco (paillote), Maëlys (galerie de peinture).
@@ -101,13 +101,21 @@ L'écran reste dégagé pour profiter de l'île (Paramètres → Affichage → I
 - **Étoiles filantes** : appuie sur `F` pour faire un vœu… et trouve parfois un fragment d'étoile au courrier. Pluie d'étoiles pendant la Nuit des Étoiles.
 - **Aurores boréales** les nuits d'hiver (encore plus belles sur l'île des Pins).
 - **Météo** : soleil, nuages, pluie, **orages** (éclairs et tonnerre), **brouillard** matinal, neige, arc-en-ciel ; **pétales** de cerisier au printemps, **feuilles** qui tombent en automne. Prévisions du lendemain au survol de l'horloge.
-- **4 saisons** de 3 jours et **11 fêtes** : Fête des Fleurs, Concours de pêche, Fête des Récoltes et Nuit des Étoiles à Doucebrise ; Pique-nique des cerisiers, **Fête du Port** (voiliers dans la baie, poissons plus chers, boutiques en promo), **Fête des Lanternes** (lanternes flottantes sur le Lac Miroir) et **Marché d'hiver de Bourg-Sapin** dans les îles.
+- **4 saisons** de 3 jours et **12 fêtes** : Fête des Fleurs, Concours de pêche, Fête des Récoltes et Nuit des Étoiles à Doucebrise ; Pique-nique des cerisiers, **Fête du Port** (voiliers dans la baie, poissons plus chers, boutiques en promo), **Fête des Lanternes** (lanternes flottantes sur le Lac Miroir) et **Marché d'hiver de Bourg-Sapin** dans les îles.
 
 ### 🎉 Fêtes de saison et mini-jeux (`src/game/festivals.js`)
 Le premier jour de chaque saison (sauf le tout premier jour de la partie) :
 - **Chasse aux œufs** (printemps) : 14 œufs peints cachés au village, dans la prairie, au verger, sur la colline, dans la forêt, à la plage et près de l'étang, qui scintillent de temps en temps. Montre-les à Mamie Rose : classement contre Noé, Mimi, Léo et Pomme, œufs en chocolat et **panier d'œufs peints** pour le gagnant.
-- **Fête de l'été** : grand **feu d'artifice** sur la plage de 21 h à 23 h (pivoines, saules dorés, anneaux, **cœurs**, étoiles crépitantes, bouquet final ; la détonation arrive avec le retard du son). Les habitants du village viennent regarder, et une **caisse de fusées** sur le sable permet de lancer les siennes dès 19 h.
+- **Fête de l'été** : grand **feu d'artifice** sur la plage de 21 h à 23 h (pivoines, saules dorés, anneaux, **cœurs**, étoiles crépitantes, bouquet final ; la détonation arrive avec le retard du son). **Tout l'archipel** vient regarder : les habitants du village devant, ceux de Bourg-Sapin et de Port-Corail juste derrière. Une **caisse de fusées** sur le sable permet de lancer les siennes dès 19 h.
 - **Concours de cuisine** (automne) : présente un plat au jury (Mimi, Élise, Pomme) devant le café, après un petit jeu de **dressage de l'assiette** (trois garnitures à poser au bon moment). Note selon le goût, la présentation, les goûts du jury et les saveurs d'automne ; **trophée** et titre « Grand·e chef » pour le gagnant.
+- **Fête des neiges** (hiver, `src/game/snowfest.js`) : de 9 h à 17 h à la Prairie aux Fleurs, près du kiosque, au milieu des bonshommes de Mamie Rose, Bruno, Lila, Mimi et Pomme.
+  - **Concours de bonshommes de neige** : Hugo descend du bourg pour juger. On **roule trois boules** (appuyer quand la boule a la bonne taille : trop petite ou trop grosse, le bonhomme penche), puis on choisit le **nez** (carotte, pomme de pin, cerise), le **chapeau** (bonnet, seau, haut-de-forme, paille, oreilles de chat) et l'**écharpe** (rouge, bleue, jaune, rayée), en voyant le bonhomme prendre forme dans la prairie. Hugo note la forme, ses goûts et les accords chapeau-écharpe ; le gagnant reçoit un **bonhomme de neige pour son jardin**, qui ne fond jamais.
+  - **Bataille de boules de neige** contre l'équipe de Noé (Léo et Sacha), cachés derrière trois murets de neige : une minute, `E` pour lancer (visée aidée vers l'adversaire le plus proche du centre de l'écran), et on bouge pour esquiver leurs boules. Tache de neige à l'écran quand on est touché·e ; revanche possible.
+  - Deux quêtes de fête : « La grande bataille de neige » (Noé) et « Un bonhomme qui a du caractère » (Hugo).
+
+### 💬 Les habitants parlent des fêtes (`src/npc/festivalTalk.js`)
+- **La veille** (« Demain soir, feu d'artifice sur la plage ! Tu viendras ? »), **le jour même** et **le lendemain** (« Tu as vu le feu d'artifice hier ? »), pour chacune des douze fêtes : répliques partagées, répliques propres à certains habitants (Rose pour les œufs, Léo pour les fusées, Mimi et Élise pour la cuisine, Marin pour la pêche, Noé et Hugo pour la neige…), bavardages entre eux et petites bulles.
+- **Ils se souviennent de ce que tu as fait** : chasse aux œufs gagnée, fusées lancées, place au concours de cuisine, taille de ton poisson au concours de pêche, bonhomme de neige, bataille de boules de neige.
 
 ### 🔊 Sons (tout est synthétisé, `src/core/soundscape.js` et `footsteps.js`)
 - **Bruits de pas selon le sol** : herbe, sous-bois, terre, sable, pierre et pavés, bois (ponts, pontons, maisons), neige, eau peu profonde ; un peu mouillés sous la pluie ; au rythme des pieds de l'animation, à peine plus appuyés à la réception d'un saut. **Discrets** : ils restent au niveau de l'ambiance (oiseaux, vent) et sous la musique, avec des attaques douces et sans aigus secs ; à la **lisière de deux sols** (herbe qui devient terre, sable qui devient herbe…), le pas mêle les deux au lieu de basculer d'un coup. Désactivables (Paramètres → Audio).
@@ -229,11 +237,11 @@ src/
                          apparence, déplacement, caméra
   animals/               Espèces (modèles 3D), comportement, gestion
   npc/                   Habitants : apparence, emploi du temps, trajets, goûts et répliques,
-                         gestes de métier (jobGestures.js)
+                         gestes de métier (jobGestures.js), répliques des fêtes (festivalTalk.js)
   house/                 Maison : pièce, meubles, papiers peints, mode décoration, visites chez les habitants
   game/                  Objets, potager, cueillette, pêche, insectes, cuisine, histoire, quêtes des
                          habitants, progression, petits boulots, véhicules, calendrier, fêtes de saison
-                         (festivals.js), voyages, luge
+                         (festivals.js, fête des neiges : snowfest.js), voyages, luge
   ui/                    HUD (interface épurée, menus rapides), carnet du matin (morning.js), guide,
                          menus (titre, pause, paramètres), carte, dialogues, boutiques, journal,
                          photo, compteur FPS

@@ -3,6 +3,7 @@ import { Character } from '../player/character.js';
 import { normalizeAppearance, OPTIONS } from '../player/appearance.js';
 import { createVillagerBody } from './villagerBody.js';
 import { JOBS } from './jobGestures.js';
+import { festivalLine, festivalChatter, festivalBubble } from './festivalTalk.js';
 import { ITEMS } from '../game/items.js';
 import { damp, lerpAngle } from '../core/math.js';
 import { PATHS } from '../world/layout.js';
@@ -786,11 +787,6 @@ const SHARED_LINES = {
   fog: ['Quel brouillard ce matin ! On ne voit pas le bout de son nez.', 'Le brouillard, c\'est la mer qui fait la grasse matinée.'],
   aurora: ['Tu as vu les aurores, cette nuit ? Le ciel dansait !'],
   visit: ['Fais comme chez toi ! Mais ne touche pas à mes affaires, hein.', 'Ça me fait plaisir que tu passes me voir.', 'Tu veux un thé ? J\'en ai toujours un qui chauffe.', 'Alors, comment tu trouves ma déco ?'],
-  festival: {
-    fleurs: ['Des fleurs partout, quel bonheur !'], peche: ['Tu participes au concours ? Bonne chance !'], recolte: ['Quelle belle fête des récoltes !'], etoiles: ['Ce soir, on regarde les étoiles ensemble ?'],
-    cerisiers: ['Un pique-nique sous les cerisiers, c\'est la meilleure fête de l\'année !'], port: ['Tu as vu les voiliers dans la baie ? Magnifique !'],
-    lanternes: ['Ce soir, les lanternes vont flotter sur le Lac Miroir. Il faut voir ça !'], hiver: ['Le marché d\'hiver ! Un chocolat chaud, et tout va mieux.'],
-  },
 };
 for (const v of VILLAGERS) if (EXTRA_CHAT[v.id]) v.lines.chat.push(...EXTRA_CHAT[v.id]);
 
@@ -965,7 +961,7 @@ export class Villager {
     // Position imposée (grande finale au phare).
     if (this.override) {
       const o = this.override;
-      this.pos.set(o.x, this.game.world.groundAt(o.x, o.z), o.z);
+      this.pos.set(o.x, this.game.world.groundAt(o.x, o.z) + (o.dy || 0), o.z);
       this.rotY = o.rot;
       this.home = false;
       this.path = [];
@@ -1095,8 +1091,12 @@ export class Villager {
     if (w.isStorm) pool.push(pick(SHARED_LINES.storm));
     if (w.current === 'brouillard') pool.push(pick(SHARED_LINES.fog));
     if (w.seasonIndex === 3 && (h < 9 || h > 20)) pool.push(pick(SHARED_LINES.aurora));
-    const fest = g.calendar?.festival;
-    if (fest && SHARED_LINES.festival[fest.id]) pool.push(pick(SHARED_LINES.festival[fest.id]), pick(SHARED_LINES.festival[fest.id]));
+    // La fête du jour, celle de demain ou celle d'hier (voir festivalTalk.js).
+    const fest = festivalLine(this, g);
+    if (fest) {
+      if (Math.random() < 0.55) pool.unshift(fest);
+      else pool.push(fest);
+    }
     if (g.visits?.active === this) pool.push(pick(SHARED_LINES.visit), pick(SHARED_LINES.visit));
     if (w.seasonIndex === 3) pool.push(this.line('snow'));
     if (w.seasonIndex === 2) pool.push(this.line('autumn'));
@@ -1185,7 +1185,8 @@ export class VillagerManager {
     for (const v of this.list) {
       v.update(dt, sky.hour, raining);
       const req = this.game.quests?.requestFor(v.def.id);
-      const kind = v.override ? null : this.game.sideQuests?.markerFor(v.def.id) || (req && !req.done ? 'request' : null);
+      // Habitant à un poste de fête (juge, équipe de boules de neige) : ses quêtes restent visibles.
+      const kind = v.override && !v.override.festival ? null : this.game.sideQuests?.markerFor(v.def.id) || (req && !req.done ? 'request' : null);
       v.bubble.visible = !!kind;
       if (kind) {
         if (v.markerKind !== kind) {
@@ -1213,13 +1214,14 @@ export class VillagerManager {
       if (d > 16 || d < 2.5) continue;
       const other = this.list.find((o) => o !== v && o.root.visible && !o.home && Math.hypot(o.pos.x - v.pos.x, o.pos.z - v.pos.z) < 5);
       if (other && Math.random() < 0.6) {
-        const [a, b] = CHATTER[Math.floor(Math.random() * CHATTER.length)];
+        const [a, b] = (Math.random() < 0.4 && festivalChatter(g)) || CHATTER[Math.floor(Math.random() * CHATTER.length)];
         v.say(a, 2800);
         other.bubbleT = Math.max(other.bubbleT, 6);
         setTimeout(() => other.say(b, 2800), 2300);
       } else {
         const list = BUBBLES[v.def.id] || ['♪'];
-        v.say(list[Math.floor(Math.random() * list.length)], 2200);
+        const fest = Math.random() < 0.3 ? festivalBubble(g) : null;
+        v.say(fest || list[Math.floor(Math.random() * list.length)], 2200);
       }
     }
   }

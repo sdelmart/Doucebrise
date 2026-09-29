@@ -504,6 +504,22 @@ export const SIDE_QUESTS = [
     thanks: 'Quel courage ! Pour te remercier, voilà ma recette secrète : la tarte à la citrouille. Chut, c\'est entre nous !',
     reward: { coins: 250, recipe: 'tarte-citrouille', friends: { mimi: 8, elise: 5, pomme: 5 } },
   }),
+  S('noe-neige', 'noe', 'La grande bataille de neige', {
+    req: { seasons: [3], festival: 'neige' },
+    offer: ['C\'est la Fête des neiges ! Léo, Sacha et moi, on a construit des murets sur la prairie. On est l\'équipe la plus forte de l\'archipel !', 'Tu oses nous défier ? Touche-nous cinq fois avec tes boules de neige, et je t\'offre mon trésor secret !'],
+    desc: 'Pendant la Fête des neiges (Prairie aux Fleurs, de 9 h à 17 h), touche l\'équipe de Noé 5 fois à la bataille de boules de neige.',
+    goals: [on('snowball', 5, 'Boules de neige qui touchent')],
+    thanks: 'Cinq fois ! J\'ai de la neige jusque dans les chaussettes ! Tiens, mon trésor : des chocolats chauds que j\'ai gardés au chaud dans mon manteau.',
+    reward: { coins: 200, items: { chocolat: 3 }, friends: { noe: 8, leo: 4, sacha: 4 } },
+  }),
+  S('hugo-bonhomme', 'hugo', 'Un bonhomme qui a du caractère', {
+    req: { seasons: [3], festival: 'neige' },
+    offer: ['Je suis descendu du bourg pour juger les bonshommes de neige. Chaque année, c\'est la même chose : trois boules, une carotte, et voilà.', 'Toi, montre-moi un bonhomme qui a du caractère. Roule-le bien, habille-le avec goût, et présente-le-moi.'],
+    desc: 'Construis un bonhomme de neige et présente-le à Hugo (Fête des neiges, Prairie aux Fleurs, de 9 h à 17 h).',
+    goals: [on('snowman', 1, 'Bonhomme présenté à Hugo')],
+    thanks: 'Voilà enfin un bonhomme avec une âme ! Tiens, pour ta peine… et tu as mon respect. Ça, c\'est plus rare que l\'or.',
+    reward: { coins: 250, stars: 3, friends: { hugo: 10 } },
+  }),
   S('marin-combat', 'marin', 'Le combat du siècle', {
     req: { after: 'marin-legende' },
     offer: ['Moussaillon, un vrai pêcheur ne se contente pas de sardines. Il faut sentir la ligne se tendre, tenir bon, relâcher au bon moment…', 'Ramène-moi un poisson d\'au moins un mètre. Là, on parlera de toi dans les tavernes !'],
@@ -532,7 +548,7 @@ export class SideQuests {
     this.active = {}; // id → { p: [progress…] }
     this.done = new Set();
     this.tracked = null;
-    for (const e of ['sell', 'catch', 'insect', 'zone', 'pet', 'ride', 'bathe', 'stargaze', 'wish', 'travel', 'photo', 'emote', 'talk', 'cook', 'gather', 'egg', 'firework', 'cookcontest', 'dawn']) {
+    for (const e of ['sell', 'catch', 'insect', 'zone', 'pet', 'ride', 'bathe', 'stargaze', 'wish', 'travel', 'photo', 'emote', 'talk', 'cook', 'gather', 'egg', 'firework', 'cookcontest', 'dawn', 'snowball', 'snowman']) {
       game.on(e, (d) => this.onEvent(e, d || {}));
     }
   }

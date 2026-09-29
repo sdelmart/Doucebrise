@@ -70,7 +70,7 @@ const CLIP_NAMES = {
 };
 
 // Actions courtes du jeu → animation importée (sinon : pose construite en code).
-const ACTION_CLIPS = { pick: 'pickup', pet: 'interact', feed: 'interact', swing: 'use', wave: 'wave', celebrate: 'cheer', dance: 'dance' };
+const ACTION_CLIPS = { pick: 'pickup', pet: 'interact', feed: 'interact', swing: 'use', wave: 'wave', celebrate: 'cheer', dance: 'dance', throw: 'throw' };
 
 let sharedClips = null;
 function allClips() {
@@ -573,6 +573,9 @@ export class ModelBody {
     const clap = Math.abs(Math.sin(t * 14)) * 0.35;
     this.turn('upperarm.l', -1.2, 0, -0.35 + clap, clapW);
     this.turn('upperarm.r', -1.2, 0, 0.35 - clap, clapW);
+    // Lancer (boule de neige) sans animation importée : bras levé vers l'avant.
+    const throwW = want('throw', coded && an.action === 'throw');
+    this.turn('upperarm.r', -2.3, 0, -0.25, throwW);
     const thinkW = want('think', coded && an.action === 'think');
     this.turn('upperarm.r', -1.3, 0, 0.3, thinkW);
     this.turn('lowerarm.r', -1.6, 0, 0, thinkW);

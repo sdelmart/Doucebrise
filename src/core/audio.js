@@ -215,6 +215,14 @@ export class Audio {
       case 'swoosh':
         this.noise({ dur: 0.2, vol: 0.07, freq: 3200 });
         break;
+      case 'snowthrow':
+        this.noise({ dur: 0.16, vol: 0.045, freq: 2400 });
+        break;
+      case 'snowhit':
+        // Boule de neige qui s'écrase : un « pouf » mat.
+        this.noise({ dur: 0.18, vol: 0.13, freq: 650 });
+        this.noise({ t: 0.01, dur: 0.1, vol: 0.04, freq: 3000 });
+        break;
       case 'mail':
         [NOTES.G5, NOTES.C6].forEach((f, i) => this.tone(f, { t: i * 0.1, dur: 0.18, type: 'triangle', vol: 0.1 }));
         break;
