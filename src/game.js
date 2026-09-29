@@ -1477,7 +1477,8 @@ export class Game {
     this.festivals.update(sdt);
     this.house.update(sdt, this.elapsed, this.camera);
     this.decor.update();
-    this.music.update(dt, this.musicMood());
+    const wish = this.musicMood();
+    this.music.update(dt, wish.mood, wish.moment);
     this.audio.setMusicDuck(!!this.dialogue.open);
     this.particles.update(sdt);
     this.cam.update(dt, this.player, this.input, this.elapsed);
@@ -1552,29 +1553,39 @@ export class Game {
     saveSettings(this.settings);
   }
 
-  /** Ambiance musicale voulue à cet instant (voir core/music.js). */
+  /**
+   * Ambiance musicale voulue à cet instant (voir core/music.js) : mood, et moment = vrai pour
+   * une scène, la longue-vue ou la luge (la musique suit vite), faux pour un lieu (elle prend
+   * son temps et se fond d'une chanson à l'autre).
+   */
   musicMood() {
-    if (this.state !== 'play') return 'magique';
-    if (this.musicMoment && this.elapsed < this.musicMoment.until) return this.musicMoment.mood;
-    if (this.inFinale || (this.dialogue.open && this.dialogue.el?.classList.contains('heart-scene'))) return 'tendre';
-    if (this.archipelago.gazing) return 'magique';
-    if (this.sled.active) return 'festif';
-    if (this.shop.isOpen) return 'mignon';
-    if (this.indoors) return 'cozy';
-    const sky = this.world.sky;
+    const moment = (mood) => ({ mood, moment: true });
+    const place = (mood) => ({ mood, moment: false });
+    if (this.state !== 'play') return moment('magique');
+    if (this.musicMoment && this.elapsed < this.musicMoment.until) return moment(this.musicMoment.mood);
+    if (this.inFinale || (this.dialogue.open && this.dialogue.el?.classList.contains('heart-scene'))) return moment('tendre');
+    if (this.archipelago.gazing) return moment('magique');
+    if (this.sled.active) return moment('festif');
+    // Un peu d'écart entre l'entrée et la sortie : pas d'aller-retour au bord d'une averse ou du café.
+    const rain = this.world.weather.rainAmt;
+    this.musicRain = rain > (this.musicRain ? 0.2 : 0.35);
     const p = this.player.pos;
-    const island = islandAt(p.x, p.z);
-    if (this.world.weather.rainAmt > 0.35) return 'melancolique';
-    const fest = this.calendar.festival?.id;
-    if (fest === 'etoiles' && sky.isNight) return 'magique';
-    const festIsland = { port: 'corail', lanternes: 'pins', hiver: 'pins' }[fest] || (fest ? 'main' : null);
-    if (festIsland === island && sky.hour >= 7 && sky.hour < 22) return 'festif';
-    if (sky.isNight) return 'nuit';
     const cafe = this.world.village.shopSpots.cafe;
-    if (cafe && Math.hypot(cafe.x - p.x, cafe.z - p.z) < 9) return 'mignon';
-    if (island === 'pins') return 'montagnard';
-    if (island === 'main' && (!this.zone || this.zone.id === 'village')) return 'leger';
-    return 'nature';
+    this.musicCafe = !!cafe && Math.hypot(cafe.x - p.x, cafe.z - p.z) < (this.musicCafe ? 13 : 9);
+    if (this.shop.isOpen) return place('mignon');
+    if (this.indoors) return place('cozy');
+    const sky = this.world.sky;
+    const island = islandAt(p.x, p.z);
+    if (this.musicRain) return place('melancolique');
+    const fest = this.calendar.festival?.id;
+    if (fest === 'etoiles' && sky.isNight) return place('magique');
+    const festIsland = { port: 'corail', lanternes: 'pins', hiver: 'pins' }[fest] || (fest ? 'main' : null);
+    if (festIsland === island && sky.hour >= 7 && sky.hour < 22) return place('festif');
+    if (sky.isNight) return place('nuit');
+    if (this.musicCafe) return place('mignon');
+    if (island === 'pins') return place('montagnard');
+    if (island === 'main' && (!this.zone || this.zone.id === 'village')) return place('leger');
+    return place('nature');
   }
 
   /** Ambiance : lumière du post-traitement, sons, musique, étoiles filantes, aurores. */

@@ -3,7 +3,7 @@ import { MUSIC_BED } from './audio.js';
 // Musiques du jeu : une ambiance par moment (nuit, fêtes, village, pluie, maison…).
 // Les chansons viennent du dossier music/<ambiance>/ (intégrées au jeu) et de
 // « Ma musique » (fichiers ajoutés depuis les paramètres, gardés dans le navigateur).
-// Fondus enchaînés, reprise là où la chanson s'était arrêtée, volumes égalisés.
+// Longs fondus enchaînés entre les lieux, reprise là où la chanson s'était arrêtée, volumes égalisés.
 
 export const MUSIC_MOODS = [
   { id: 'leger', emoji: '☀️', label: 'Léger', when: 'Le village de Doucebrise en journée' },
@@ -33,8 +33,13 @@ const FALLBACK = {
   magique: ['nuit', 'tendre'],
 };
 
-const FADE = 2.4; // secondes
-const SETTLE = 2; // l'ambiance doit rester stable ce temps avant de changer de chanson
+// Transitions (secondes). On attend que la nouvelle ambiance se confirme (settle) : traverser
+// un lieu ou y entrer une seconde ne change rien. Puis la chanson en cours s'efface lentement
+// (out) et la suivante monte doucement un peu après (lag, in), sans à-coup ni blanc.
+const PLACE = { settle: 6, out: 7, in: 7, lag: 2 }; // lieu, heure, temps qu'il fait
+const MOMENT = { settle: 0.8, out: 3, in: 3, lag: 0.6 }; // scène tendre, longue-vue, luge, vœu
+const FIRST = { in: 3 }; // première chanson (rien ne jouait)
+const NEXT = { gap: 1.2, in: 1 }; // chanson suivante de la même ambiance
 const RESUME_MS = 10 * 60 * 1000; // on reprend la chanson là où elle en était pendant 10 min
 const DEFAULT_GAIN = 0.35; // chanson non mesurée (souvent une chanson pop, forte)
 const AUDIO_FILE = /\.(mp3|ogg|oga|m4a|aac|wav|flac|opus|webm)$/i;
@@ -43,6 +48,20 @@ const AUDIO_FILE = /\.(mp3|ogg|oga|m4a|aac|wav|flac|opus|webm)$/i;
 const BUNDLED = import.meta.glob('/music/*/*.{mp3,ogg,oga,m4a,aac,wav,flac,opus,webm,MP3}', { query: '?url', import: 'default', eager: true });
 const LEVELS = Object.values(import.meta.glob('/music/levels.json', { import: 'default', eager: true }))[0] || {};
 const nfc = (s) => String(s).normalize('NFC');
+
+/**
+ * Courbe de volume d'un fondu : arrivée en cosinus surélevé (la chanson monte de nulle part,
+ * sans attaque) ; départ à puissance constante (elle s'éloigne sans trou pendant le fondu enchaîné).
+ */
+function fadeCurve(from, to, n = 48) {
+  const c = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = i / (n - 1);
+    c[i] = to < from ? to + (from - to) * Math.cos((x * Math.PI) / 2) : from + (to - from) * (1 - Math.cos(x * Math.PI)) / 2;
+  }
+  c[n - 1] = to;
+  return c;
+}
 const LEVELS_NFC = Object.fromEntries(Object.entries(LEVELS).map(([k, v]) => [nfc(k), v]));
 
 /** Titre lisible à partir du nom de fichier. */
@@ -116,6 +135,9 @@ export class MusicPlayer {
     this.previewUntil = 0;
     this.retryT = 0;
     this.broken = new Set(); // chansons illisibles, ignorées
+    this.fading = []; // chansons qui s'effacent (on peut les rattraper si on revient)
+    this.wantMoment = false;
+    this.moment = false; // l'ambiance jouée vient d'un moment (scène, longue-vue…)
     this.onTrack = null;
     this.ready = this.loadUserTracks();
   }
@@ -150,10 +172,11 @@ export class MusicPlayer {
   }
 
   /**
-   * À chaque image : wanted = ambiance voulue par le jeu. Change de chanson (en fondu)
+   * À chaque image : wanted = ambiance voulue par le jeu ; moment = elle vient d'un moment
+   * (scène, longue-vue, luge…) plutôt que d'un lieu. Change de chanson en fondu enchaîné
    * quand l'ambiance reste la même assez longtemps.
    */
-  update(dt, wanted) {
+  update(dt, wanted, moment = false) {
     const a = this.audio;
     if (this.previewMood && performance.now() < this.previewUntil) wanted = this.previewMood;
     else this.previewMood = null;
@@ -168,10 +191,16 @@ export class MusicPlayer {
     if (wanted !== this.want) {
       this.want = wanted;
       this.wantSince = now;
+      this.wantMoment = moment;
     }
     const target = this.resolve(this.want);
+    // Entrer dans un moment ou en sortir : plus réactif. Changer de lieu : lent et fondu.
+    const T = this.previewMood || this.wantMoment || this.moment ? MOMENT : PLACE;
     const immediate = !this.deck || this.previewMood;
-    if (target !== this.mood && (immediate || now - this.wantSince >= SETTLE * 1000)) this.switchTo(target);
+    if (target !== this.mood && (immediate || now - this.wantSince >= T.settle * 1000)) {
+      this.moment = !!(this.previewMood || this.wantMoment);
+      this.switchTo(target, T);
+    }
     // Lecture refusée par le navigateur (pas encore de clic) : on réessaie.
     if (this.deck?.blocked) {
       this.retryT -= dt;
@@ -183,11 +212,18 @@ export class MusicPlayer {
     a.proceduralMuted = !!this.deck;
   }
 
-  switchTo(mood) {
-    this.release();
+  switchTo(mood, T = PLACE) {
+    const list = mood ? this.tracksFor(mood) : [];
+    // On revient vers une chanson qui s'efface encore : elle remonte, sans recommencer.
+    const back = this.fading.find((d) => d.track.mood === mood && list.includes(d.track) && !d.el.ended && d.el.duration - d.el.currentTime > 10);
+    const crossing = !!this.deck;
+    this.release(T.out);
     this.mood = mood;
     if (!mood) return;
-    const list = this.tracksFor(mood);
+    if (back) {
+      this.revive(back, T.in);
+      return;
+    }
     const saved = this.positions[mood];
     let track = null;
     let time = 0;
@@ -196,7 +232,7 @@ export class MusicPlayer {
       if (track) time = saved.time;
     }
     if (!track) track = this.nextTrack(mood);
-    this.play(track, time);
+    this.play(track, time, crossing ? { delay: T.lag, fadeIn: T.in } : { fadeIn: FIRST.in });
   }
 
   /** Chanson suivante de l'ambiance (ordre mélangé, sans répéter la précédente). */
@@ -209,7 +245,8 @@ export class MusicPlayer {
     return others[Math.floor(Math.random() * others.length)];
   }
 
-  play(track, time = 0) {
+  /** Lance une chanson : après delay secondes (le temps que l'autre s'efface), en fondu sur fadeIn. */
+  play(track, time = 0, { delay = 0, fadeIn = FIRST.in } = {}) {
     if (!track) return;
     const ctx = this.audio.ctx;
     const el = new Audio();
@@ -225,7 +262,8 @@ export class MusicPlayer {
       // Sans Web Audio : volume direct de l'élément.
       node = null;
     }
-    const deck = { el, gain, node, track, startAt: time };
+    const target = track.gain * (node ? 1 : this.audio.levels.music * MUSIC_BED * this.audio.levels.master);
+    const deck = { el, gain, node, track, target, fadeIn, startAt: time, env: null, timer: 0, kill: 0 };
     this.deck = deck;
     this.cursor[track.mood] = track.id;
     el.addEventListener('ended', () => {
@@ -233,62 +271,123 @@ export class MusicPlayer {
       this.positions[track.mood] = null;
       this.release(0.3);
       this.mood = track.mood;
-      this.play(this.nextTrack(track.mood, track.id));
+      this.play(this.nextTrack(track.mood, track.id), 0, { delay: NEXT.gap, fadeIn: NEXT.in });
     });
     el.addEventListener('loadedmetadata', () => {
       if (deck.startAt > 0 && deck.startAt < el.duration - 5) el.currentTime = deck.startAt;
     }, { once: true });
     el.addEventListener('error', () => {
-      if (this.deck !== deck) return;
+      if (this.deck !== deck || deck.disposed) return;
       console.warn('Musique illisible :', track.name);
       this.broken.add(track.id);
-      this.deck = null;
+      this.dispose(deck);
       this.mood = null;
     });
-    this.start(deck);
-    if (this.onTrack) this.onTrack(track);
+    if (delay > 0) {
+      deck.timer = setTimeout(() => {
+        deck.timer = 0;
+        if (this.deck === deck) this.start(deck);
+      }, delay * 1000);
+    } else this.start(deck);
   }
 
   start(deck) {
-    const ctx = this.audio.ctx;
-    const target = deck.track.gain * (deck.node ? 1 : this.audio.levels.music * MUSIC_BED * this.audio.levels.master);
     deck.blocked = false;
     const p = deck.el.play();
     p?.then(() => {
+      if (deck.disposed || this.deck !== deck) return;
+      if (!deck.playing && this.onTrack) this.onTrack(deck.track);
+      deck.playing = true;
       if (!deck.node) {
-        deck.el.volume = Math.min(1, target);
+        deck.el.volume = Math.min(1, deck.target);
         return;
       }
-      const now = ctx.currentTime;
-      deck.gain.gain.cancelScheduledValues(now);
-      deck.gain.gain.setValueAtTime(deck.gain.gain.value, now);
-      deck.gain.gain.linearRampToValueAtTime(target, now + FADE);
+      this.fade(deck, deck.target, deck.fadeIn);
     }).catch(() => {
-      deck.blocked = true;
+      if (!deck.disposed) deck.blocked = true;
     });
   }
 
+  /** Volume du deck à l'instant t (d'après le fondu en cours). */
+  level(deck, t) {
+    const e = deck.env;
+    if (!e) return 0;
+    const x = Math.min(1, Math.max(0, (t - e.t0) / e.dur)) * (e.curve.length - 1);
+    const i = Math.floor(x);
+    const j = Math.min(e.curve.length - 1, i + 1);
+    return e.curve[i] + (e.curve[j] - e.curve[i]) * (x - i);
+  }
+
+  /** Emmène le volume d'un deck vers « to » en « dur » secondes, par une courbe douce. */
+  fade(deck, to, dur) {
+    const ctx = this.audio.ctx;
+    const p = deck.gain.gain;
+    const now = ctx.currentTime;
+    const from = this.level(deck, now);
+    const d = Math.max(0.05, dur);
+    const curve = fadeCurve(from, to);
+    deck.env = { t0: now, dur: d, curve };
+    p.cancelScheduledValues(now);
+    try {
+      p.setValueCurveAtTime(curve, now, d);
+    } catch {
+      // Navigateur qui refuse la courbe (fondu précédent encore en cours) : rampe simple.
+      try {
+        p.setValueAtTime(from, now);
+        p.linearRampToValueAtTime(to, now + d);
+      } catch {
+        try {
+          p.setTargetAtTime(to, now, d / 3);
+        } catch {
+          /* on garde le volume actuel */
+        }
+      }
+    }
+  }
+
   /** Coupe la chanson en cours en fondu (et retient où elle en était). */
-  release(fade = FADE) {
+  release(fade = PLACE.out) {
     const deck = this.deck;
     if (!deck) return;
     this.deck = null;
-    const { el, gain, node, track } = deck;
+    const { el, node, track } = deck;
     if (el.currentTime > 3 && !el.ended) this.positions[track.mood] = { id: track.id, time: el.currentTime, at: performance.now() };
-    const ctx = this.audio.ctx;
-    if (node && ctx) {
-      const now = ctx.currentTime;
-      gain.gain.cancelScheduledValues(now);
-      gain.gain.setValueAtTime(gain.gain.value, now);
-      gain.gain.linearRampToValueAtTime(0, now + fade);
+    clearTimeout(deck.timer);
+    deck.timer = 0;
+    // Pas encore lancée (attente, chargement) ou sans Web Audio : on arrête tout de suite.
+    if (!node || !this.audio.ctx || !deck.playing || !deck.env) {
+      if (!node && deck.playing) setTimeout(() => this.dispose(deck), fade * 1000);
+      else this.dispose(deck);
+      return;
     }
-    setTimeout(() => {
-      el.pause();
-      node?.disconnect();
-      gain.disconnect();
-      el.removeAttribute('src');
-      el.load();
-    }, fade * 1000 + 80);
+    this.fade(deck, 0, fade);
+    this.fading.push(deck);
+    deck.kill = setTimeout(() => this.dispose(deck), fade * 1000 + 150);
+  }
+
+  /** Une chanson qui s'effaçait remonte (on est revenu avant la fin du fondu). */
+  revive(deck, fadeIn) {
+    clearTimeout(deck.kill);
+    deck.kill = 0;
+    this.fading = this.fading.filter((d) => d !== deck);
+    this.deck = deck;
+    this.cursor[deck.track.mood] = deck.track.id;
+    this.fade(deck, deck.target, fadeIn);
+  }
+
+  dispose(deck) {
+    if (deck.disposed) return;
+    deck.disposed = true;
+    clearTimeout(deck.timer);
+    clearTimeout(deck.kill);
+    this.fading = this.fading.filter((d) => d !== deck);
+    if (this.deck === deck) this.deck = null;
+    const { el, gain, node } = deck;
+    el.pause();
+    node?.disconnect();
+    gain.disconnect();
+    el.removeAttribute('src');
+    el.load();
   }
 
   stop() {

@@ -228,6 +228,32 @@ try {
     if (r.skip) return;
     if (!r.track) throw new Error('aucune chanson ne joue');
     if (!(r.t1 > r.t0)) throw new Error(`la chanson « ${r.track} » ne se lit pas`);
+    // Transitions : 2 s dans un autre lieu ne changent pas la chanson ; un moment (scène
+    // tendre) la change vite, en fondu enchaîné (l'ancienne s'efface, elle ne se coupe pas).
+    const t = await page.evaluate(async () => {
+      const g = window.game;
+      const m = g.music;
+      const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+      const mood0 = m.mood;
+      const orig = g.musicMood;
+      // Chanson d'un moment (scène, écran titre) : la musique revient vite au lieu, c'est normal.
+      if (m.moment) return { mood0, kept: true, now: null, fading: [mood0] };
+      g.musicMood = () => ({ mood: mood0 === 'nature' ? 'leger' : 'nature', moment: false });
+      await sleep(2000);
+      g.musicMood = orig;
+      await sleep(500);
+      const kept = m.mood === mood0 && !m.fading.length;
+      const moment = mood0 === 'tendre' ? 'magique' : 'tendre';
+      g.musicMood = () => ({ mood: moment, moment: true });
+      const t0 = performance.now();
+      while (m.mood === mood0 && performance.now() - t0 < 30000) await sleep(100);
+      const fading = m.fading.map((d) => d.track.mood);
+      g.musicMood = orig;
+      return { mood0, kept, now: m.mood, fading };
+    });
+    if (!t.kept) throw new Error(`la musique change dès qu'on passe 2 s ailleurs (${t.mood0})`);
+    if (t.now === t.mood0) throw new Error('la musique ne suit pas une scène tendre');
+    if (!t.fading.includes(t.mood0)) throw new Error(`pas de fondu enchaîné (${t.mood0} → ${t.now})`);
   });
   await step('Se déplacer', async () => {
     await settle();
@@ -263,6 +289,10 @@ try {
       for (const s of ['grass', 'leaves', 'dirt', 'sand', 'stone', 'wood', 'snow', 'water']) Fs.sound(g.audio, s, {});
       const surf = g.footsteps.surfaceAt();
       if (!['grass', 'leaves', 'dirt', 'sand', 'stone', 'wood', 'snow', 'water'].includes(surf)) out.push(`surface inconnue : ${surf}`);
+      // Lisière : deux sols mêlés, le principal gardant au moins la moitié.
+      const gr = g.footsteps.readGround();
+      if (gr.other && !(gr.mix > 0.2 && gr.mix <= 0.5 && gr.other !== gr.surface)) out.push(`mélange de sols incohérent : ${JSON.stringify(gr)}`);
+      g.footsteps.play(1);
       // Ambiance : chœur de l'aube au village.
       const S = g.audio.soundscape;
       let birds = 0;
