@@ -819,10 +819,10 @@ const jobsReport = await page.evaluate(async () => {
         await QT.choose(/Rendre/);
       } else if (type === 'chat') {
         const pet = g.jobs.pet;
-        g.player.teleport(pet.pos.x + 1, pet.pos.z + 1, 0);
+        g.player.teleport(pet.pos.x + 0.6, pet.pos.z + 0.6, 0);
         await QT.frames(2);
         const act = g.jobs.interaction();
-        if (!act) throw new Error('le chat perdu ne réagit pas');
+        if (!act) throw new Error(`le chat perdu ne réagit pas (à ${pet.pos.distanceTo(g.player.pos).toFixed(2)} m, zone ${a.zone})`);
         act.act();
         await QT.talk('mimi');
         await QT.choose(/Ramener/);

@@ -142,7 +142,7 @@ export class World {
   setGroundDetail(on) {
     const u = this.terrainMesh.userData;
     const m = on && u.detailed ? u.detailed : u.plain;
-    if (m && this.terrainMesh.material !== m) this.terrainMesh.material = m;
+    if (m) for (const chunk of this.terrainMesh.children) chunk.material = m;
     // Grain des maisons et du mobilier : coupé avec le sol détaillé (petits ordinateurs).
     decorUniforms.uDecor.value = on ? 1 : 0;
   }

@@ -10,6 +10,9 @@ import { clamp } from '../core/math.js';
 
 const SPACING = 0.26; // distance entre deux touffes (m)
 const MAX_RADIUS = 34;
+// Le tapis est dessiné en 4 × 4 carrés : ceux hors du champ de la caméra (derrière le
+// joueur, sur les côtés) ne sont pas envoyés à la carte graphique. Image identique.
+const TILES = 4;
 const MASK_RES = 0.5; // précision du masque des obstacles (m)
 
 /** Touffe de trois brins effilés (hauteur 1, recalée dans le shader). */
@@ -76,12 +79,27 @@ export class GrassField {
     };
 
     this.geometry = tuftGeometry();
-    const material = this.material();
-    this.mesh = new THREE.Mesh(this.geometry, material);
-    this.mesh.frustumCulled = false;
-    this.mesh.receiveShadow = true;
-    this.mesh.castShadow = false;
+    // Un carré = un maillage (même géométrie, même programme) avec son propre décalage.
+    this.mesh = new THREE.Group();
     this.mesh.name = 'grass-field';
+    this.tiles = [];
+    for (let tz = 0; tz < TILES; tz++) {
+      for (let tx = 0; tx < TILES; tx++) {
+        const tile = { value: new THREE.Vector3(0, 0, 1) };
+        const m = new THREE.Mesh(this.geometry, this.material(tile));
+        // Sphère englobante propre au carré (recalculée à chaque image) : le moteur écarte
+        // lui-même les carrés hors du champ, au moment du dessin.
+        m.boundingSphere = new THREE.Sphere();
+        m.receiveShadow = true;
+        m.castShadow = false;
+        m.name = 'grass-field';
+        m.userData.tx = tx;
+        m.userData.tz = tz;
+        m.userData.tile = tile;
+        this.mesh.add(m);
+        this.tiles.push(m);
+      }
+    }
     this.setRadius(20);
   }
 
@@ -133,7 +151,7 @@ export class GrassField {
     return tex;
   }
 
-  material() {
+  material(tile) {
     const u = this.uniforms;
     const base = toon('#ffffff', { side: THREE.DoubleSide });
     if (base.isMeshStandardMaterial) base.roughness = 0.75;
@@ -143,10 +161,12 @@ export class GrassField {
     mat.onBeforeCompile = (shader, renderer) => {
       prev.call(mat, shader, renderer);
       Object.assign(shader.uniforms, u);
+      shader.uniforms.uGrassTile = tile;
       shader.uniforms.uTime = globalUniforms.uTime;
       shader.vertexShader = `uniform float uTime;
 uniform float uSnow;
 uniform float uGrassGrid;
+uniform vec3 uGrassTile;
 uniform vec2 uGrassOrigin;
 uniform vec3 uGrassFocus;
 uniform vec3 uGrassPush;
@@ -186,13 +206,15 @@ ${shader.vertexShader}`
           {
             float grid = uGrassGrid;
             float id = float(gl_InstanceID);
-            vec2 cellI = vec2(mod(id, grid), floor(id / grid));
+            // Case de la touffe dans son carré (uGrassTile.xy : coin du carré, .z : côté).
+            vec2 cellI = uGrassTile.xy + vec2(mod(id, uGrassTile.z), floor(id / uGrassTile.z));
             vec2 cell = uGrassOrigin + cellI - floor(grid * 0.5);
             vec2 jitter = vec2(grassHash(cell), grassHash(cell + 19.7));
             vec2 wp = (cell + jitter) * ${SPACING.toFixed(3)};
             float dist = length(wp - uGrassFocus.xz);
             vec4 m = vec4(0.0);
-            if (dist < uGrassRadius) m = texture(tGrassMap, ((wp + uGrassTerrain.x) / uGrassTerrain.y + 0.5) / (uGrassTerrain.z + 1.0));
+            // Cases au-delà de la grille (dernier carré qui déborde) : ignorées.
+            if (dist < uGrassRadius && cellI.x < grid && cellI.y < grid) m = texture(tGrassMap, ((wp + uGrassTerrain.x) / uGrassTerrain.y + 0.5) / (uGrassTerrain.z + 1.0));
             float keep = 0.0;
             float dens = 0.0;
             if (m.a > 0.1) {
@@ -250,14 +272,51 @@ ${shader.fragmentShader}`
     const grid = Math.ceil((r * 2) / SPACING / 2) * 2;
     this.uniforms.uGrassGrid.value = grid;
     this.uniforms.uGrassRadius.value = r;
-    this.geometry.instanceCount = r > 0 ? grid * grid : 0;
+    // Côté d'un carré (en touffes) : le dernier carré peut déborder de la grille, ses
+    // touffes en trop sont écartées par le shader.
+    const tg = Math.ceil(grid / TILES);
+    this.tileCells = tg;
+    for (const m of this.tiles) m.userData.tile.value.set(m.userData.tx * tg, m.userData.tz * tg, tg);
+    this.geometry.instanceCount = r > 0 ? tg * tg : 0;
     this.mesh.visible = r > 0;
   }
 
   /** focus : centre du tapis ; push : position qui écarte les brins (le joueur). */
   update(focus, push = focus) {
+    const terrain = this.world.terrain;
     this.uniforms.uGrassOrigin.value.set(Math.floor(focus.x / SPACING), Math.floor(focus.z / SPACING));
     this.uniforms.uGrassFocus.value.copy(focus);
     this.uniforms.uGrassPush.value.copy(push);
+    const grid = this.uniforms.uGrassGrid.value;
+    const tg = this.tileCells;
+    const o = this.uniforms.uGrassOrigin.value;
+    const r = this.radius;
+    for (const m of this.tiles) {
+      // Emprise du carré (avec la marge du décalage des touffes et de leur courbure).
+      const x0 = (o.x - Math.floor(grid * 0.5) + m.userData.tx * tg) * SPACING - 0.6;
+      const z0 = (o.y - Math.floor(grid * 0.5) + m.userData.tz * tg) * SPACING - 0.6;
+      const x1 = x0 + tg * SPACING + 1.2;
+      const z1 = z0 + tg * SPACING + 1.2;
+      // Entièrement hors du rayon : aucune touffe à dessiner.
+      const dx = Math.max(x0 - focus.x, 0, focus.x - x1);
+      const dz = Math.max(z0 - focus.z, 0, focus.z - z1);
+      m.visible = r > 0 && dx * dx + dz * dz <= r * r;
+      if (!m.visible) continue;
+      // Hauteurs du sol sous le carré (quelques points), + la hauteur des brins.
+      let y0 = Infinity;
+      let y1 = -Infinity;
+      for (let i = 0; i <= 3; i++) {
+        for (let j = 0; j <= 3; j++) {
+          const h = terrain.heightAt(x0 + ((x1 - x0) * i) / 3, z0 + ((z1 - z0) * j) / 3);
+          if (h < y0) y0 = h;
+          if (h > y1) y1 = h;
+        }
+      }
+      const hx = (x1 - x0) / 2;
+      const hz = (z1 - z0) / 2;
+      const hy = (y1 - y0) / 2 + 1;
+      m.boundingSphere.center.set(x0 + hx, (y0 + y1) / 2 + 0.3, z0 + hz);
+      m.boundingSphere.radius = Math.hypot(hx, hz, hy);
+    }
   }
 }

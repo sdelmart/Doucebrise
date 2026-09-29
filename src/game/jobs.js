@@ -250,12 +250,15 @@ export class Jobs {
           const r = Math.random() * z.r * 0.6;
           const x = z.x + Math.cos(ang) * r;
           const zz = z.z + Math.sin(ang) * r;
-          if (g.world.groundAt(x, zz) > 0.6) {
+          // Un endroit dégagé (rien à moins de 1,2 m) : on peut s'approcher du chat de
+          // tous les côtés, il n'est jamais coincé contre un rocher ou le phare.
+          const free = g.world.colliders.resolve(x, zz, 1.2);
+          if (g.world.groundAt(x, zz) > 0.6 && Math.hypot(free.x - x, free.z - zz) < 1e-3) {
             a.spot = { x, z: zz };
             break;
           }
         }
-        a.spot ||= { x: z.x, z: z.z };
+        a.spot ||= g.world.colliders.resolve(z.x, z.z, 1.2);
       }
       const pos = a.stage >= 1 ? g.player.pos : a.spot;
       this.pet = this.makePet('chat', a.variant, pos.x + (a.stage >= 1 ? 1 : 0), pos.z);

@@ -249,9 +249,13 @@ export function signBoard(text, w = 2.6, h = 0.6, bg = '#f6e7c8', fg = '#6b4a2e'
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   const mat = shadedMaterial({ map: tex, gradientMap: getGradientMap() });
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), [
-    toon(WOOD), toon(WOOD), toon(WOOD), toon(WOOD), mat, mat,
-  ]);
+  // Tranche en bois et faces peintes : deux groupes de faces, donc deux appels de dessin
+  // (au lieu d'un par face) à l'écran comme dans la carte d'ombres.
+  const geo = new THREE.BoxGeometry(w, h, 0.08);
+  geo.clearGroups();
+  geo.addGroup(0, 24, 0);
+  geo.addGroup(24, 12, 1);
+  const mesh = new THREE.Mesh(geo, [toon(WOOD), mat]);
   mesh.castShadow = true;
   mesh.userData.redraw = (t) => {
     ctx.fillStyle = bg;

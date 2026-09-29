@@ -218,8 +218,8 @@ try {
       return {
         style: g.renderStyle,
         env: !!g.scene.environment,
-        ground: !!g.world.terrainMesh.geometry.attributes.splatA,
-        grass: g.world.grassField.geometry.instanceCount,
+        ground: g.world.terrainMesh.children.length > 1 && !!g.world.terrainMesh.children[0].geometry.attributes.splatA,
+        grass: g.world.grassField.geometry.instanceCount * g.world.grassField.mesh.children.length,
         trees: Object.values(f).reduce((n, x) => n + (x.bark ? x.trees.length : 0), 0),
         pins: f.pins?.leaves?.instanceCount || 0,
         palms: (f.corail?.kinds || []).filter((k) => k.species === 'palm').reduce((n, k) => n + k.count, 0),
@@ -247,7 +247,7 @@ try {
         g.settings.autoLevel = level;
         g.applyGraphics();
         g.postfx.render(0.016);
-        seen.push({ ratio: g.renderer.getPixelRatio(), detail: g.world.terrainMesh.material === g.world.terrainMesh.userData.detailed, ao: !!g.postfx.ao });
+        seen.push({ ratio: g.renderer.getPixelRatio(), detail: g.world.terrainMesh.children.every((c) => c.material === g.world.terrainMesh.userData.detailed), ao: !!g.postfx.ao });
       }
       g.settings.autoLevel = 0;
       g.applyGraphics();

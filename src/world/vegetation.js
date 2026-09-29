@@ -490,6 +490,87 @@ export class Vegetation {
     this.placeCorail(createRng(7373));
     for (const f of Object.values(this.forests)) f.build();
     clearTreeCache();
+    this.splitInstances();
+  }
+
+  /**
+   * Découpe les grands maillages instanciés (buissons, fleurs, rochers… répartis sur toute
+   * une île) en zones de 60 m : seules les zones dans le champ de la caméra, ou dans celui
+   * de la carte d'ombres, sont dessinées. Mêmes instances aux mêmes places : image
+   * identique. Les ressources (fleurs à cueillir, baies…) suivent leur instance.
+   */
+  splitInstances(tile = 60) {
+    const list = [];
+    this.group.traverse((o) => {
+      if (o.isInstancedMesh && !this.grassChunks?.includes(o)) list.push(o);
+    });
+    const remap = new Map();
+    const m4 = new THREE.Matrix4();
+    const col = new THREE.Color();
+    const pos = new THREE.Vector3();
+    for (const m of list) {
+      if (m.count < 12 || !m.parent) continue;
+      // Seulement les plus lourds : pour les petits, un appel de dessin de plus coûte
+      // davantage que les triangles épargnés.
+      const tris = ((m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3) * m.count;
+      if (tris < 20000) continue;
+      m.computeBoundingSphere();
+      if (m.boundingSphere.radius < tile * 0.75) continue;
+      const buckets = new Map();
+      let hidden = false;
+      for (let i = 0; i < m.count; i++) {
+        m.getMatrixAt(i, m4);
+        // Instance déjà masquée (échelle nulle) : sa vraie place est inconnue, on n'y touche pas.
+        if (Math.abs(m4.determinant()) < 1e-9) hidden = true;
+        pos.setFromMatrixPosition(m4);
+        const key = `${Math.floor(pos.x / tile)},${Math.floor(pos.z / tile)}`;
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(i);
+      }
+      if (hidden || buckets.size < 2) continue;
+      const map = new Array(m.count);
+      const parts = [];
+      for (const ids of buckets.values()) {
+        const c = new THREE.InstancedMesh(m.geometry, m.material, ids.length);
+        c.name = m.name;
+        c.castShadow = m.castShadow;
+        c.receiveShadow = m.receiveShadow;
+        c.visible = m.visible;
+        c.renderOrder = m.renderOrder;
+        c.frustumCulled = m.frustumCulled;
+        c.layers.mask = m.layers.mask;
+        c.userData = { ...m.userData };
+        ids.forEach((i, j) => {
+          m.getMatrixAt(i, m4);
+          c.setMatrixAt(j, m4);
+          if (m.instanceColor) {
+            m.getColorAt(i, col);
+            c.setColorAt(j, col);
+          }
+          map[i] = { mesh: c, index: j };
+        });
+        c.instanceMatrix.needsUpdate = true;
+        if (c.instanceColor) c.instanceColor.needsUpdate = true;
+        c.computeBoundingSphere();
+        m.parent.add(c);
+        parts.push(c);
+      }
+      m.parent.remove(m);
+      remap.set(m, { map, parts });
+    }
+    if (!remap.size) return;
+    const swap = (arr) => arr.flatMap((m) => remap.get(m)?.parts || [m]);
+    for (const r of this.resources) {
+      const e = remap.get(r.mesh);
+      if (!e) continue;
+      const t = e.map[r.index];
+      r.mesh = t.mesh;
+      r.index = t.index;
+    }
+    if (this.flowerMeshes) this.flowerMeshes = swap(this.flowerMeshes);
+    this.group.traverse((o) => {
+      if (o.isVariants) o.meshes = swap(o.meshes);
+    });
   }
 
   /** Arbres générés d'une île (rendu réaliste), dessinés en deux lots. */

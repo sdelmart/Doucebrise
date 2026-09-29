@@ -10,6 +10,9 @@ import { WORLD_SEED, PATHS, LANDMARKS, ISLANDS, MAP_RANGE, islandAt } from './la
 export const TERRAIN_SIZE = 520;
 export const TERRAIN_SEGMENTS = 416;
 export const SEA_FLOOR = -8;
+// Le terrain est dessiné en 8 × 8 morceaux (mêmes sommets, mêmes normales) : seuls ceux
+// dans le champ de la caméra sont envoyés à la carte graphique.
+const TERRAIN_CHUNKS = 8;
 
 const COLORS = {
   grassA: new THREE.Color('#8fd06b'),
@@ -339,14 +342,75 @@ export class Terrain {
       return m;
     };
     const material = detailed ? addGroundDetail(plain()) : plain();
-    const mesh = new THREE.Mesh(geo, material);
+    const group = this.chunked(geo, indices, material);
     // Sol détaillé désactivable en cours de jeu (qualité automatique) : même géométrie,
     // simples couleurs des biomes.
-    mesh.userData.detailed = detailed ? material : null;
-    mesh.userData.plain = detailed ? plain() : material;
-    mesh.receiveShadow = true;
-    mesh.name = 'terrain';
-    return mesh;
+    group.userData.detailed = detailed ? material : null;
+    group.userData.plain = detailed ? plain() : material;
+    return group;
+  }
+
+  /**
+   * Morceaux du terrain : les triangles sont rangés morceau par morceau dans un seul
+   * tampon d'indices, et chaque morceau en dessine une tranche, avec sa propre boîte
+   * englobante (pour être écarté quand il est hors du champ). Les sommets, normales et
+   * couleurs restent partagés : l'image est exactement la même.
+   */
+  chunked(geo, indices, material) {
+    const N = this.n;
+    const row = N + 1;
+    const C = TERRAIN_CHUNKS;
+    const cells = Math.ceil(N / C);
+    const sorted = new Uint32Array(indices.length);
+    const parts = [];
+    let o = 0;
+    for (let cz = 0; cz < C; cz++) {
+      for (let cx = 0; cx < C; cx++) {
+        const ix0 = cx * cells;
+        const ix1 = Math.min(N, ix0 + cells);
+        const iz0 = cz * cells;
+        const iz1 = Math.min(N, iz0 + cells);
+        if (ix0 >= ix1 || iz0 >= iz1) continue;
+        const start = o;
+        let yMin = Infinity;
+        let yMax = -Infinity;
+        for (let iz = iz0; iz < iz1; iz++) {
+          for (let ix = ix0; ix < ix1; ix++) {
+            const q = (iz * N + ix) * 6;
+            for (let k = 0; k < 6; k++) sorted[o++] = indices[q + k];
+          }
+        }
+        for (let iz = iz0; iz <= iz1; iz++) {
+          for (let ix = ix0; ix <= ix1; ix++) {
+            const h = this.heights[iz * row + ix];
+            if (h < yMin) yMin = h;
+            if (h > yMax) yMax = h;
+          }
+        }
+        const box = new THREE.Box3(
+          new THREE.Vector3(-this.half + ix0 * this.step, yMin, -this.half + iz0 * this.step),
+          new THREE.Vector3(-this.half + ix1 * this.step, yMax, -this.half + iz1 * this.step),
+        );
+        parts.push({ start, count: o - start, box });
+      }
+    }
+    const index = new THREE.BufferAttribute(sorted, 1);
+    const group = new THREE.Group();
+    group.name = 'terrain';
+    for (const p of parts) {
+      const g = new THREE.BufferGeometry();
+      for (const [name, attr] of Object.entries(geo.attributes)) g.setAttribute(name, attr);
+      g.setIndex(index);
+      g.setDrawRange(p.start, p.count);
+      g.boundingBox = p.box;
+      g.boundingSphere = p.box.getBoundingSphere(new THREE.Sphere());
+      const mesh = new THREE.Mesh(g, material);
+      mesh.receiveShadow = true;
+      mesh.name = 'terrain';
+      mesh.matrixAutoUpdate = false;
+      group.add(mesh);
+    }
+    return group;
   }
 
   /** Texture de profondeur pour l'eau (0 = fond marin, 1 = +8 m). */
