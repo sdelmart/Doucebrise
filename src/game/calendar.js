@@ -107,7 +107,8 @@ export class Calendar {
 
   // --- Nouveau jour ------------------------------------------------------------------
 
-  onNewDay(announce = true) {
+  /** Nouveau jour : décor de fête, courrier (annoncés par le carnet du matin, ui/morning.js). */
+  onNewDay() {
     const g = this.game;
     const day = g.world.sky.day;
     const f = this.festival;
@@ -119,13 +120,6 @@ export class Calendar {
     }
     if (f?.id === 'peche' && this.contest?.day !== day) this.contest = { day, best: 0, fish: null, done: false };
     g.festivals?.onNewDay();
-    if (!announce) return;
-    if (f) setTimeout(() => g.ui.toast(`${f.emoji} Aujourd'hui : ${f.label} ! ${f.desc}`, 6000), 1800);
-    const bs = this.birthdaysOf();
-    if (bs.length) {
-      const names = bs.map((id) => g.villagers.get(id).def.name).join(' et de ');
-      setTimeout(() => g.ui.toast(`🎂 C'est l'anniversaire de ${names} aujourd'hui ! Un cadeau leur ferait très plaisir.`, 5000), f ? 7000 : 1800);
-    }
   }
 
   // --- Courrier --------------------------------------------------------------------

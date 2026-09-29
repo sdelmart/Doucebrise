@@ -84,6 +84,56 @@ try {
       await page.evaluate(() => window.game.closePanels());
     }
   });
+  await step('Interface épurée (menus rapides, promenade, carnet du matin)', async () => {
+    await settle();
+    await page.evaluate(() => document.querySelectorAll('.tip').forEach((t) => t.classList.add('hidden')));
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(300);
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const out = [];
+      const b = document.body.classList;
+      const shown = (sel) => getComputedStyle(document.querySelector(sel)).display !== 'none';
+      if (!b.contains('hud-clean')) out.push(`mode par défaut : ${[...b].join(' ')}`);
+      if (shown('#player-tag') || shown('#zone-label')) out.push('nom ou lieu encore affichés');
+      if (!g.ui.trayOpen || !shown('#hud-buttons')) out.push('Tab n\'ouvre pas les menus rapides');
+      document.querySelector('#hud-buttons [data-open="journal"]').click();
+      if (g.panel !== 'journal') out.push(`le bouton Journal des menus rapides n'ouvre pas le journal (${g.panel})`);
+      if (g.ui.trayOpen) out.push('les menus rapides restent ouverts');
+      g.closePanels();
+      // Promenade : l'interface s'efface après quelques secondes de marche, revient à l'arrêt.
+      const ui = g.ui;
+      ui.wakeUntil = 0;
+      for (let i = 0; i < 30; i++) { g.player.speed = 3; ui.updateHud(0.1); }
+      if (!b.contains('hud-roam')) out.push('l\'interface ne s\'efface pas en marchant');
+      for (let i = 0; i < 12; i++) { g.player.speed = 0; ui.updateHud(0.1); }
+      if (b.contains('hud-roam')) out.push('l\'interface ne revient pas à l\'arrêt');
+      // Interface complète : tous les boutons, sans menus rapides.
+      g.settings.hud = 'complet';
+      g.applySettings(false);
+      if (!shown('#hud-buttons') || shown('#btn-tray')) out.push('interface complète : boutons absents');
+      g.settings.hud = 'epure';
+      g.applySettings(false);
+      if (shown('#hud-buttons')) out.push('interface épurée : boutons encore affichés');
+      // Carnet du matin : au lever du jour suivant.
+      const sky = g.world.sky;
+      const day0 = sky.day;
+      const hour0 = sky.hour;
+      sky.day += 1;
+      sky.hour = 6.5;
+      g.morning.schedule();
+      g.morning.update();
+      const txt = document.querySelector('#morning').innerText;
+      if (!g.morning.open) out.push('pas de carnet du matin');
+      else if (!/Bonjour/.test(txt) || !/demain/.test(txt)) out.push(`carnet du matin incomplet : ${txt.slice(0, 80)}`);
+      g.morning.hide();
+      sky.day = day0;
+      sky.hour = hour0;
+      g.lastDay = day0;
+      return out.join(' ; ');
+    });
+    if (r) throw new Error(r);
+  });
   await step('Modèles 3D', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;
@@ -230,30 +280,39 @@ try {
     if (!(r.t1 > r.t0)) throw new Error(`la chanson « ${r.track} » ne se lit pas`);
     // Transitions : 2 s dans un autre lieu ne changent pas la chanson ; un moment (scène
     // tendre) la change vite, en fondu enchaîné (l'ancienne s'efface, elle ne se coupe pas).
+    // Le lecteur est piloté ici 10 fois par seconde : le test ne dépend pas de la vitesse
+    // d'affichage (très lente en rendu logiciel sur la CI).
     const t = await page.evaluate(async () => {
       const g = window.game;
       const m = g.music;
       const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
       const mood0 = m.mood;
       const orig = g.musicMood;
+      const drive = async (ms, mood, moment, until = () => false) => {
+        g.musicMood = () => ({ mood, moment });
+        const t0 = performance.now();
+        while (performance.now() - t0 < ms && !until()) {
+          m.update(0.1, mood, moment);
+          await sleep(100);
+        }
+      };
+      const info = () => `lecteur ${g.audio.ctx?.state}, voulu ${m.want}, joué ${m.mood}, en fondu [${m.fading.map((d) => d.track.mood)}]`;
       // Chanson d'un moment (scène, écran titre) : la musique revient vite au lieu, c'est normal.
       if (m.moment) return { mood0, kept: true, now: null, fading: [mood0] };
-      g.musicMood = () => ({ mood: mood0 === 'nature' ? 'leger' : 'nature', moment: false });
-      await sleep(2000);
-      g.musicMood = orig;
-      await sleep(500);
+      await drive(2000, mood0 === 'nature' ? 'leger' : 'nature', false);
+      const back = orig.call(g);
+      await drive(500, back.mood, back.moment);
       const kept = m.mood === mood0 && !m.fading.length;
       const moment = mood0 === 'tendre' ? 'magique' : 'tendre';
-      g.musicMood = () => ({ mood: moment, moment: true });
-      const t0 = performance.now();
-      while (m.mood === mood0 && performance.now() - t0 < 30000) await sleep(100);
+      await drive(10000, moment, true, () => m.mood !== mood0);
       const fading = m.fading.map((d) => d.track.mood);
+      const state = info();
       g.musicMood = orig;
-      return { mood0, kept, now: m.mood, fading };
+      return { mood0, kept, now: m.mood, fading, state };
     });
     if (!t.kept) throw new Error(`la musique change dès qu'on passe 2 s ailleurs (${t.mood0})`);
-    if (t.now === t.mood0) throw new Error('la musique ne suit pas une scène tendre');
-    if (!t.fading.includes(t.mood0)) throw new Error(`pas de fondu enchaîné (${t.mood0} → ${t.now})`);
+    if (t.now === t.mood0) throw new Error(`la musique ne suit pas une scène tendre (${t.state})`);
+    if (!t.fading.includes(t.mood0)) throw new Error(`pas de fondu enchaîné (${t.mood0} → ${t.now} ; ${t.state})`);
   });
   await step('Se déplacer', async () => {
     await settle();

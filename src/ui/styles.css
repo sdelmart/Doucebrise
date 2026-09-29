@@ -818,3 +818,147 @@ body.touch-ui .d-choice .key { display: none !important; }
 .key.touch-icon { background: #fff; color: inherit; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12); border-radius: 50%; min-width: 26px; height: 26px; font-size: 14px; }
 body.touch-ui .kb-only, body.touch-ui .key-hint { display: none !important; }
 .model-warn { color: #b0413e; font-size: 12px; max-width: 520px; margin: 8px auto 0; }
+
+/* ======================= v0.15 : interface épurée ======================= */
+/* body.hud-full : tout affiché (comme avant) · body.hud-clean : l'essentiel ·
+   body.hud-min : presque rien · body.hud-roam : on se promène, l'interface s'efface ·
+   body.tray-open : menus rapides dépliés. */
+
+.icon-btn i { display: none; font-style: normal; }
+.tray-btn {
+  display: none; position: relative; width: 44px; height: 44px; border-radius: 14px; border: 2px solid var(--line);
+  background: var(--card); box-shadow: 0 3px 0 var(--line); font-size: 20px; color: var(--ink); place-items: center; cursor: pointer;
+}
+.tray-btn b { font-weight: 900; line-height: 1; }
+.tray-btn span {
+  position: absolute; right: -6px; bottom: -6px; font-size: 10px; font-weight: 900;
+  background: var(--ink); color: #fff; border-radius: 6px; padding: 1px 5px;
+}
+body.tray-open .tray-btn { background: #fff6d6; border-color: #f5d77a; box-shadow: 0 3px 0 #f5d77a; }
+.qt-em { margin-right: 5px; }
+body.hud-full .qt-em { display: none; }
+
+/* Apparitions sans fondu d'opacité : visibles dès la première image. */
+@keyframes hud-slide { from { transform: translateY(-6px) scale(0.97); } }
+
+/* Titre de la chanson qui commence : discret, en bas à droite. */
+.now-playing {
+  position: absolute; right: 16px; bottom: 14px; max-width: 40vw; padding: 3px 10px; border-radius: 99px;
+  background: rgba(255, 253, 249, 0.8); border: 1.5px solid var(--line); font-size: 12px; font-weight: 800; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; transform: translateY(6px);
+  transition: opacity 0.8s, transform 0.8s; pointer-events: none !important;
+}
+.now-playing.peek { opacity: 1; transform: none; }
+body.touch-ui .now-playing { right: auto; left: 50%; bottom: auto; top: 64px; transform: translate(-50%, -6px); }
+body.touch-ui .now-playing.peek { transform: translate(-50%, 0); }
+
+/* --- Épurée et minimale --- */
+body:not(.hud-full) .player-tag,
+body:not(.hud-full) .zone-label { display: none; }
+body:not(.hud-full) .hud-tl { gap: 7px; }
+body:not(.hud-full) .clock-card { padding: 6px 12px 6px 8px; gap: 8px; border-radius: 16px; }
+body:not(.hud-full) .clock-icon { font-size: 24px; }
+body:not(.hud-full) .clock-time { font-size: 19px; }
+body:not(.hud-full) .clock-day { font-size: 12px; }
+body:not(.hud-full) .coin-wrap { margin-left: 2px; padding-left: 10px; }
+body:not(.hud-full) .coins { font-size: 16px; }
+body:not(.hud-full) .quest-tracker { padding: 6px 11px; max-width: 270px; background: rgba(255, 253, 249, 0.86); box-shadow: 0 4px 14px rgba(91, 70, 54, 0.12); }
+body:not(.hud-full) .qt-chap,
+body:not(.hud-full) .qt-title { display: none; }
+body:not(.hud-full) .qt-goal { color: var(--ink); font-size: 13px; font-weight: 800; }
+body:not(.hud-full) .hint-btn { width: 34px; font-size: 16px; border-radius: 12px; animation: none; background: rgba(255, 253, 249, 0.86); box-shadow: 0 4px 14px rgba(91, 70, 54, 0.12); }
+/* L'ampoule ne s'allume que si la quête n'avance plus depuis un moment. */
+body:not(.hud-full) .hint-btn.stuck { animation: hint-glow 2.4s ease-in-out infinite; background: #fff6d6; }
+body:not(.hud-full) .challenge-tracker { display: none; }
+body:not(.hud-full) .challenge-tracker.peek { display: flex; animation: hud-slide 0.3s ease-out; }
+body:not(.hud-full) .buffs { flex-direction: row; }
+body:not(.hud-full) .buff { padding: 2px 8px; }
+body:not(.hud-full) .buff .b-tx { display: none; }
+body:not(.hud-full) .minimap { width: 150px; height: 150px; }
+
+/* Menus rapides : un bouton sous la mini-carte, qui déplie la liste des menus. */
+body:not(.hud-full) .tray-btn { display: grid; }
+body:not(.hud-full) .hud-buttons { display: none; }
+body.tray-open:not(.hud-full) .hud-buttons {
+  display: grid; grid-template-columns: repeat(2, 132px); gap: 6px; padding: 8px; border-radius: 18px;
+  background: var(--card); border: 2px solid var(--line); box-shadow: var(--shadow); animation: hud-slide 0.22s ease-out;
+}
+body.tray-open:not(.hud-full) .icon-btn {
+  width: auto; height: 40px; display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding: 0 10px;
+  font-size: 18px; border-radius: 12px; box-shadow: none; text-align: left; cursor: pointer; color: var(--ink);
+}
+body.tray-open:not(.hud-full) .icon-btn:hover { background: #fff6d6; }
+body.tray-open:not(.hud-full) .icon-btn i { display: inline; font-size: 13px; font-weight: 800; flex: 1; }
+body.tray-open:not(.hud-full) .icon-btn span { position: static; margin-left: auto; }
+
+/* Barre d'objets : seulement quand un objet arrive ou qu'on peut en donner un, sans les cases vides. */
+body:not(.hud-full) .inventory {
+  opacity: 0; transform: translate(-50%, 18px); pointer-events: none; transition: opacity 0.35s, transform 0.35s;
+}
+body:not(.hud-full) .inventory.show { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
+body:not(.hud-full) .slot.empty,
+body:not(.hud-full) .slot.bag-btn { display: none; }
+
+/* Compagnons : juste leur frimousse, en bas à droite. */
+body:not(.hud-full) .followers { left: auto; right: 16px; bottom: 44px; gap: 6px; }
+body:not(.hud-full) .follower { padding: 4px 7px; border-radius: 14px; box-shadow: 0 4px 14px rgba(91, 70, 54, 0.12); }
+body:not(.hud-full) .follower .f-name { display: none; }
+
+/* En promenade, l'interface s'efface (elle revient dès qu'on s'arrête ou qu'on la survole). */
+.hud-tl, .minimap, .tray-btn, .followers { transition: opacity 0.9s ease; }
+body.hud-roam .hud-tl, body.hud-roam .tray-btn, body.hud-roam .followers { opacity: 0.3; }
+body.hud-roam .minimap { opacity: 0.78; }
+body.hud-roam .hud-tl:hover, body.hud-roam .tray-btn:hover, body.hud-roam .minimap:hover { opacity: 1; transition-duration: 0.2s; }
+
+/* --- Minimale : une petite heure ; quête, pièces, défis reviennent quand ils bougent --- */
+body.hud-min .clock-card { background: transparent; border-color: transparent; box-shadow: none; padding: 2px 6px; }
+body.hud-min .clock-time { font-size: 17px; color: #fff; text-shadow: 0 1px 3px rgba(60, 40, 30, 0.7); }
+body.hud-min .clock-icon { font-size: 20px; }
+body.hud-min .clock-day,
+body.hud-min .coin-wrap { display: none; }
+body.hud-min .clock-card.peek { background: var(--card); border-color: var(--line); }
+body.hud-min .clock-card.peek .coin-wrap { display: block; }
+body.hud-min .clock-card.peek .clock-time { color: var(--ink); text-shadow: none; }
+body.hud-min .quest-row:not(.peek),
+body.hud-min .buffs { display: none; }
+body.hud-min .quest-row.peek { animation: hud-slide 0.3s ease-out; }
+body.hud-min:not(.tray-open) .minimap { display: none; }
+body.hud-min .tray-btn { opacity: 0.65; }
+/* Menus rapides ouverts : on revoit tout. */
+body.hud-min.tray-open .quest-row { display: flex; }
+body.hud-min.tray-open .clock-card { background: var(--card); border-color: var(--line); box-shadow: var(--shadow); }
+body.hud-min.tray-open .clock-card .clock-day, body.hud-min.tray-open .clock-card .coin-wrap { display: block; }
+body.hud-min.tray-open .clock-time { color: var(--ink); text-shadow: none; }
+body.hud-min.tray-open .tray-btn { opacity: 1; }
+
+@media (max-width: 720px) {
+  body:not(.hud-full) .minimap { width: 104px; height: 104px; }
+  body.tray-open:not(.hud-full) .hud-buttons { grid-template-columns: repeat(2, 118px); }
+  body:not(.hud-full) .quest-tracker { max-width: 200px; }
+  body:not(.hud-full) .qt-goal { display: block; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-tl, .minimap, .tray-btn, .followers, .inventory, .now-playing { transition: none; }
+}
+
+/* Carnet du matin : le programme du jour, sur le côté, sans bloquer le jeu. */
+.clock-card { cursor: pointer; }
+.morning {
+  position: fixed; left: 14px; top: 50%; transform: translateY(-50%); z-index: 34; width: min(340px, calc(100vw - 28px));
+  background: var(--card); border: 2px solid var(--line); border-radius: 20px; padding: 12px 34px 10px 14px;
+  box-shadow: var(--shadow); cursor: pointer; animation: morningIn 0.45s ease-out; zoom: var(--ui-scale, 1);
+  transition: opacity 0.35s, transform 0.35s;
+}
+.morning.out { opacity: 0; transform: translate(-12px, -50%); }
+.mo-head { display: grid; gap: 1px; margin-bottom: 6px; }
+.mo-head b { font-size: 16px; font-weight: 900; }
+.mo-head small { font-size: 12px; font-weight: 800; color: var(--ink-soft); }
+.morning ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.morning li { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; font-weight: 700; line-height: 1.35; color: var(--ink); }
+.morning li b { font-weight: 900; }
+.mo-em { font-size: 17px; line-height: 1.1; flex: 0 0 22px; text-align: center; }
+.mo-close { position: absolute; top: 6px; right: 6px; border: 0; background: transparent; font-size: 14px; color: var(--ink-soft); cursor: pointer; }
+@keyframes morningIn { from { transform: translate(-14px, -50%); } }
+body.photo-mode .morning { display: none; }
+@media (max-width: 720px) { .morning { top: auto; bottom: 120px; transform: none; } .morning.out { transform: translateX(-12px); } @keyframes morningIn { from { transform: translateX(-14px); } } }
+@media (prefers-reduced-motion: reduce) { .morning { animation: none; } }

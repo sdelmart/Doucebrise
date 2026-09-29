@@ -52,6 +52,7 @@ export const ACTIONS = [
   { id: 'decor', label: 'Décorer', logical: 'KeyB', letter: 'b', group: 'Menus' },
   { id: 'photo', label: 'Mode photo', logical: 'KeyO', letter: 'o', group: 'Menus' },
   { id: 'help', label: 'Aide', logical: 'KeyH', letter: 'h', group: 'Menus' },
+  { id: 'menu', label: 'Menus rapides', logical: 'Tab', group: 'Menus' },
   { id: 'fps', label: 'Compteur FPS', logical: 'F3', group: 'Menus' },
 ];
 
@@ -73,7 +74,9 @@ export function defaultSettings() {
     showFps: 'off', // off | fps | detail
     fov: 50,
     uiScale: 1,
-    keyHints: true,
+    hud: 'epure', // complet | epure | minimal
+    hudFade: true, // l'interface s'efface pendant qu'on se promène
+    keyHints: 'auto', // auto (les premières minutes et au besoin) | always | never
     minimap: true,
     guideArrow: true,
     zoneBanner: true,
@@ -110,6 +113,8 @@ export function loadSettings(legacy = null) {
       delete graphics.dynres;
       graphics.auto = true;
     }
+    // Ancienne aide des touches (oui / non) : « auto » ou « jamais ».
+    if (typeof stored.keyHints === 'boolean') stored.keyHints = stored.keyHints ? 'auto' : 'never';
     return {
       ...base,
       ...stored,

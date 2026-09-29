@@ -47,12 +47,25 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 | `V` · `T` ou 💡 | Véhicules · « Que faire ? » (indice de la quête) |
 | `B` | Décorer (maison ou jardin) |
 | `C` `P` `J` `I` `M` `O` `H` | Tenue · animaux · journal · sac · carte · photo · aide |
+| `Tab` · ☰ | Menus rapides (sous la mini-carte) : tenue, animaux, journal, sac, décorer, carte, photo, véhicules, musique, menu, aide |
 | `Échap` | Menu pause (le temps s'arrête) : paramètres, sauvegarde, profils, quitter |
 | `F3` · `F11` | Compteur FPS (simple / détaillé) · plein écran |
 
 **Écran tactile** : joystick et boutons d'action à icônes (✋ interagir, 🍓 nourrir, 💞 adopter…) ; les bulles de touches du clavier disparaissent dès qu'on touche l'écran et reviennent au premier appui sur une touche.
 
 **Manette** : stick gauche pour bouger, stick droit pour la caméra, A interagir, X nourrir / vœu, Y sauter, B / Start menu, LB carte, RB journal, Select sac, gâchette gauche pour courir. **Tous les menus se pilotent à la manette** (croix ou stick pour choisir, A valider, B retour, LB / RB changer d'onglet) et aussi aux flèches du clavier + Entrée. Sur mobile, un joystick et des boutons tactiles apparaissent.
+
+## Interface épurée
+
+L'écran reste dégagé pour profiter de l'île (Paramètres → Affichage → Interface : **Complète**, **Épurée** par défaut, **Minimale**).
+- **En haut à gauche** : une seule petite carte avec l'heure, la saison, le jour et les pièces, et en dessous l'objectif de la quête en cours, sur une ligne. L'ampoule 💡 ne s'allume que si la quête n'avance plus depuis quelques minutes.
+- **En haut à droite** : la mini-carte et un bouton ☰ (`Tab`) qui déplie les **menus rapides**, avec leur nom et leur touche. Décorer n'y apparaît qu'à la maison ou au jardin, les véhicules seulement quand on en a un.
+- **Au besoin seulement** : la barre d'objets apparaît quelques secondes quand un objet arrive ou part, et quand on peut en donner un (à un animal…), sans les cases vides ; les défis du jour se montrent quand ils avancent ; les compagnons qui suivent sont de petites frimousses en bas à droite.
+- **En promenade**, l'interface s'efface doucement au bout de quelques secondes de marche et revient dès qu'on s'arrête, qu'on la survole ou qu'une quête avance (réglable).
+- **Aide des touches** : une rangée pendant les 15 premières minutes, puis seulement dans les situations particulières (pêche au moulinet, véhicule, assis) ; ou toujours, ou jamais.
+- **Moins de messages** : le titre de la chanson s'affiche en petit en bas à droite, un message identique n'est plus empilé, trois au plus à la fois ; les conseils du début arrivent un par un sous forme de petites cartes.
+- **Carnet du matin** : au lever du jour, une carte résume la journée — nouvelle saison, fête du jour (ou de demain), anniversaires, plantes prêtes ou assoiffées au potager, courrier, demandes des habitants, défis du jour, météo et prévisions. Un clic sur l'horloge la rouvre à tout moment.
+- **Minimale** : juste l'heure ; la quête, les pièces et les défis reviennent un instant quand ils changent, tout s'affiche quand les menus rapides sont ouverts.
 
 ## Contenu
 
@@ -168,7 +181,7 @@ assets/models/
 
 ### ⚙️ Paramètres complets
 - **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (style de rendu réaliste ou cartoon, résolution de rendu, netteté Retina, qualité automatique, ombres, ombres de contact, sol détaillé, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages). Le style et le sol détaillé demandent un redémarrage : un bouton le propose aussitôt.
-- **Affichage** : plein écran, compteur FPS (simple ou détaillé avec graphique, appels de dessin, triangles, carte graphique), limite d'images par seconde (30 à 144), champ de vision, taille de l'interface, barre d'aide des touches, mini-carte, flèche du guide.
+- **Affichage** : plein écran, compteur FPS (simple ou détaillé avec graphique, appels de dessin, triangles, carte graphique), limite d'images par seconde (30 à 144), champ de vision, interface (complète, épurée, minimale), interface qui s'efface en marchant, taille de l'interface, aide des touches (au début, toujours, jamais), mini-carte, flèche du guide.
 - **Contrôles** : touches réassignables, sensibilité et inversion de la caméra, caméra qui suit, manette.
 - **Audio** : volumes général, musique, effets et ambiance séparés. La musique change selon l'île et la nuit ; ambiances d'oiseaux, de grillons, de vagues, de vent et de pluie.
 - **Jeu** : durée des journées, export de la sauvegarde, vérification des nouvelles versions (application de bureau).
@@ -221,6 +234,7 @@ src/
   game/                  Objets, potager, cueillette, pêche, insectes, cuisine, histoire, quêtes des
                          habitants, progression, petits boulots, véhicules, calendrier, fêtes de saison
                          (festivals.js), voyages, luge
-  ui/                    HUD, guide, menus (titre, pause, paramètres), carte, dialogues, boutiques,
-                         journal, photo, compteur FPS
+  ui/                    HUD (interface épurée, menus rapides), carnet du matin (morning.js), guide,
+                         menus (titre, pause, paramètres), carte, dialogues, boutiques, journal,
+                         photo, compteur FPS
 ```

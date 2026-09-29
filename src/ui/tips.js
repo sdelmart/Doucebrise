@@ -5,6 +5,8 @@ import { escapeHtml } from './ui.js';
 // fois qu'on la croise (voyages, vœux, quêtes des habitants, source chaude…).
 
 const TIPS = {
+  guide: { emoji: '🧭', title: 'Où aller ?', text: () => `Suis la flèche dorée, ou l'étoile sur la mini-carte. Un doute ? L'ampoule 💡 à côté de ta quête (ou ${actionKey('hint')}) donne un indice.` },
+  menus: { emoji: '☰', title: 'Les menus rapides', text: () => `Sac, journal, tenue, carte, photo… tout est rangé derrière le bouton ☰ sous la mini-carte (${actionKey('menu')}). Quand tu te promènes, l'interface se fait discrète. Un clic sur l'horloge montre le programme du jour.` },
   quete: { emoji: '❗', title: 'Quêtes des habitants', text: () => 'Un « ! » doré au-dessus d\'un habitant : il a une quête pour toi. Un « ? » vert : tu peux la lui rendre. Tes quêtes sont dans le journal (J), onglet Quêtes.' },
   voyage: { emoji: '🧭', title: 'Voyager', text: () => `Les panneaux « Voyages » relient les villages que tu as déjà découverts à pied. Appuie sur ${actionKey('interact')} pour choisir ta destination.` },
   voeu: { emoji: '🌠', title: 'Une étoile filante !', text: () => `Quand une étoile filante traverse le ciel, appuie vite sur ${actionKey('feed')} pour faire un vœu. Parfois, un cadeau arrive au courrier le lendemain…` },

@@ -51,10 +51,24 @@ export class UI {
       bigmap: $('#bigmap'),
       dialog: $('#dialog'),
       touch: $('#touch'),
+      hint: $('#btn-hint'),
     };
     this.openPanel = null;
     this.promptKey = '';
     this.mapT = 0;
+    // Interface épurée : ce qui s'efface, ce qui revient un instant.
+    this.hudMode = 'epure';
+    this.hudFade = true;
+    this.trayOpen = false;
+    this.roamT = 0;
+    this.stillT = 0;
+    this.wakeUntil = 0;
+    this.invShowUntil = 0;
+    this.invReady = false;
+    this.promptFeed = false;
+    this.questSig = null;
+    this.questSince = 0;
+    this.challengeSig = null;
 
     this.buildInventory();
     this.mapImage = game.world.terrain.renderMap(1024, MAP_RANGE);
@@ -80,6 +94,18 @@ export class UI {
     $('#btn-decor').addEventListener('click', () => this.game.startDecor());
     $('#btn-photo').addEventListener('click', () => this.game.startPhoto());
     this.el.quest.addEventListener('click', () => this.game.openPanel('journal'));
+    // L'horloge rouvre le carnet du jour (fête, anniversaires, potager, courrier…).
+    const clock = document.querySelector('.clock-card');
+    clock.title = 'Le programme du jour';
+    clock.addEventListener('click', () => this.game.morning?.show());
+    // Menus rapides (interface épurée) : un bouton sous la mini-carte les déplie.
+    $('#btn-tray').addEventListener('click', () => this.toggleTray());
+    $('#hud-buttons').addEventListener('click', (e) => {
+      if (e.target.closest('button')) this.toggleTray(false);
+    });
+    document.addEventListener('pointerdown', (e) => {
+      if (this.trayOpen && !e.target.closest?.('#hud-buttons, #btn-tray')) this.toggleTray(false);
+    }, { capture: true });
     for (const id of ['#map', '#help']) {
       $(id).addEventListener('click', (e) => {
         if (e.target === e.currentTarget) this.game.closePanels();
@@ -128,8 +154,82 @@ export class UI {
 
   showHUD(on) {
     this.el.hud.classList.toggle('hidden', !on);
+    if (!on) this.toggleTray(false);
     this.el.touch.classList.toggle('hidden', !(on && (this.game.input.isTouch || isTouchUI())));
     if (!on) this.setPrompt(null);
+  }
+
+  // --- Interface épurée ---------------------------------------------------------
+
+  /** Complète (tout affiché), épurée (l'essentiel, le reste au besoin) ou minimale. */
+  setHudMode(mode = 'epure', fade = true) {
+    this.hudMode = ['complet', 'epure', 'minimal'].includes(mode) ? mode : 'epure';
+    this.hudFade = fade !== false;
+    const b = document.body.classList;
+    b.toggle('hud-full', this.hudMode === 'complet');
+    b.toggle('hud-clean', this.hudMode === 'epure');
+    b.toggle('hud-min', this.hudMode === 'minimal');
+    if (this.hudMode === 'complet') {
+      this.toggleTray(false);
+      for (const id of ['#btn-decor', '#btn-vehicle']) $(id).classList.remove('hidden');
+    }
+    this.hintsKey = '';
+  }
+
+  /** Ouvre ou ferme les menus rapides. */
+  toggleTray(on = !this.trayOpen) {
+    on = !!on && this.hudMode !== 'complet' && !this.el.hud.classList.contains('hidden');
+    if (on === this.trayOpen) return;
+    this.trayOpen = on;
+    document.body.classList.toggle('tray-open', on);
+    $('#btn-tray').setAttribute('aria-expanded', String(on));
+    if (on) {
+      // Seulement ce qui sert ici : décorer chez soi, un véhicule si on en a un.
+      const g = this.game;
+      $('#btn-decor').classList.toggle('hidden', !g.decor.availableArea());
+      $('#btn-vehicle').classList.toggle('hidden', !Object.keys(g.vehicles.owned || {}).length);
+      this.wake(3);
+    }
+  }
+
+  /** L'interface revient un instant (quête qui avance, pièces gagnées…). */
+  wake(seconds = 3) {
+    this.wakeUntil = Math.max(this.wakeUntil, performance.now() + seconds * 1000);
+    document.body.classList.remove('hud-roam');
+  }
+
+  /** Un élément apparaît quelques secondes (défi qui avance, quête en mode minimal). */
+  peek(el, seconds = 5) {
+    if (!el) return;
+    el.classList.add('peek');
+    clearTimeout(el._peekT);
+    el._peekT = setTimeout(() => el.classList.remove('peek'), seconds * 1000);
+  }
+
+  /** Titre de la chanson qui commence, discret, en bas à droite. */
+  nowPlaying(name) {
+    const el = $('#now-playing');
+    if (!el) return;
+    el.textContent = `🎵 ${name}`;
+    this.peek(el, 5);
+  }
+
+  /** À chaque image : promenade (l'interface s'efface), barre d'objets, ampoule. */
+  updateHud(dt) {
+    const g = this.game;
+    const body = document.body.classList;
+    const moving = g.state === 'play' && (g.player.speed || 0) > 0.6 && !g.panel && !g.busy;
+    this.roamT = moving ? this.roamT + dt : 0;
+    this.stillT = moving ? 0 : this.stillT + dt;
+    const canRoam = this.hudFade && this.hudMode !== 'complet' && !this.trayOpen && performance.now() > this.wakeUntil;
+    body.toggle('hud-roam', canRoam && (this.roamT > 2.5 || (body.contains('hud-roam') && this.stillT < 0.8)));
+    // Barre d'objets : quand un objet arrive ou part, ou quand on peut en donner un.
+    const inv = this.el.inventory;
+    const any = this.invAny;
+    inv.classList.toggle('show', this.hudMode === 'complet' || (any && (performance.now() < this.invShowUntil || this.promptFeed)));
+    // L'ampoule s'allume si la quête n'avance plus depuis un moment.
+    const stuck = !!g.quests.current && (g.playtime || 0) - this.questSince > 240;
+    this.el.hint.classList.toggle('stuck', stuck);
   }
 
   // --- Inventaire & compagnons ----------------------------------------------
@@ -156,24 +256,34 @@ export class UI {
 
   refreshInventory() {
     const inv = this.game.inventory;
+    let changed = false;
+    let any = false;
     for (const [id, d] of Object.entries(this.slots)) {
       const n = countItem(inv, id);
       const c = d.querySelector('.count');
       if (c.textContent !== String(n)) {
         c.textContent = n;
+        changed = true;
         d.classList.remove('bump');
         void d.offsetWidth;
         d.classList.add('bump');
       }
+      if (n > 0) any = true;
       d.classList.toggle('empty', n === 0);
       d.classList.toggle('hidden', (id === 'friandise' || id === 'patee') && n === 0);
     }
+    this.invAny = any;
+    // Interface épurée : la barre apparaît quelques secondes quand un objet arrive ou part.
+    if (changed && this.invReady) this.invShowUntil = performance.now() + 4500;
+    this.invReady = true;
     if (this.openPanel === 'bag') this.game.bag.render();
   }
 
   refreshCoins(delta = 0) {
     this.el.coins.textContent = `🪙 ${this.game.coins}`;
     if (delta) {
+      this.wake(3);
+      this.peek(this.el.coins.closest('.clock-card'), 3);
       const f = document.createElement('div');
       f.className = 'coin-pop';
       f.textContent = `${delta > 0 ? '+' : ''}${delta} 🪙`;
@@ -200,7 +310,7 @@ export class UI {
       const chap = CHAPTERS.find((c) => c.id === q.chapter);
       const inChap = qs.chapterQuests(q.chapter);
       html = `<div class="qt-chap">${chap.emoji} ${chap.id === 'epilogue' ? 'Épilogue' : `Chapitre ${chap.n}`} · ${inChap.indexOf(q) + 1}/${inChap.length}</div>
-        <div class="qt-title">📜 ${escapeHtml(q.title)}</div><div class="qt-goal">${escapeHtml(goal.label)} — ${p}/${goal.count}</div>`;
+        <div class="qt-title">📜 ${escapeHtml(q.title)}</div><div class="qt-goal"><span class="qt-em">📜</span>${escapeHtml(goal.label)}${goal.count > 1 ? ` — ${p}/${goal.count}` : ''}</div>`;
     }
     const job = g.jobs?.active;
     if (job) html += `<div class="qt-job">${JOB_TYPES[job.type].emoji} ${escapeHtml(g.jobs.progressText())}</div>`;
@@ -211,7 +321,16 @@ export class UI {
       const to = g.villagers.get(sq.turnInOf(side));
       html += `<div class="qt-side">❗ ${escapeHtml(side.title)} — ${ready ? `retourne voir ${to.def.emoji} ${escapeHtml(to.def.name)}` : escapeHtml(sq.progressText(side))}</div>`;
     }
-    el.innerHTML = html;
+    if (el.innerHTML !== html) el.innerHTML = html;
+    el.title = q ? `${q.title} — Journal (${actionKey('journal')})` : `Journal (${actionKey('journal')})`;
+    // La quête avance : l'interface revient un instant (et la quête s'affiche en mode minimal).
+    const sig = html.replace(/<[^>]+>/g, '');
+    if (this.questSig !== null && sig !== this.questSig) {
+      this.wake(4);
+      this.peek(el.parentElement, 6);
+    }
+    if (sig !== this.questSig) this.questSince = this.game.playtime || 0;
+    this.questSig = sig;
   }
 
   refreshSideQuest() {
@@ -227,6 +346,11 @@ export class UI {
       return;
     }
     el.classList.remove('hidden');
+    // Un défi avance : il s'affiche quelques secondes (interface épurée).
+    const ids = list.map((c) => c.id).join();
+    const sig = `${ids}|${list.map((c) => `${c.progress}:${c.done}`).join()}`;
+    if (this.challengeSig && this.challengeSig.split('|')[0] === ids && sig !== this.challengeSig) this.peek(el, 5);
+    this.challengeSig = sig;
     const done = list.filter((c) => c.done).length;
     const next = list.find((c) => !c.done);
     const def = next ? g.progress.challengeDef(next.id) : null;
@@ -244,10 +368,10 @@ export class UI {
       const left = Math.max(0, a.relaxUntil - a.now());
       const h = Math.floor(left);
       const m = Math.floor((left - h) * 6) * 10;
-      html += `<span class="buff" title="Bain à la source chaude">♨️ Bien-être · +20 % XP · ${h} h ${String(m).padStart(2, '0')}</span>`;
+      html += `<span class="buff" title="Bain à la source chaude : +20 % d'expérience"><span class="b-em">♨️</span><span class="b-tx"> Bien-être · +20 % XP ·</span> ${h} h ${String(m).padStart(2, '0')}</span>`;
     }
     const f = g.calendar.festival;
-    if (f) html += `<span class="buff fest" title="${escapeHtml(f.desc)}">${f.emoji} ${escapeHtml(f.label)}</span>`;
+    if (f) html += `<span class="buff fest" title="${escapeHtml(`${f.label} — ${f.desc}`)}"><span class="b-em">${f.emoji}</span><span class="b-tx"> ${escapeHtml(f.label)}</span></span>`;
     if (el.innerHTML !== html) el.innerHTML = html;
   }
 
@@ -343,19 +467,25 @@ export class UI {
   refreshFollowers() {
     const list = this.game.animals.followers();
     this.el.followers.innerHTML = list
-      .map((a) => `<div class="follower"><span class="em">${a.sp.emoji}</span>${escapeHtml(a.name)}</div>`)
+      .map((a) => `<div class="follower" title="${escapeHtml(a.name)}"><span class="em">${a.sp.emoji}</span><span class="f-name">${escapeHtml(a.name)}</span></div>`)
       .join('');
   }
 
   // --- Notifications ----------------------------------------------------------
 
   toast(msg, ms = 3200) {
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
-    this.el.toasts.appendChild(t);
-    while (this.el.toasts.children.length > 4) this.el.toasts.firstChild.remove();
-    setTimeout(() => {
+    const box = this.el.toasts;
+    // Même message déjà affiché : on le prolonge au lieu d'en empiler un second.
+    let t = [...box.children].find((x) => x.textContent === msg && !x.classList.contains('out'));
+    if (!t) {
+      t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = msg;
+      box.appendChild(t);
+      while (box.children.length > 3) box.firstChild.remove();
+    }
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => {
       t.classList.add('out');
       setTimeout(() => t.remove(), 450);
     }, ms);
@@ -377,7 +507,11 @@ export class UI {
   updateKeyHints() {
     const g = this.game;
     const el = $('#keyhints');
-    if (!el || !g.settings.keyHints) return;
+    const mode = g.settings.keyHints;
+    if (!el || mode === 'never' || mode === false) return;
+    // « Au début » : les touches de base les 15 premières minutes, puis seulement celles
+    // d'une situation particulière (assis, pêche, véhicule).
+    const basics = mode === 'always' || mode === true || (g.playtime || 0) < 900;
     const K = actionKey;
     const move = ['forward', 'left', 'back', 'right'].map(K).join('');
     let list;
@@ -385,11 +519,14 @@ export class UI {
     if (g.sitting) list = [[K('interact'), 'Se lever']];
     else if (g.fishing.active) list = g.fishing.state === 'reel' ? [[K('interact'), 'Maintenir : mouliner'], [move, 'Lâcher la ligne']] : [[K('interact'), 'Ferrer / remonter']];
     else if (veh) list = [[move, 'Conduire'], [K('run'), 'Accélérer'], [K('interact'), veh.def.mode === 'air' ? 'Atterrir' : 'Descendre']];
+    else if (!basics) list = [];
     else if (g.indoors) list = [[move, 'Marcher'], [K('interact'), 'Interagir'], ...(g.house.inside ? [[K('decor'), 'Décorer']] : []), [K('bag'), 'Sac'], [keyLabel('Escape'), 'Menu']];
     else {
-      list = [[move, 'Marcher'], [K('run'), 'Courir'], [K('jump'), 'Sauter'], [K('interact'), 'Interagir'], [K('map'), 'Carte'], [K('journal'), 'Journal']];
+      list = [[move, 'Marcher'], [K('run'), 'Courir'], [K('jump'), 'Sauter'], [K('interact'), 'Interagir']];
       if (Object.keys(g.vehicles.owned || {}).length) list.push([K('vehicle'), 'Véhicule']);
-      list.push(['1-5', 'Émotes'], [keyLabel('Escape'), 'Menu']);
+      // Interface épurée : une seule rangée, les autres menus sont dans les menus rapides.
+      if (this.hudMode === 'complet') list.push([K('map'), 'Carte'], [K('journal'), 'Journal'], ['1-5', 'Émotes'], [keyLabel('Escape'), 'Menu']);
+      else list.push([K('menu'), 'Menus']);
     }
     const key = JSON.stringify(list);
     if (key === this.hintsKey) return;
@@ -413,6 +550,7 @@ export class UI {
       [`${K('hint')} · 💡`, '« Que faire ? » : un indice pour la quête en cours'],
       [K('decor'), 'Décorer (chez toi ou dans ton jardin)'],
       [`${K('creator')} ${K('pets')} ${K('journal')} ${K('bag')} ${K('map')} ${K('photo')}`, 'Tenue · animaux · journal · sac · carte · photo'],
+      [`${K('menu')} · ☰`, 'Menus rapides (sous la mini-carte) · un clic sur l\'horloge : le programme du jour'],
       ['<kbd>Échap</kbd>', 'Menu pause : paramètres, sauvegarde, profils'],
       [`<kbd>${escapeHtml(keyLabel('F3'))}</kbd> · <kbd>F11</kbd>`, 'Compteur FPS · plein écran'],
       ['🎮 Manette', 'Stick gauche : bouger · stick droit : caméra · A : interagir · X : nourrir · Y : sauter · Start : menu'],
@@ -451,6 +589,7 @@ export class UI {
    */
   setPrompt(target) {
     const el = this.el.prompt;
+    this.promptFeed = !!target?.actions?.some((a) => a.key === 'F' && !a.dim);
     if (!target) {
       el.classList.add('hidden');
       this.promptKey = '';
@@ -498,6 +637,7 @@ export class UI {
     this.el.clockIcon.textContent = icon;
     this.el.clockIcon.title = `${w.info.label} · Demain : ${w.forecast?.() || ''}`;
     this.updateBubbles(dt);
+    this.updateHud(dt);
     this.hintT = (this.hintT || 0) - dt;
     if (this.hintT <= 0) {
       this.hintT = 0.25;

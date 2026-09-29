@@ -49,6 +49,7 @@ import { BagPanel } from './ui/panels.js';
 import { TitleMenu, PauseMenu, SettingsPanel, Credits, toggleFullscreen } from './ui/menus.js';
 import { PerfOverlay } from './ui/perf.js';
 import { Tips } from './ui/tips.js';
+import { Morning } from './ui/morning.js';
 import { UINavigator } from './ui/navigator.js';
 import { Guide } from './ui/guide.js';
 
@@ -155,6 +156,7 @@ export class Game {
     this.pauseMenu = new PauseMenu(this);
     this.credits = new Credits(this);
     this.tips = new Tips(this);
+    this.morning = new Morning(this);
     this.navigator = new UINavigator(this);
 
     this.state = 'title';
@@ -194,7 +196,7 @@ export class Game {
     window.addEventListener('pointerdown', unlockAudio, true);
     window.addEventListener('keydown', unlockAudio, true);
     this.music.onTrack = (t) => {
-      if (this.state === 'play' && this.settings.musicTitles !== false) this.ui.toast(`🎵 ${t.name}`, 2600);
+      if (this.state === 'play' && this.settings.musicTitles !== false) this.ui.nowPlaying(t.name);
     };
     // Avant les autres écouteurs : Échap qui ferme une fenêtre ne doit pas ouvrir la pause.
     window.addEventListener('keydown', (e) => {
@@ -258,7 +260,8 @@ export class Game {
     this.guide.enabled = st.guideArrow;
     document.documentElement.style.setProperty('--ui-scale', st.uiScale);
     document.body.classList.toggle('no-minimap', !st.minimap);
-    document.body.classList.toggle('no-keyhints', !st.keyHints);
+    document.body.classList.toggle('no-keyhints', st.keyHints === 'never');
+    this.ui.setHudMode?.(st.hud, st.hudFade);
     this.perf.setMode(st.showFps);
     this.ui.refreshKeyHints?.();
     if (save) saveSettings(st);
@@ -363,7 +366,6 @@ export class Game {
       this.isNewGame = false;
       this.ui.toast(`Bienvenue à Doucebrise, ${this.character.appearance.name} ! 🌸`, 4200);
       setTimeout(() => this.quests.showChapter(), 900);
-      setTimeout(() => this.ui.toast('💡 Suis la flèche dorée ! Bouton 💡 (ou T) si tu ne sais pas quoi faire. H pour l\'aide.', 6500), 2500);
       this.quests.refreshRequests();
       this.requestSave();
     } else {
@@ -393,6 +395,8 @@ export class Game {
 
   openPanel(name) {
     if (this.state === 'title' && !['creator', 'settings', 'credits', 'help'].includes(name)) return;
+    this.ui.toggleTray?.(false);
+    this.morning?.hide();
     if (this.panel === name) {
       this.closePanels();
       return;
@@ -563,8 +567,13 @@ export class Game {
       return;
     }
     switch (code) {
+      case 'Tab':
+        e.preventDefault();
+        if (!this.panel) this.ui.toggleTray();
+        break;
       case 'Escape':
-        if (this.panel) this.closePanels();
+        if (this.ui.trayOpen) this.ui.toggleTray(false);
+        else if (this.panel) this.closePanels();
         else if (!this.escWasBusy) this.openPanel('pause');
         break;
       case 'KeyC':
@@ -605,6 +614,7 @@ export class Game {
 
   showHint() {
     const q = this.quests.current;
+    this.ui.questSince = this.playtime || 0; // l'ampoule s'éteint : l'indice est donné
     const job = this.jobs.active;
     this.ui.toast(`💡 ${this.quests.hint()}`, 7000);
     if (job) setTimeout(() => this.ui.toast(`📋 Petit boulot : ${this.jobs.progressText()}`, 4000), 400);
@@ -1503,14 +1513,14 @@ export class Game {
           this.quests.refreshRequests();
           this.progress.refreshDaily();
           this.jobs.refresh();
-          this.calendar.onNewDay(true);
-          const w = this.world.weather;
-          if (w.dayInSeason === 1) this.ui.toast(`${w.season.emoji} C'est le début de : ${w.season.label} !`, 4000);
-          if (this.calendar.letters.length) setTimeout(() => this.ui.toast('📬 Tu as du courrier ! Va voir ta boîte aux lettres.', 3500), 4000);
+          this.calendar.onNewDay();
+          // Saison, fête, anniversaires, courrier… : un seul carnet, au lever du jour.
+          this.morning.schedule();
         }
         this.lastDay = this.world.sky.day;
       }
       this.ui.update(dt);
+      this.morning.update();
       this.saveT += dt;
       if ((this.dirty && this.saveT > 4) || this.saveT > 30) this.saveNow();
     }
@@ -1613,6 +1623,9 @@ export class Game {
       // Astuces de première fois.
       if (this.state === 'play' && !this.busy && !this.panel) {
         if (!this.tips.seen.has('quete') && this.villagers.list.some((v) => v.root.visible && v.pos.distanceTo(p) < 14 && this.sideQuests.markerFor(v.def.id) === 'offer')) this.tips.show('quete');
+        // Début de partie : une astuce à la fois, quand on a pris ses marques.
+        if (this.playtime > 6 && this.playtime < 900) this.tips.show('guide');
+        if (this.playtime > 75 && this.ui.hudMode !== 'complet') this.tips.show('menus');
         if (sky.isNight && !this.indoors && this.playtime > 60) this.tips.show('nuit');
         if (this.playtime > 240) this.tips.show('pause');
         this.ui.refreshBuffs();

@@ -54,20 +54,22 @@
       </div>
       <div class="hud-tr">
         <canvas id="minimap" class="minimap" width="172" height="172" title="Carte (M)"></canvas>
-        <div class="hud-buttons">
-          <button class="icon-btn" data-open="creator" title="Personnaliser (C)">👗<span data-akey="creator">C</span></button>
-          <button class="icon-btn" data-open="pets" title="Animaux (P)">🐾<span data-akey="pets">P</span></button>
-          <button class="icon-btn" data-open="journal" title="Journal (J)">📜<span data-akey="journal">J</span></button>
-          <button class="icon-btn" data-open="bag" title="Sac (I)">🎒<span data-akey="bag">I</span></button>
-          <button id="btn-decor" class="icon-btn" title="Décorer (B)">🛋️<span data-akey="decor">B</span></button>
-          <button class="icon-btn" data-open="map" title="Carte (M)">🗺️<span data-akey="map">M</span></button>
-          <button id="btn-photo" class="icon-btn" title="Mode photo (O)">📷<span data-akey="photo">O</span></button>
-          <button id="btn-vehicle" class="icon-btn" title="Véhicules (V)">🚲<span data-akey="vehicle">V</span></button>
-          <button id="btn-music" class="icon-btn off" title="Musique">🎵</button>
-          <button class="icon-btn" data-open="pause" title="Menu (Échap)">☰<span class="kb-only">Échap</span></button>
-          <button class="icon-btn" data-open="help" title="Aide (H)">❓<span data-akey="help">H</span></button>
+        <button id="btn-tray" class="tray-btn" title="Menus (Tab)" aria-expanded="false"><b>☰</b><span data-akey="menu">Tab</span></button>
+        <div id="hud-buttons" class="hud-buttons">
+          <button class="icon-btn" data-open="creator" title="Personnaliser (C)">👗<i>Tenue</i><span data-akey="creator">C</span></button>
+          <button class="icon-btn" data-open="pets" title="Animaux (P)">🐾<i>Animaux</i><span data-akey="pets">P</span></button>
+          <button class="icon-btn" data-open="journal" title="Journal (J)">📜<i>Journal</i><span data-akey="journal">J</span></button>
+          <button class="icon-btn" data-open="bag" title="Sac (I)">🎒<i>Sac</i><span data-akey="bag">I</span></button>
+          <button id="btn-decor" class="icon-btn" title="Décorer (B)">🛋️<i>Décorer</i><span data-akey="decor">B</span></button>
+          <button class="icon-btn" data-open="map" title="Carte (M)">🗺️<i>Carte</i><span data-akey="map">M</span></button>
+          <button id="btn-photo" class="icon-btn" title="Mode photo (O)">📷<i>Photo</i><span data-akey="photo">O</span></button>
+          <button id="btn-vehicle" class="icon-btn" title="Véhicules (V)">🚲<i>Véhicules</i><span data-akey="vehicle">V</span></button>
+          <button id="btn-music" class="icon-btn off" title="Musique">🎵<i>Musique</i></button>
+          <button class="icon-btn" data-open="pause" title="Menu (Échap)">⚙️<i>Menu</i><span class="kb-only">Échap</span></button>
+          <button class="icon-btn" data-open="help" title="Aide (H)">❓<i>Aide</i><span data-akey="help">H</span></button>
         </div>
       </div>
+      <div id="now-playing" class="now-playing"></div>
       <div id="followers" class="followers"></div>
       <div id="inventory" class="inventory"></div>
       <div id="keyhints" class="keyhints"></div>
