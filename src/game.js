@@ -37,6 +37,7 @@ import { Audio } from './core/audio.js';
 import { MusicPlayer } from './core/music.js';
 import { setRenderStyle } from './core/materials.js';
 import { AutoQuality, effectiveGraphics, initialLevel } from './core/autoquality.js';
+import { ViewCull } from './core/viewcull.js';
 import { loadSave, writeSave, clearSave, getSlot } from './core/save.js';
 import { UI } from './ui/ui.js';
 import { Creator } from './ui/creator.js';
@@ -116,6 +117,8 @@ export class Game {
     this.animals = new AnimalManager(this);
     this.scene.add(this.animals.group);
     this.villagers = new VillagerManager(this);
+    // Qui peut apparaître dans l'image (ou dans les ombres) : seuls ceux-là sont animés.
+    this.viewCull = new ViewCull(this.camera, this.world.sky.sun);
     this.player.obstacles = () => this.villagers.obstacles();
 
     this.inventory = createInventory();
@@ -1497,6 +1500,10 @@ export class Game {
     this.audio.setMusicDuck(!!this.dialogue.open);
     this.particles.update(sdt);
     this.cam.update(dt, this.player, this.input, this.elapsed);
+    // Poses des habitants et des animaux, une fois la caméra placée pour cette image.
+    this.viewCull.update();
+    this.animals.animate(this.viewCull);
+    this.villagers.animate(this.viewCull);
     this.guide.update(dt);
     this.updateAtmosphere(dt);
 

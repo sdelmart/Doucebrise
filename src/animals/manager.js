@@ -3,6 +3,9 @@ import { Animal } from './animal.js';
 import { SPECIES } from './species.js';
 import { ITEMS, countItem, takeItem } from '../game/items.js';
 import { createRng } from '../core/math.js';
+import { skipHiddenChildren } from '../core/matrices.js';
+
+const _center = new THREE.Vector3();
 
 // Peuplement de l'île et interactions joueur ↔ animaux.
 
@@ -64,7 +67,8 @@ export class AnimalManager {
   constructor(game) {
     this.game = game;
     this.world = game.world;
-    this.group = new THREE.Group();
+    // Animaux trop loin (cachés) : leurs positions ne sont plus recalculées à chaque image.
+    this.group = skipHiddenChildren(new THREE.Group());
     this.animals = [];
     this.discovered = {};
     const rng = createRng(7171);
@@ -135,6 +139,7 @@ export class AnimalManager {
       night,
       hold: !!player.vehicle && player.vehicle.def.mode !== 'ground',
       followIndex: 0,
+      defer: true,
       onStartle: (a) => this.game.particles.emit('alert', a.headPosition(), { count: 1, size: 0.4 }),
     };
     this.zzzT = (this.zzzT || 0) - dt;
@@ -173,6 +178,27 @@ export class AnimalManager {
       ctx.followIndex = followers.indexOf(a) + 1;
       a.update(dt, ctx);
       if (zzz && a.state === 'sleep' && d < 25) this.game.particles.emit('zzz', a.headPosition(), { size: 0.3, rise: 0.5, life: 1.6 });
+    }
+  }
+
+  /**
+   * Pose des animaux pour l'image à venir, après la caméra : seulement ceux qui peuvent y
+   * apparaître (champ de la caméra ou zone des ombres), ou tout proches (caresses,
+   * compagnons). Les autres continuent de vivre (déplacements, sommeil) ; leur pose
+   * rattrape le temps écoulé dès qu'ils redeviennent visibles.
+   */
+  animate(cull) {
+    const p = this.game.player.pos;
+    for (const a of this.animals) {
+      if (!a.root.visible) {
+        a.animDt = 0;
+        continue;
+      }
+      const near = Math.hypot(p.x - a.pos.x, p.z - a.pos.z) < 12;
+      _center.copy(a.pos).y += 0.5;
+      if (!near && !cull.visible(_center, 1.5 + a.model.radius * a.model.scale * 2)) continue;
+      a.animate(a.animDt || 0);
+      a.animDt = 0;
     }
   }
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Shape, G, toon, addWind, addSeason, paintGradientY, isRealistic } from '../core/materials.js';
 import { createRng, smoothstep } from '../core/math.js';
+import { skipHiddenChildren } from '../core/matrices.js';
 import { ISLANDS, LANDMARKS, SLED_COURSE } from './layout.js';
 import { natureGeometries, kindOffset, flowerColors, surfaceSpots } from './natureModels.js';
 import { crownOf } from '../core/models.js';
@@ -454,7 +455,8 @@ function fruitsGeo(spots, color, r, stem = null) {
 export class Vegetation {
   constructor(world) {
     this.world = world;
-    this.group = new THREE.Group();
+    // Îles lointaines et fleurs d'hiver cachées : positions non recalculées à chaque image.
+    this.group = skipHiddenChildren(new THREE.Group());
     this.group.name = 'vegetation';
     this.resources = [];
     const rng = createRng(4242);

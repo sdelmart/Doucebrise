@@ -272,7 +272,9 @@ export class Animal {
     this.swimming = (this.species === 'canard' || this.species === 'loutre') && ground < -0.1;
     const targetY = this.swimming ? -0.12 + Math.sin(this.t * 2) * 0.02 : ground;
     this.pos.y = damp(this.pos.y, targetY, 12, dt);
-    this.animate(dt);
+    // Animation différée (troupeau) : jouée après la caméra, si l'animal peut être vu.
+    if (ctx.defer) this.animDt = Math.min((this.animDt || 0) + dt, 1);
+    else this.animate(dt);
     this.sync();
   }
 

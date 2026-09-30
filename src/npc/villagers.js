@@ -6,10 +6,12 @@ import { JOBS } from './jobGestures.js';
 import { festivalLine, festivalChatter, festivalBubble } from './festivalTalk.js';
 import { ITEMS } from '../game/items.js';
 import { damp, lerpAngle } from '../core/math.js';
+import { skipHiddenChildren } from '../core/matrices.js';
 import { PATHS } from '../world/layout.js';
 
 const _right = new THREE.Vector3();
 const _dir = new THREE.Vector3();
+const _center = new THREE.Vector3();
 
 // Les habitants de Doucebrise : apparence, emploi du temps, goûts et répliques.
 
@@ -971,7 +973,7 @@ export class Villager {
       this.character.setUmbrella(false);
       this.character.setWork?.(null);
       this.character.setDistance?.(this.pos.distanceTo(this.game.camera.position));
-      this.character.update(dt, { speed: 0, running: false, grounded: true, vy: 0 });
+      this.queueAnimation(dt, 0);
       return;
     }
     const want = this.scheduled(hour);
@@ -1050,10 +1052,34 @@ export class Villager {
       this.root.position.copy(this.pos);
       this.root.rotation.y = this.rotY;
       this.character.setDistance?.(this.pos.distanceTo(this.game.camera.position));
-      this.character.update(dt, { speed: this.speed, running: false, grounded: true, vy: 0 });
-      const hit = this.character.takeWorkHit?.();
-      if (hit) this.toolSound(hit);
+      this.queueAnimation(dt, this.speed);
     }
+  }
+
+  /** Animation jouée plus tard dans l'image, une fois la caméra placée (voir animate). */
+  queueAnimation(dt, speed) {
+    this.animDt = Math.min((this.animDt || 0) + dt, 1);
+    this.animSpeed = speed;
+  }
+
+  /**
+   * Pose de l'habitant pour l'image à venir : seulement s'il peut y apparaître (champ de la
+   * caméra ou zone des ombres), ou s'il est assez près pour qu'on entende ses outils.
+   * Sinon le temps s'accumule et il reprend là où il en serait dès qu'il redevient visible.
+   */
+  animate(cull) {
+    if (!this.root.visible) {
+      this.animDt = 0;
+      return;
+    }
+    const p = this.game.player.pos;
+    const near = Math.hypot(p.x - this.pos.x, p.z - this.pos.z) < 18;
+    _center.copy(this.pos).y += 1;
+    if (!near && !cull.visible(_center, 2.5)) return;
+    this.character.update(this.animDt || 0, { speed: this.animSpeed || 0, running: false, grounded: true, vy: 0 });
+    this.animDt = 0;
+    const hit = this.character.takeWorkHit?.();
+    if (hit) this.toolSound(hit);
   }
 
   /** Bruit d'un outil (marteau, scie…), entendu de près, placé à gauche ou à droite. */
@@ -1164,7 +1190,8 @@ export class Villager {
 export class VillagerManager {
   constructor(game) {
     this.game = game;
-    this.group = new THREE.Group();
+    // Habitants chez eux ou trop loin (cachés) : positions non recalculées à chaque image.
+    this.group = skipHiddenChildren(new THREE.Group());
     this.list = VILLAGERS.map((d) => new Villager(d, game));
     for (const v of this.list) this.group.add(v.root);
     game.scene.add(this.group);
@@ -1198,6 +1225,11 @@ export class VillagerManager {
       }
     }
     this.updateChatter(dt);
+  }
+
+  /** Animation des habitants, après la caméra (voir Villager.animate). */
+  animate(cull) {
+    for (const v of this.list) v.animate(cull);
   }
 
   /** Bavardages : bulles quand on passe près des habitants. */

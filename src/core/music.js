@@ -125,6 +125,7 @@ export class MusicPlayer {
     this.audio = audio;
     this.settingsOf = typeof settings === 'function' ? settings : () => settings;
     this.tracks = bundledTracks();
+    this.rev = 0; // change à chaque ajout, retrait ou chanson illisible (cache de resolve)
     this.want = null;
     this.wantSince = 0;
     this.mood = null; // ambiance jouée (après repli)
@@ -152,8 +153,20 @@ export class MusicPlayer {
     return this.tracks.filter((t) => t.mood === mood && !hidden.has(t.id) && !this.broken.has(t.id));
   }
 
-  /** Ambiance réellement jouée (repli si aucune chanson), ou null. */
+  /**
+   * Ambiance réellement jouée (repli si aucune chanson), ou null. Appelée à chaque image :
+   * le résultat est gardé tant que la liste des chansons ne change pas.
+   */
   resolve(mood) {
+    const hidden = this.settingsOf().musicHidden;
+    const c = this.resolved;
+    if (!c || c.rev !== this.rev || c.hidden !== hidden) this.resolved = { rev: this.rev, hidden, map: new Map() };
+    const map = this.resolved.map;
+    if (!map.has(mood)) map.set(mood, this.resolveNow(mood));
+    return map.get(mood);
+  }
+
+  resolveNow(mood) {
     if (!mood) return null;
     if (this.tracksFor(mood).length) return mood;
     for (const m of FALLBACK[mood] || []) if (this.tracksFor(m).length) return m;
@@ -280,6 +293,7 @@ export class MusicPlayer {
       if (this.deck !== deck || deck.disposed) return;
       console.warn('Musique illisible :', track.name);
       this.broken.add(track.id);
+      this.rev++;
       this.dispose(deck);
       this.mood = null;
     });
@@ -414,6 +428,7 @@ export class MusicPlayer {
       for (const r of rows || []) {
         if (!MOOD_IDS.has(r.mood) || !r.blob) continue;
         this.tracks.push({ id: r.id, mood: r.mood, name: trackTitle(r.name), url: URL.createObjectURL(r.blob), gain: r.gain ?? DEFAULT_GAIN, source: 'user' });
+        this.rev++;
       }
       db.close();
     } catch {
@@ -454,6 +469,7 @@ export class MusicPlayer {
       const gain = (await this.measure(file)) ?? DEFAULT_GAIN;
       await tx(db, 'readwrite', (s) => s.put({ id, mood, name: file.name, blob: file, gain, added: Date.now() }));
       this.tracks.push({ id, mood, name: trackTitle(file.name), url: URL.createObjectURL(file), gain, source: 'user' });
+      this.rev++;
       added++;
     }
     db.close();
@@ -465,6 +481,7 @@ export class MusicPlayer {
     const i = this.tracks.findIndex((t) => t.id === id && t.source === 'user');
     if (i < 0) return;
     const [t] = this.tracks.splice(i, 1);
+    this.rev++;
     try {
       const db = await openDb();
       await tx(db, 'readwrite', (s) => s.delete(id));
