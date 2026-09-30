@@ -16,7 +16,7 @@ export async function initKeyboardLayout() {
   } catch {
     layoutMap = null;
   }
-  current?.rebuild();
+  current?.rebuild(true);
 }
 
 const NAMES = {
@@ -70,6 +70,9 @@ export class Input {
     this.canvas = canvas;
     this.keys = new Set();
     this.pressed = new Set(); // touches enfoncées pendant cette frame
+    // Touche physique enfoncée → code logique donné à l'appui : le relâchement retire
+    // exactement ce code, même si la correspondance a changé entre-temps.
+    this.held = new Map();
     this.drag = { active: false, dx: 0, dy: 0 };
     this.wheel = 0;
     this.enabled = true;
@@ -86,9 +89,11 @@ export class Input {
     window.addEventListener('keydown', (e) => {
       if (isTyping(e)) return;
       // Apprend la disposition du clavier (quand le navigateur ne la fournit pas).
+      // Les touches déjà maintenues le restent (avant, avancer puis appuyer pour la première
+      // fois sur une autre lettre « relâchait » la marche).
       if (!layoutMap && e.key && e.key.length === 1 && /[a-z]/i.test(e.key) && learned.get(e.code) !== e.key.toLowerCase()) {
         learned.set(e.code, e.key.toLowerCase());
-        this.rebuild();
+        this.rebuild(true);
       }
       if (this.listening) {
         this.listening(e);
@@ -98,13 +103,24 @@ export class Input {
       if (!code) return;
       if (!this.keys.has(code)) this.pressed.add(code);
       this.keys.add(code);
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(code) || e.code === 'F3') e.preventDefault();
+      this.held.set(physKey(e), code);
+      // (Un curseur, une case ou une liste sélectionnés gardent Espace et les flèches.)
+      const control = ['INPUT', 'SELECT'].includes(e.target?.tagName);
+      if (!control && (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(code) || e.code === 'F3')) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => {
-      const code = logicalCode(e);
-      if (code) this.keys.delete(code);
+      const phys = physKey(e);
+      const code = this.held.has(phys) ? this.held.get(phys) : logicalCode(e);
+      this.held.delete(phys);
+      // Une autre touche physique donne la même action et reste enfoncée : on garde l'action.
+      if (code && ![...this.held.values()].includes(code)) this.keys.delete(code);
     });
-    window.addEventListener('blur', () => this.keys.clear());
+    const release = () => {
+      this.keys.clear();
+      this.held.clear();
+    };
+    window.addEventListener('blur', release);
+    document.addEventListener('visibilitychange', () => document.hidden && release());
     window.addEventListener('gamepadconnected', () => (this.pad.connected = true));
     window.addEventListener('gamepaddisconnected', () => (this.pad.connected = false));
 
@@ -129,11 +145,19 @@ export class Input {
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    // Molette : un cran = un pas de zoom. Pavé tactile : le défilement à deux doigts arrive
+    // par petits bouts (des dizaines d'événements par geste) ; il est pris en proportion, sinon
+    // le zoom sautait d'un bout à l'autre. Deux doigts vers le haut / le bas (ou pincer) :
+    // zoom ; deux doigts sur le côté : tourner la caméra.
     canvas.addEventListener(
       'wheel',
       (e) => {
-        this.wheel += Math.sign(e.deltaY);
         e.preventDefault();
+        const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;
+        const dx = e.deltaX * unit;
+        const dy = e.deltaY * unit * (e.ctrlKey ? 4 : 1);
+        if (!e.ctrlKey && Math.abs(dx) > Math.abs(dy)) this.drag.dx += dx * 0.6;
+        else this.wheel += Math.max(-1, Math.min(1, dy / 100));
       },
       { passive: false },
     );
@@ -174,7 +198,8 @@ export class Input {
     this.rebuild();
   }
 
-  rebuild() {
+  /** Recalcule la correspondance touches → actions (keep : garder les touches maintenues). */
+  rebuild(keep = false) {
     const map = new Map();
     for (const a of ACTIONS) {
       const phys = bindingOf(a.id, this.userKeys);
@@ -183,7 +208,10 @@ export class Input {
     // Une touche par défaut réaffectée ailleurs ne déclenche plus son ancienne action.
     for (const a of ACTIONS) if (!map.has(a.logical)) map.set(a.logical, null);
     this.remap = map;
-    this.keys.clear();
+    if (!keep) {
+      this.keys.clear();
+      this.held.clear();
+    }
     this.onRebuild?.();
   }
 
@@ -302,7 +330,19 @@ export class Input {
   }
 }
 
-function isTyping(e) {
+// Champs où l'on tape du texte : leurs touches ne vont pas au jeu. Les curseurs, cases à
+// cocher et listes des paramètres, eux, ne bloquent plus le jeu (avant, après avoir touché
+// un réglage, plus aucune touche ne répondait, pas même Échap).
+const TEXT_INPUTS = new Set(['text', 'search', 'email', 'password', 'number', 'tel', 'url']);
+
+export function isTyping(e) {
   const t = e.target;
-  return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+  if (!t) return false;
+  if (t.tagName === 'TEXTAREA' || t.isContentEditable) return true;
+  return t.tagName === 'INPUT' && TEXT_INPUTS.has(t.type);
+}
+
+/** Identifiant de la touche physique (les boutons de manette ont le leur). */
+function physKey(e) {
+  return e.padLogical ? `pad:${e.code}` : e.code;
 }

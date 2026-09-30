@@ -82,7 +82,7 @@ export function defaultSettings() {
     zoneBanner: true,
     camSensitivity: 1,
     invertY: false,
-    camAuto: true,
+    camAuto: 'normale', // caméra qui suit le personnage : normale | douce | off
     audio: { master: 0.8, music: 0.6, sfx: 0.9, ambience: 0.7 },
     musicOn: true,
     musicHidden: [], // chansons intégrées masquées (Ma musique)
@@ -115,6 +115,8 @@ export function loadSettings(legacy = null) {
     }
     // Ancienne aide des touches (oui / non) : « auto » ou « jamais ».
     if (typeof stored.keyHints === 'boolean') stored.keyHints = stored.keyHints ? 'auto' : 'never';
+    // Ancienne caméra qui suit (oui / non) : « normale » ou « non ».
+    if (typeof stored.camAuto === 'boolean') stored.camAuto = stored.camAuto ? 'normale' : 'off';
     return {
       ...base,
       ...stored,

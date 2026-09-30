@@ -321,6 +321,65 @@ try {
     await page.waitForFunction((b) => Math.hypot(window.game.player.pos.x - b.x, window.game.player.pos.z - b.z) > 0.5, before, { timeout: 120000 });
     await page.keyboard.up('KeyW');
   });
+  await step('Commandes (touches maintenues, réglages, caméra qui suit, pavé tactile)', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const out = [];
+      const key = (type, code, key = '', target = window) => target.dispatchEvent(new KeyboardEvent(type, { code, key, bubbles: true, cancelable: true }));
+      // Avancer, puis une nouvelle correspondance des touches (première lettre apprise) :
+      // la marche reste enfoncée, et se relâche normalement.
+      key('keydown', 'KeyW', 'z');
+      g.input.rebuild(true);
+      key('keydown', 'KeyD', 'd');
+      if (!g.input.keys.has('KeyW')) out.push('la marche saute quand une autre touche est apprise');
+      key('keyup', 'KeyD', 'd');
+      key('keyup', 'KeyW', 'z');
+      if (g.input.keys.size) out.push(`touches restées enfoncées : ${[...g.input.keys]}`);
+      // Un curseur des paramètres sélectionné ne bloque plus le jeu : Échap ferme la fenêtre.
+      g.openPanel('settings');
+      const range = document.querySelector('#settings input[type="range"]');
+      range?.focus();
+      key('keydown', 'Escape', 'Escape', range || window);
+      key('keyup', 'Escape', 'Escape', range || window);
+      if (g.panel === 'settings') out.push('Échap ne ferme pas les paramètres depuis un curseur');
+      g.closePanels();
+      if (document.activeElement && document.activeElement !== document.body && document.activeElement.closest('#settings')) out.push('le focus reste dans les paramètres fermés');
+      // Caméra qui suit : aller à droite fait tourner la vue ; reculer ne la fait pas tourner.
+      const cam = g.cam;
+      const p = g.player;
+      const meadow = g.debugData().ZONES.find((z) => z.id === 'prairie');
+      p.teleport(meadow.x, meadow.z, 0);
+      const walk = (code, sec) => {
+        g.input.keys.add(code);
+        for (let i = 0; i < sec * 30; i++) {
+          p.update(1 / 30, g.input, cam.yaw);
+          cam.update(1 / 30, p, g.input, g.elapsed);
+        }
+        g.input.keys.delete(code);
+        for (let i = 0; i < 20; i++) p.update(1 / 30, g.input, cam.yaw);
+      };
+      cam.autoFollow = 'normale';
+      cam.manualT = 0;
+      let y0 = cam.yaw;
+      walk('KeyD', 1.5);
+      const side = Math.abs(Math.atan2(Math.sin(cam.yaw - y0), Math.cos(cam.yaw - y0)));
+      if (side < 0.4) out.push(`la caméra ne suit pas le personnage (${((side * 180) / Math.PI).toFixed(0)}°)`);
+      y0 = cam.yaw;
+      walk('KeyS', 1.5);
+      const back = Math.abs(Math.atan2(Math.sin(cam.yaw - y0), Math.cos(cam.yaw - y0)));
+      if (back > 0.2) out.push(`la caméra tourne en reculant (${((back * 180) / Math.PI).toFixed(0)}°)`);
+      cam.autoFollow = g.settings.camAuto;
+      // Pavé tactile : un balayage fait de petits défilements = un cran de zoom, pas vingt-cinq.
+      const c = g.renderer.domElement;
+      g.input.wheel = 0;
+      for (let i = 0; i < 25; i++) c.dispatchEvent(new WheelEvent('wheel', { deltaY: 4, bubbles: true, cancelable: true }));
+      const w = g.input.consumeWheel();
+      if (Math.abs(w - 1) > 0.05) out.push(`zoom au pavé tactile : ${w.toFixed(2)} cran(s) au lieu de 1`);
+      g.input.consumeDrag();
+      return out.join(' ; ');
+    });
+    if (r) throw new Error(r);
+  });
   await step('Course de luge', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;

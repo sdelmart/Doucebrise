@@ -414,7 +414,7 @@ export class SettingsPanel {
     let html = [
       this.row('Sensibilité de la caméra', this.range('camSensitivity', s.camSensitivity, 0.3, 2.5, 0.05, `×${(+s.camSensitivity).toFixed(2)}`)),
       this.row('Inverser l\'axe vertical', this.toggle('invertY', s.invertY)),
-      this.row('Caméra qui suit en marchant', this.toggle('camAuto', s.camAuto)),
+      this.row('Caméra qui suit le personnage', this.chips('camAuto', [['normale', 'Oui'], ['douce', 'Doucement'], ['off', 'Non']], s.camAuto), 'Quand tu te déplaces, la caméra revient derrière toi, plus vite si tu pars sur le côté. Un geste à la souris ou au pavé tactile la reprend en main un instant.'),
     ].join('');
     let group = '';
     html += '<div class="keys">';
@@ -427,7 +427,7 @@ export class SettingsPanel {
       const custom = !!s.keys[a.id];
       html += `<div class="krow"><span>${a.label}</span><button class="keybtn${listening ? ' listening' : ''}${custom ? ' custom' : ''}" data-rebind="${a.id}">${listening ? 'Appuie sur une touche…' : escapeHtml(keyLabel(bindingOf(a.id)))}</button></div>`;
     }
-    html += `</div><div class="srow"><div class="slabel">Autres touches<small>1 à 5 : émotes · Échap : menu · molette : zoom · clic-glisser : caméra</small></div>
+    html += `</div><div class="srow"><div class="slabel">Autres touches<small>1 à 5 : émotes · Échap : menu · molette ou pavé tactile (deux doigts vers le haut / le bas) : zoom · clic-glisser ou deux doigts de côté sur le pavé tactile : caméra</small></div>
       <div class="sctl"><button class="btn small" data-resetkeys>↺ Touches par défaut</button></div></div>
       <div class="field-title">🎮 Manette</div>
       <p class="note">Stick gauche : se déplacer · stick droit : caméra · A : interagir · X : nourrir / vœu · Y : sauter · B / Start : retour / menu · LB : carte · RB : journal · Select : sac · gâchette gauche : courir · croix : émotes.</p>`;

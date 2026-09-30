@@ -39,7 +39,7 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 | --- | --- |
 | `Z Q S D` (AZERTY) / `W A S D` / flèches | Se déplacer |
 | `Maj` · `Espace` | Courir (ça effraie les animaux timides !) · sauter |
-| Glisser la souris · molette | Tourner la caméra · zoomer |
+| Glisser la souris ou deux doigts de côté sur le pavé tactile · molette, deux doigts vers le haut / le bas ou pincer | Tourner la caméra · zoomer |
 | `E` | Parler · caresser · cueillir · planter / arroser · pêcher · entrer · frapper chez un habitant · s'asseoir · voyager · se baigner · luge |
 | `F` | Donner à manger · changer de semis · **faire un vœu** sous une étoile filante |
 | `R` · `G` | Adopter / « suis-moi » · jouer avec un animal (plumeau) |
@@ -50,6 +50,8 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 | `Tab` · ☰ | Menus rapides (sous la mini-carte) : tenue, animaux, journal, sac, décorer, carte, photo, véhicules, musique, menu, aide |
 | `Échap` | Menu pause (le temps s'arrête) : paramètres, sauvegarde, profils, quitter |
 | `F3` · `F11` | Compteur FPS (simple / détaillé) · plein écran |
+
+**Caméra qui suit** (réglable : oui, doucement, non) : quand on se déplace, la caméra revient peu à peu derrière le personnage, d'autant plus vite qu'il part sur le côté (en allant à droite, la vue tourne avec lui) ; elle ne pivote pas quand on recule vers l'écran. Un geste à la souris, au pavé tactile ou au stick la reprend en main un instant (1,2 s). Au pavé tactile, le zoom suit le geste (un balayage complet = un cran de molette).
 
 **Écran tactile** : joystick et boutons d'action à icônes (✋ interagir, 🍓 nourrir, 💞 adopter…) ; les bulles de touches du clavier disparaissent dès qu'on touche l'écran et reviennent au premier appui sur une touche.
 
@@ -192,7 +194,7 @@ assets/models/
 ### ⚙️ Paramètres complets
 - **Graphismes** : préréglages Basse / Moyenne / Haute / Ultra ou réglages sur mesure (style de rendu réaliste ou cartoon, résolution de rendu, netteté Retina, qualité automatique, ombres, ombres de contact, sol détaillé, distance d'affichage, herbe, anticrénelage, bloom, étalonnage, eau, nuages). Le style et le sol détaillé demandent un redémarrage : un bouton le propose aussitôt.
 - **Affichage** : plein écran, compteur FPS (simple ou détaillé avec graphique, appels de dessin, triangles, carte graphique), limite d'images par seconde (30 à 144), champ de vision, interface (complète, épurée, minimale), interface qui s'efface en marchant, taille de l'interface, aide des touches (au début, toujours, jamais), mini-carte, flèche du guide.
-- **Contrôles** : touches réassignables, sensibilité et inversion de la caméra, caméra qui suit, manette.
+- **Contrôles** : touches réassignables, sensibilité et inversion de la caméra, caméra qui suit (oui / doucement / non), manette. Les touches maintenues ne « sautent » plus : avant, avancer puis appuyer pour la première fois sur une autre lettre relâchait la marche quand le navigateur ne donnait pas la disposition du clavier (version en ligne, Firefox), et un curseur ou une case des paramètres restés sélectionnés bloquaient toutes les touches, Échap compris.
 - **Audio** : volumes général, musique, effets et ambiance séparés. La musique change selon l'île et la nuit ; ambiances d'oiseaux, de grillons, de vagues, de vent et de pluie.
 - **Jeu** : durée des journées, export de la sauvegarde, vérification des nouvelles versions (application de bureau).
 

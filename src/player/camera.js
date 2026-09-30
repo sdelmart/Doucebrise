@@ -1,8 +1,15 @@
 import * as THREE from 'three';
-import { clamp, damp, lerpAngle } from '../core/math.js';
+import { clamp, damp, smoothstep } from '../core/math.js';
 
 // Caméra à la troisième personne (orbite autour du joueur), avec deux modes
 // supplémentaires : « studio » pour la personnalisation et « titre » (survol de l'île).
+
+// Caméra qui suit : vitesse (radians par seconde, en marchant) à laquelle elle se replace
+// derrière le personnage quand il part sur le côté (réglage « Caméra qui suit »).
+const FOLLOW = { normale: 0.75, douce: 0.4, off: 0 };
+// Après un geste à la souris, au pavé tactile ou au stick : la caméra obéit, puis reprend
+// son suivi au bout de ce délai (secondes).
+const MANUAL_HOLD = 1.2;
 
 export class FollowCamera {
   constructor(camera, world) {
@@ -71,15 +78,22 @@ export class FollowCamera {
       const pitch = 0.95;
       desired.set(Math.sin(o.yaw) * Math.cos(pitch) * o.dist, Math.sin(pitch) * o.dist, Math.cos(o.yaw) * Math.cos(pitch) * o.dist).add(look);
     } else {
+      if (drag.dx || drag.dy || input.drag.active) this.manualT = MANUAL_HOLD;
+      else this.manualT = Math.max(0, (this.manualT || 0) - dt);
       this.yaw -= drag.dx * 0.0055;
       this.pitch = clamp(this.pitch + drag.dy * 0.004, this.photo ? -0.3 : -0.05, 1.3);
       this.dist = clamp(this.dist * (1 + wheel * 0.1), this.photo ? 1.6 : 3.5, this.photo ? 30 : 18);
-      // La caméra suit doucement la direction du joueur quand il avance sans qu'on touche la souris.
-      // (uniquement quand il avance « dans » l'écran, sinon on tournerait en rond en reculant).
-      const behind = player.rotY + Math.PI;
-      const off = Math.abs(Math.atan2(Math.sin(behind - this.yaw), Math.cos(behind - this.yaw)));
-      if (this.autoFollow !== false && !this.photo && !input.drag.active && player.speed > 1 && off < 1.3) {
-        this.yaw = lerpAngle(this.yaw, behind, 1 - Math.exp(-0.5 * dt * (player.speed / 4)));
+      // Caméra qui suit : quand le personnage se déplace, elle se replace peu à peu derrière
+      // lui, d'autant plus vite qu'il part sur le côté (en tournant à droite, la vue tourne
+      // avec lui). Quand il vient vers l'écran (on recule), elle ne pivote pas : elle
+      // tournerait en rond. Un geste manuel la met en pause un instant.
+      const follow = FOLLOW[this.autoFollow === true ? 'normale' : this.autoFollow === false ? 'off' : this.autoFollow] ?? FOLLOW.normale;
+      if (follow && !this.photo && this.manualT <= 0 && player.speed > 0.5) {
+        const behind = player.rotY + Math.PI;
+        const diff = Math.atan2(Math.sin(behind - this.yaw), Math.cos(behind - this.yaw));
+        const pace = Math.min(player.speed / 4.6, 1.6);
+        const facing = 1 - smoothstep(2.2, 2.9, Math.abs(diff));
+        this.yaw += Math.sin(diff) * follow * pace * facing * dt;
       }
       look.copy(player.pos).add(new THREE.Vector3(0, this.photo ? 0.9 : 1.25, 0));
       // Si une maison ou une colline cache le joueur, la caméra monte au-dessus (et, en dernier

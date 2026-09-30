@@ -541,7 +541,7 @@ export class UI {
     const rows = [
       [`${K('forward')}${K('left')}${K('back')}${K('right')} / flèches`, 'Se déplacer'],
       [`${K('run')} · ${K('jump')}`, 'Courir (ça effraie les animaux timides !) · sauter'],
-      ['Glisser la souris · molette', 'Tourner la caméra · zoomer'],
+      ['Glisser la souris ou deux doigts de côté sur le pavé tactile · molette ou deux doigts vers le haut / le bas', 'Tourner la caméra (elle suit aussi toute seule quand tu marches) · zoomer'],
       [K('interact'), 'Parler · caresser · cueillir · planter/arroser · pêcher · entrer · s\'asseoir · voyager'],
       [K('feed'), 'Donner à manger · changer de semis · faire un vœu sous une étoile filante 🌠'],
       [K('adopt'), 'Adopter (cœurs pleins) · « suis-moi » / « attends au jardin »'],

@@ -29,7 +29,7 @@ import { DecorMode } from './house/decor.js';
 import { Visits } from './house/visits.js';
 import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS, FURNITURE_CATS, shopFurniture } from './house/furniture.js';
 import { HOME_SIZES, ROOF_STYLES, FACADES, HOME_EXTRAS } from './world/home.js';
-import { Input, initKeyboardLayout, logicalCode } from './core/input.js';
+import { Input, initKeyboardLayout, logicalCode, isTyping } from './core/input.js';
 import { loadSettings, saveSettings, SHADOW_SIZES, DAY_SPEEDS } from './core/settings.js';
 import { PostFX } from './core/postfx.js';
 import { Particles } from './core/particles.js';
@@ -458,6 +458,9 @@ export class Game {
   }
 
   closePanels(silent = false) {
+    // Le champ ou bouton sélectionné dans la fenêtre fermée rend la main au jeu.
+    const ae = document.activeElement;
+    if (ae && ae !== document.body && PANELS.some((id) => ae.closest(id))) ae.blur();
     for (const id of PANELS) document.querySelector(id)?.classList.add('hidden');
     const was = this.panel;
     this.panel = null;
@@ -541,8 +544,10 @@ export class Game {
   }
 
   onKey(e) {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if (isTyping(e)) return;
     const code = logicalCode(e);
+    // Un réglage sélectionné (curseur, case, liste) garde ses touches ; Échap ferme quand même.
+    if (['INPUT', 'SELECT'].includes(e.target?.tagName) && code !== 'Escape') return;
     if (e.code === 'F11') {
       e.preventDefault();
       toggleFullscreen(!(window.desktop?.isDesktop ? this.fullscreen : document.fullscreenElement));
