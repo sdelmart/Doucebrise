@@ -16,6 +16,7 @@ import { heartsString, escapeHtml } from './ui.js';
 
 const TABS = [
   { id: 'quetes', label: '📜 Histoire' },
+  { id: 'carnet', label: '📖 Carnet' },
   { id: 'habquetes', label: '❗ Quêtes' },
   { id: 'demandes', label: '📋 Demandes' },
   { id: 'defis', label: '🎯 Défis' },
@@ -87,6 +88,24 @@ export class Journal {
         this.render();
       };
     });
+    body.querySelectorAll('[data-page]').forEach((b) => {
+      b.onclick = () => {
+        this.game.closePanels();
+        this.game.carnet.read(+b.dataset.page);
+      };
+    });
+    body.querySelectorAll('[data-page-track]').forEach((b) => {
+      b.onclick = () => {
+        const n = +b.dataset.pageTrack;
+        const c = this.game.carnet;
+        c.track(c.tracked === n ? null : n);
+        this.game.audio.play('ui');
+        if (c.tracked) {
+          this.game.closePanels();
+          this.game.guide?.flash();
+        } else this.render();
+      };
+    });
     body.querySelector('[data-replay]')?.addEventListener('click', () => {
       this.game.closePanels();
       this.game.quests.showChapter(true);
@@ -112,6 +131,8 @@ export class Journal {
     const q = this.game.quests;
     const cur = q.current;
     let html = `<div class="sparks-row" title="Étincelles du Cœur">🗼 Étincelles du Cœur : ${'✨'.repeat(q.sparks)}${'<span class="dim">✨</span>'.repeat(Math.max(0, 7 - q.sparks))} ${q.lighthouseLit ? '— le phare brille à nouveau ! 💛' : ''}</div>`;
+    const cn = this.game.carnet;
+    html += `<div class="sparks-row">📖 Carnet du gardien : ${cn.count}/${cn.pages.length} pages${cn.available().length ? ` — <b>${cn.available().length} page${cn.available().length > 1 ? 's' : ''} à retrouver</b> (onglet Carnet)` : ''}</div>`;
     if (cur) {
       const chap = CHAPTERS.find((c) => c.id === cur.chapter);
       const giver = cur.giver ? this.game.villagers.get(cur.giver) : null;
@@ -143,6 +164,31 @@ export class Journal {
       html += `<div class="q-done${i === ci ? ' now' : ''}">${i < ci ? '✅' : i === ci ? '▶️' : '🔒'} ${c.emoji} ${i <= ci ? escapeHtml(c.title) : '???'}</div>`;
     });
     html += `<p class="note">${q.completed.length}/${STORY.length} quêtes terminées.</p>`;
+    return html;
+  }
+
+  /** Le carnet du gardien : pages trouvées (à relire), énigmes des pages envolées. */
+  carnet() {
+    const c = this.game.carnet;
+    const pages = c.pages;
+    let html = `<p class="note">Le journal de l'ancien gardien du phare. Chaque chapitre terminé en libère une page, quelque part sur l'île de Doucebrise : une colonne de lumière pâle la signale de loin. ${c.count}/${pages.length} pages retrouvées.</p>`;
+    html += '<div class="carnet-list">';
+    for (const p of pages) {
+      const found = c.found.has(p.n);
+      const open = c.unlocked(p);
+      const chap = CHAPTERS.find((x) => x.id === p.chapter);
+      if (found) {
+        html += `<button class="carnet-item found" data-page="${p.n}"><span class="ci-art">${p.emoji}</span><span class="ci-body"><b>Page ${p.n} · ${escapeHtml(p.date)}</b><span>${escapeHtml(p.text[0].slice(0, 90))}…</span><em>📖 Relire</em></span></button>`;
+      } else if (open) {
+        const tracked = c.tracked === p.n;
+        html += `<div class="carnet-item lost"><span class="ci-art">❔</span><span class="ci-body"><b>Page ${p.n} · envolée</b><span>🔍 « ${escapeHtml(p.riddle)} »</span>
+          <button class="btn small${tracked ? ' primary' : ''}" data-page-track="${p.n}">${tracked ? '✓ Suivie (arrêter)' : '🧭 Me guider'}</button></span></div>`;
+      } else {
+        html += `<div class="carnet-item locked"><span class="ci-art">🔒</span><span class="ci-body"><b>Page ${p.n}</b><span>Se libère à la fin du chapitre ${chap.n} (${chap.emoji} ${escapeHtml(chap.title)}).</span></span></div>`;
+      }
+    }
+    html += '</div>';
+    if (c.count === pages.length) html += '<p class="note">✨ Le carnet est complet. Il est signé : Aurèle.</p>';
     return html;
   }
 

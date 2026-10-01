@@ -89,26 +89,39 @@ export const T = {
 
 export const CHAPTERS = [
   { id: 'arrivee', n: 1, title: 'Bienvenue à Doucebrise', emoji: '⛵',
+    recap: 'Tu as posé tes valises et planté tes premières graines… et Mamie Rose a souri comme ça ne lui était pas arrivé depuis longtemps.',
     text: 'Tu débarques sur la petite île de Doucebrise. On raconte que son phare brillait jadis si fort qu\'on le voyait depuis l\'autre bout de la mer… Mais sa lumière s\'est affaiblie, et les habitants se sont un peu perdus de vue. Mamie Rose t\'a écrit pour t\'inviter : elle t\'attend !' },
   { id: 'amis', n: 2, title: 'Des amis à poils', emoji: '🐾',
+    recap: 'Les animaux de l\'île te font confiance. Au Café des Chats, on ne parle plus que de toi.',
     text: 'Les animaux de l\'île sont timides, mais ils ont un cœur immense. Mimi, qui tient le Café des Chats, connaît tous leurs petits secrets.' },
   { id: 'tresors', n: 3, title: 'Les trésors de l\'île', emoji: '🧺',
+    recap: 'Paniers pleins, premier papillon, première récolte : l\'île t\'a ouvert ses trésors.',
     text: 'Baies, coquillages, papillons… L\'île regorge de merveilles. Noé, le petit explorateur, a une surprise pour toi !' },
   { id: 'grandbleu', n: 4, title: 'Le grand bleu', emoji: '🌊',
+    recap: 'La mer t\'a offert ses premiers poissons, et le vieux phare t\'a semblé un peu moins triste.',
     text: 'Marin, le vieux pêcheur, dit que la mer murmure des histoires à ceux qui savent l\'écouter. Et le phare, là-bas, veille toujours…' },
   { id: 'nid', n: 5, title: 'Un nid douillet', emoji: '🏡',
+    recap: 'Ta maison a une âme, maintenant : une vraie maison de Doucebrise.',
     text: 'Une maison, c\'est plus que des murs : c\'est un endroit où l\'on a envie de revenir. Bruno le menuisier peut t\'aider à la rendre unique.' },
   { id: 'chemins', n: 6, title: 'Sur les chemins', emoji: '🚲',
+    recap: 'À pied ou sur roues, tu files rendre service à tout le village.',
     text: 'Léo, le mécano, répare tout ce qui roule, flotte ou vole. Et le village a besoin de bras pour de petits boulots !' },
   { id: 'famille', n: 7, title: 'Une grande famille', emoji: '💞',
+    recap: 'Les habitants se reparlent, se confient, se retrouvent. Le lien qui leur manquait, c\'était toi.',
     text: 'Les habitants s\'étaient éloignés les uns des autres. Et si c\'était toi, le lien qui les rassemble ?' },
   { id: 'coeur', n: 8, title: 'Le Cœur de Doucebrise', emoji: '🗼',
+    recap: 'Le phare brille à nouveau, plus fort que jamais.',
     text: 'Grâce à toi, l\'île a retrouvé le sourire. Il ne reste qu\'une chose à faire : rallumer le phare. Tout le monde t\'attendra au Cap du Phare, à la tombée de la nuit…' },
   { id: 'pins', n: 9, title: 'Les veilleurs des Pins', emoji: '🏔️',
+    recap: 'Le grand sapin des Veilleurs illumine de nouveau Bourg-Sapin.',
     text: 'Depuis que le phare brille, on aperçoit de nouveau des lumières au nord-ouest : Bourg-Sapin, le village de l\'île des Pins. Mais là-haut, le grand sapin des Veilleurs s\'est éteint, comme le phare autrefois… Le Pont des Brumes t\'attend.' },
   { id: 'lagon', n: 10, title: 'Le chant du lagon', emoji: '🐋',
+    recap: 'La baleine chante de nouveau au large du lagon.',
     text: 'Une mouette dépose un message de Port-Corail : le capitaine Nérée a vu le phare se rallumer et t\'invite sur l\'île Corail. On raconte qu\'une baleine chantait au large du lagon, les nuits d\'été… et qu\'elle ne revient plus.' },
-  { id: 'epilogue', n: 11, title: 'Épilogue : la vie dans l\'archipel', emoji: '🌈',
+  { id: 'retrouvailles', n: 11, title: 'Les retrouvailles', emoji: '💌',
+    recap: 'Cinquante ans plus tard, Rose et Aurèle se sont retrouvés au pied du phare. Et c\'est grâce à toi.',
+    text: 'Sept pages, sept étincelles… Le carnet du gardien raconte une histoire qui n\'a jamais eu de fin. Son auteur, Aurèle, vit tout là-haut, à Bourg-Sapin. Et Mamie Rose garde toujours, sur sa table de chevet, une petite lanterne en bois…' },
+  { id: 'epilogue', n: 12, title: 'Épilogue : la vie dans l\'archipel', emoji: '🌈',
     text: 'Le phare brille à nouveau ! Doucebrise est ta maison, maintenant. Il reste mille choses à faire : agrandir ta maison, compléter tes collections, devenir le meilleur ami de chacun…' },
 ];
 
@@ -120,17 +133,20 @@ export const STORY = [
     goals: [ev('talk', 1, 'Parler à Mamie Rose', (d) => d.villager.def.id === 'rose')],
     target: T.villager('rose'), reward: { coins: 50, items: { 'sem-carotte': 3 } } },
   { id: 'maison', chapter: 'arrivee', title: 'Ta petite maison', giver: 'rose',
+    thanks: ['rose', 'Elle est petite, mais elle a vu passer de belles histoires, cette maison. Tu verras.'],
     desc: 'Ta maison t\'attend juste à côté de la place, avec la pancarte à ton nom. Entre donc voir !',
     hint: 'Va devant la porte de ta maison (pancarte « Chez… ») et appuie sur E pour entrer.',
     goals: [ev('enter', 1, 'Entrer dans ta maison')],
     target: T.homeDoor, reward: { coins: 30 } },
   { id: 'potager', chapter: 'arrivee', title: 'Le potager', giver: 'rose',
+    thanks: ['rose', 'Tu as la main verte, je le savais ! Patience, maintenant : les carottes n\'aiment pas qu\'on les presse.'],
     desc: 'Derrière ta maison, ton jardin a 9 parcelles. Plante tes semis de carotte et arrose-les.',
     hint: 'Dans le jardin clôturé derrière ta maison : approche-toi d\'une parcelle, E pour planter, puis E encore pour arroser. F change de semis.',
     goals: [ev('plant', 1, 'Planter un semis'), ev('water', 1, 'Arroser une parcelle')],
     target: T.garden, reward: { coins: 30, items: { 'sem-fraise': 2 } } },
   // 2 — Des amis à poils
   { id: 'amis', chapter: 'amis', title: 'Des amis à poils', giver: null,
+    thanks: ['mimi', 'Ils t\'ont adopté·e avant même que tu les adoptes, tu sais.'],
     desc: 'Les animaux adorent les câlins. Approche-toi doucement (sans courir !) et caresse-les.',
     hint: 'Marche près d\'un animal et appuie sur E. Évite de courir (Maj) : ça effraie les plus timides.',
     goals: [ev('pet', 3, 'Caresser des animaux')],
@@ -141,22 +157,26 @@ export const STORY = [
     goals: [ev('talk', 1, 'Parler à Mimi', (d) => d.villager.def.id === 'mimi')],
     target: T.villager('mimi'), reward: { coins: 30, items: { patee: 2 } } },
   { id: 'gourmand', chapter: 'amis', title: 'Petit gourmand', giver: 'mimi',
+    thanks: ['mimi', 'Tu as vu ce petit air ravi ? Le chemin du cœur passe par l\'estomac !'],
     desc: 'Chaque espèce a un plat préféré. Essaie différentes nourritures pour le découvrir !',
     hint: 'Près d\'un animal, appuie sur F pour lui donner à manger. Le lapin adore les carottes, le chat… la pâtée ou le poisson !',
     goals: [ev('feed', 1, 'Donner son plat préféré à un animal', (d) => d.fav || (d.food === 'patee' && d.animal?.species === 'chat'))],
     target: T.animal('chat'), reward: { coins: 40 } },
   { id: 'chats', chapter: 'amis', title: 'La colonie de Mimi', giver: 'mimi',
+    thanks: ['mimi', 'Ils ronronnent encore ! Ma colonie t\'a officiellement acceptée.'],
     desc: 'Une ribambelle de chats vit devant le café. Fais-leur des câlins !',
     hint: 'Les chats se prélassent devant le Café des Chats et sur la place. Caresse-les avec E.',
     goals: [ev('pet', 3, 'Caresser des chats', (d) => d.animal?.species === 'chat')],
     target: T.animal('chat'), reward: { coins: 50, items: { patee: 2 } } },
   // 3 — Les trésors de l'île
   { id: 'cueillette', chapter: 'tresors', title: 'Cueillette', giver: null,
+    thanks: ['pomme', 'Ton panier déborde ! Passe donc me voir au marché, je t\'achète tout ça.'],
     desc: 'Baies, pommes, champignons, coquillages, fleurs… L\'île regorge de trésors.',
     hint: 'Cherche les buissons à baies, les pommiers du verger, les champignons en forêt et les coquillages sur la plage. E pour ramasser.',
     goals: [ev('gather', 5, 'Cueillir ou ramasser des objets')],
     target: T.resource, reward: { coins: 50 } },
   { id: 'marche', chapter: 'tresors', title: 'Au marché', giver: 'pomme',
+    thanks: ['pomme', 'Affaire conclue ! Reviens quand tu veux.'],
     desc: 'Pomme, au stand rayé de la place, achète tout ce que tu trouves.',
     hint: 'Parle à Pomme (stand rose et blanc sur la place), choisis Boutique puis l\'onglet Vendre.',
     goals: [ev('sell', 1, 'Vendre quelque chose à Pomme')],
@@ -172,43 +192,51 @@ export const STORY = [
     ], reward: { unlock: 'tool:filet', clothing: 'back:filet' } },
     target: T.villager('noe'), reward: { coins: 30 } },
   { id: 'insecte', chapter: 'tresors', title: 'Chasse aux papillons', giver: 'noe',
+    thanks: ['noe', 'TU L\'AS EU ! On fait équipe, maintenant, d\'accord ?'],
     desc: 'Avec ton nouveau filet, attrape ton premier insecte !',
     hint: 'Les papillons volent dans la prairie et le village en journée. Approche-toi sans courir et appuie sur E.',
     goals: [ev('insect', 1, 'Attraper un insecte')],
     target: T.insect, reward: { coins: 60 } },
   { id: 'recolte', chapter: 'tresors', title: 'Première récolte', giver: 'rose',
+    thanks: ['rose', 'Ta première récolte ! Garde toujours la plus belle pour quelqu\'un que tu aimes.'],
     desc: 'Arrose ton potager chaque jour (la pluie le fait pour toi) jusqu\'à la récolte.',
     hint: 'Les semis poussent en 1 à 2 jours s\'ils sont arrosés. Dors dans ton lit pour passer la nuit plus vite !',
     goals: [ev('harvest', 1, 'Récolter une parcelle')],
     target: T.garden, reward: { coins: 40, items: { 'sem-tomate': 3 } } },
   // 4 — Le grand bleu
   { id: 'peche', chapter: 'grandbleu', title: 'Graine de pêcheur', giver: 'marin',
+    thanks: ['marin', 'Pas mal pour un·e débutant·e ! La mer t\'a à la bonne, on dirait.'],
     desc: 'Au bout du ponton de la plage ou à l\'étang : attends que le flotteur plonge, puis ferre dans la zone verte !',
     hint: 'Appuie sur E au coin de pêche. Quand « Ça mord ! » s\'affiche, appuie sur E, puis encore sur E quand le curseur passe dans la zone verte.',
     goals: [ev('catch', 2, 'Pêcher des poissons')],
     target: T.fishing, reward: { coins: 80, items: { appat: 5 } } },
   { id: 'cuisine', chapter: 'grandbleu', title: 'Petit chef', giver: 'marin',
+    thanks: ['marin', 'Ça sent bon jusqu\'au ponton ! Tu m\'en garderas une part ?'],
     desc: 'Utilise la cuisinière de ta maison pour préparer un plat.',
     hint: 'Chez toi, approche-toi de la cuisinière et appuie sur E. La confiture ne demande que 3 baies !',
     goals: [ev('cook', 1, 'Cuisiner un plat')],
     target: T.stove, reward: { coins: 60, items: { 'sem-mais': 2 } } },
   { id: 'phare', chapter: 'grandbleu', title: 'Le vieux phare', giver: 'marin',
+    thanks: ['marin', 'Tu l\'as vu de près, hein ? Quand j\'étais gamin, ce vieux phare m\'a sauvé la vie, une nuit de tempête…'],
     desc: 'Marin dit que le phare veille sur l\'île depuis cent ans. Va le voir de près, au Cap du Phare.',
     hint: 'Le phare rayé rouge et blanc se trouve au nord-est. Prends le chemin qui passe par le verger.',
     goals: [st(visited('phare'), 1, 'Visiter le Cap du Phare')],
     target: T.lighthouse, reward: { coins: 80 } },
   // 5 — Un nid douillet
   { id: 'chezsoi', chapter: 'nid', title: 'Chez soi', giver: 'bruno',
+    thanks: ['bruno', 'Un meuble bien placé, c\'est une maison qui sourit.'],
     desc: 'Bruno fabrique des meubles. Achète-en un, puis entre chez toi et décore (touche B).',
     hint: 'La menuiserie de Bruno est devant sa maison au toit orange. Ensuite, chez toi, appuie sur B, choisis le meuble et clique pour le poser.',
     goals: [ev('buy', 1, 'Acheter un meuble', (d) => d.shop === 'menuiserie'), ev('place', 1, 'Placer un meuble')],
     target: T.shop('menuiserie', '🪚 Menuiserie de Bruno'), reward: { coins: 100 } },
   { id: 'facade', chapter: 'nid', title: 'Un coup de pinceau', giver: 'bruno',
+    thanks: ['bruno', 'Joli coup de pinceau ! On voit ta maison depuis la place, maintenant.'],
     desc: 'Dans ton jardin, appuie sur B puis ouvre l\'onglet « Façade » : murs, toit, volets, porte… Change au moins une couleur !',
     hint: 'Va dans ton jardin (derrière la maison), appuie sur B, onglet 🏠 Façade, puis clique une couleur.',
     goals: [ev('facade', 1, 'Personnaliser ta façade')],
     target: T.garden, reward: { coins: 100 } },
   { id: 'deco', chapter: 'nid', title: 'Maison de rêve', giver: 'bruno',
+    thanks: ['bruno', 'Dix meubles ! Mon grand-père Barnabé disait qu\'une maison a une âme quand on n\'a plus envie d\'en partir.'],
     desc: 'Rends ta maison vraiment douillette : au moins 10 meubles posés, dedans ou dans le jardin.',
     hint: 'Bruno vend plus de 90 meubles, rangés par pièce. Les gros meubles peuvent aussi aller au jardin !',
     goals: [st((g) => g.house.placed.length, 10, 'Meubles posés')],
@@ -220,32 +248,38 @@ export const STORY = [
     goals: [ev('talk', 1, 'Parler à Léo', (d) => d.villager.def.id === 'leo')],
     target: T.villager('leo'), reward: { coins: 50 } },
   { id: 'vehicule', chapter: 'chemins', title: 'En route !', giver: 'leo',
+    thanks: ['leo', 'Ça roule ! Fais gaffe aux poules sur le chemin du verger.'],
     desc: 'Achète ton premier véhicule au garage (la trottinette ne coûte que 450 🪙), puis appuie sur V pour monter !',
     hint: 'Parle à Léo → Boutique. Une fois acheté, appuie sur V n\'importe où dehors. V ou E pour descendre, Maj pour accélérer.',
     goals: [ev('ride', 1, 'Faire un tour en véhicule')],
     target: T.shop('garage', '🔧 Garage de Léo'), reward: { coins: 150 } },
   { id: 'boulot', chapter: 'chemins', title: 'Un coup de main', giver: 'leo',
+    thanks: ['leo', 'Le village a besoin de gens comme toi. Et moi, d\'un coup de main de temps en temps !'],
     desc: 'Le tableau en bois de la place propose chaque jour des petits boulots payés. Accepte-en un et termine-le !',
     hint: 'Le tableau « Petits boulots » est à l\'ouest de la fontaine. Une fois la mission acceptée, suis la flèche bleue.',
     goals: [ev('job', 1, 'Terminer un petit boulot')],
     target: T.jobBoard, reward: { coins: 100 } },
   { id: 'voisins', chapter: 'chemins', title: 'Bon voisin', giver: null,
+    thanks: ['rose', 'Tu as vu leurs sourires ? C\'est comme ça qu\'une île se réchauffe.'],
     desc: 'Les habitants apprécient les cadeaux et ont parfois besoin d\'aide (petit « ! » bleu au-dessus de leur tête).',
     hint: 'Parle à un habitant et choisis « Offrir un cadeau ». Les demandes du jour sont dans le journal (J), onglet Demandes.',
     goals: [ev('gift', 1, 'Offrir un cadeau'), ev('request', 1, 'Terminer une demande du jour')],
     target: null, reward: { coins: 150 } },
   // 7 — Une grande famille
   { id: 'adoption', chapter: 'famille', title: 'Une nouvelle famille', giver: 'mimi',
+    thanks: ['mimi', 'Une nouvelle famille… Prenez bien soin l\'un de l\'autre, d\'accord ?'],
     desc: 'Remplis les 5 cœurs d\'un animal pour pouvoir l\'adopter (R).',
     hint: 'Caresse le même animal chaque jour et donne-lui son plat préféré : ses cœurs montent vite. À 5 cœurs, appuie sur R !',
     goals: [st((g) => g.animals.companions().length, 1, 'Adopter un animal')],
     target: T.animal(), reward: { coins: 100, furniture: { panier: 1 } } },
   { id: 'amitie', chapter: 'famille', title: 'Tisser des liens', giver: null,
+    thanks: ['rose', 'Les gens se reparlent, grâce à toi. Ça ne s\'était pas vu depuis des années.'],
     desc: 'Discute chaque jour avec les habitants et offre-leur ce qu\'ils aiment : deviens ami·e avec deux d\'entre eux.',
     hint: 'Chaque discussion quotidienne et chaque cadeau aimé font monter l\'amitié. Leurs goûts sont notés dans le journal une fois découverts.',
     goals: [st((g) => g.villagers.list.filter((v) => v.friendship >= 40).length, 2, 'Habitants à 2 cœurs')],
     target: null, reward: { coins: 200 } },
   { id: 'confidence', chapter: 'famille', title: 'Une confidence', giver: null,
+    thanks: ['rose', 'On ne confie pas ses souvenirs à n\'importe qui. Tu as gagné leur confiance.'],
     desc: 'Quand un habitant te fait assez confiance (2 cœurs), il te confie un souvenir. Écoute-le !',
     hint: 'Parle à un habitant avec qui tu as au moins 2 cœurs : une scène spéciale se déclenche.',
     goals: [st((g) => (g.villagers.list.some((v) => v.seenEvents.length) ? 1 : 0), 1, 'Vivre une scène d\'amitié')],
@@ -282,6 +316,7 @@ export const STORY = [
       'Ici aussi, nous avions notre lumière : le grand sapin des Veilleurs, au milieu de la place. Ses guirlandes brillaient toutes les nuits.',
       'Elles se sont éteintes une à une, quand les gens ont cessé de monter au Pic et de se retrouver le soir.',
       'Les anciens disaient que les cristaux du Pic gardent un peu de lumière d\'étoile. Rapporte-m\'en trois, et nous verrons…',
+      'Hum ? Tu me regardes drôlement… On s\'est déjà vus quelque part ? Bah. La vieillesse.',
     ] },
     target: T.villager('aurele'), reward: { coins: 100 } },
   { id: 'cristaux-sapin', chapter: 'pins', title: 'La lumière des cristaux', giver: 'aurele',
@@ -295,11 +330,13 @@ export const STORY = [
     ] },
     target: (g) => (countItem(g.inventory, 'cristal') >= 3 ? T.villager('aurele')(g) : T.resourceOf('cristal')(g)), reward: { coins: 150 } },
   { id: 'belvedere-nuit', chapter: 'pins', title: 'Le phare vu d\'en haut', giver: 'sacha',
+    thanks: ['sacha', 'Tu l\'as vu, le phare, d\'en haut ? On dirait une étoile posée sur la mer.'],
     desc: 'Sacha dit que, du belvédère du Pic, on voit le phare de Doucebrise briller la nuit. Observe le ciel à la longue-vue, de nuit.',
     hint: 'La longue-vue est au belvédère, près du sommet du Pic. Viens après 20 h 30 et appuie sur E devant elle.',
     goals: [ev('stargaze', 1, 'Observer le ciel de nuit au belvédère')],
     target: (g) => ({ x: g.world.islands.telescope.x, z: g.world.islands.telescope.z, label: '🔭 Longue-vue' }), reward: { coins: 120, stars: 3 } },
   { id: 'veillee', chapter: 'pins', title: 'Les gens du bourg', giver: 'elise',
+    thanks: ['elise', 'Tout le bourg en parle ! Il y aura du monde à la veillée, grâce à toi.'],
     desc: 'Pour la veillée, Élise veut que tout le monde se sente invité. Offre un cadeau à trois habitants de Bourg-Sapin (Aurèle, Élise, Hugo ou Sacha).',
     hint: 'Parle aux habitants du bourg et choisis « Offrir un cadeau ». Myrtilles, champignons et chocolat chaud font toujours plaisir ici !',
     goals: [ev('gift', 3, 'Cadeaux aux habitants du bourg', (d) => ['aurele', 'elise', 'hugo', 'sacha'].includes(d.villager?.def.id))],
@@ -337,11 +374,13 @@ export const STORY = [
     ], reward: { items: { conque: 1 } } },
     target: (g) => (countItem(g.inventory, 'corail') >= 2 && countItem(g.inventory, 'etoile-mer') >= 2 ? T.villager('coralie')(g) : countItem(g.inventory, 'corail') < 2 ? T.zone('lagon')() : T.resourceOf('etoile-mer')(g)), reward: { coins: 150 } },
   { id: 'fete-paillote', chapter: 'lagon', title: 'La fête de la paillote', giver: 'paco',
+    thanks: ['paco', 'Quelle ambiance ! Même les mouettes dansaient !'],
     desc: 'Paco organise une fête pour le retour de la baleine. Mets l\'ambiance : danse au bord du lagon !',
     hint: 'Va sur la plage du Lagon Turquoise ou dans la Palmeraie et appuie sur 2 pour danser.',
     goals: [ev('emote', 1, 'Danser au bord du lagon', (d) => d.name === 'dance' && ['lagon', 'palmeraie', 'corail'].includes(d.zone))],
     target: T.zone('lagon'), reward: { coins: 120, items: { cocktail: 2 } } },
   { id: 'souvenir-archipel', chapter: 'lagon', title: 'Un souvenir pour Maëlys', giver: 'maelys',
+    thanks: ['maelys', 'Cette lumière… parfaite ! Ce sera mon plus beau tableau.'],
     desc: 'Maëlys veut peindre l\'archipel entier. Prends une photo depuis la Colline aux Mouettes, là où se dresse la gloriette.',
     hint: 'La gloriette blanche au toit turquoise est au sommet de la colline, au sud-est du port. Appuie sur O pour le mode photo.',
     goals: [ev('photo', 1, 'Photo depuis la Colline aux Mouettes', (d) => d.zone === 'belvedere')],
@@ -354,6 +393,45 @@ export const STORY = [
       const s = g.world.fishingSpots.find((f) => f.habitat === 'lagon');
       return s ? { x: s.x, z: s.z, y: s.y, label: '🐚 Bout du ponton du lagon' } : T.zone('lagon')();
     }, reward: { coins: 1500, stars: 20, furniture: { 'aquarium-geant': 1 }, title: 'Ami·e des baleines' } },
+  // 11 — Les retrouvailles
+  { id: 'pages', chapter: 'retrouvailles', title: 'Les pages envolées', giver: null,
+    desc: 'Retrouve les sept pages du carnet du gardien, éparpillées sur l\'île de Doucebrise. Une colonne de lumière pâle signale chacune d\'elles.',
+    hint: 'Le journal (J), onglet 📖 Carnet, garde l\'énigme de chaque page et peut te guider jusqu\'à elle.',
+    goals: [st((g) => g.carnet.count, 7, 'Pages du carnet retrouvées')],
+    target: (g) => {
+      const p = g.carnet.next();
+      const s = p && g.carnet.spotOf(p);
+      return s ? { x: s.x, z: s.z, y: s.y, label: `📖 Page ${p.n} du carnet` } : null;
+    }, reward: { coins: 200, stars: 3 } },
+  { id: 'carnet-aurele', chapter: 'retrouvailles', title: 'Le carnet d\'Aurèle', giver: 'aurele',
+    desc: 'Le carnet est signé « Aurèle ». Rapporte-le au grand-père de la source chaude, à Bourg-Sapin.',
+    hint: 'Aurèle veille sur la source chaude, au sud de la place de Bourg-Sapin. Parle-lui et choisis « 📖 Ce carnet est à vous ? ».',
+    goals: [ev('story', 1, 'Rendre son carnet à Aurèle', (d) => d.id === 'carnet-aurele')],
+    story: { villager: 'aurele', label: '📖 Ce carnet est à vous ?', lines: [
+      'Ce carnet… Où l\'as-tu trouvé ? Je le croyais emporté par le vent, il y a cinquante ans.',
+      'Oui, c\'est moi, « A. ». J\'étais le gardien du phare de Doucebrise. Le jeune homme qui marchait sur les pieds de Rose en dansant…',
+      'Quand la lumière s\'est éteinte, j\'ai cru que c\'était ma faute. J\'avais honte. Je suis parti sans un mot, et je me suis caché ici, dans la brume.',
+      'Et la question, sous la lanterne… je ne l\'ai jamais posée. Rose doit m\'avoir oublié, depuis le temps.',
+      'Tu veux bien lui porter une lettre ? Je n\'ose pas encore y aller moi-même. Regarde, mes mains tremblent rien qu\'à l\'écrire.',
+    ], reward: { items: { 'lettre-aurele': 1 } } },
+    target: T.villager('aurele'), reward: { coins: 200 } },
+  { id: 'lettre-rose', chapter: 'retrouvailles', title: 'Une lettre pour Rose', giver: 'rose',
+    desc: 'Porte la lettre d\'Aurèle à Mamie Rose, à Doucebrise.',
+    hint: 'Mamie Rose vit au sud de la place de Doucebrise (le toit vert). Parle-lui et choisis « 💌 Une lettre d\'Aurèle ».',
+    goals: [ev('story', 1, 'Donner la lettre à Mamie Rose', (d) => d.id === 'lettre-rose')],
+    story: { villager: 'rose', label: '💌 Une lettre d\'Aurèle', take: { 'lettre-aurele': 1 }, lines: [
+      'Une lettre ? Pour moi ? Cette écriture… Oh. Oh, mon petit.',
+      '(Mamie Rose lit en silence. Une larme roule sur sa joue… puis un grand sourire.)',
+      'Cinquante ans. Cinquante ans que je garde sa petite lanterne en bois sur ma table de chevet. Le dessous était trop abîmé : je n\'ai jamais pu lire ce qu\'il y avait gravé.',
+      'Il me donne rendez-vous au pied du phare, la nuit. « Le soir où le phare sera le plus beau de tous. » Le vieux têtard ! Il brille comme jamais, maintenant, ce phare.',
+      'Tu viendras, dis ? C\'est grâce à toi qu\'il brille. Je veux que tu sois là.',
+    ] },
+    target: T.villager('rose'), reward: { coins: 200 } },
+  { id: 'rendez-vous', chapter: 'retrouvailles', title: 'Le rendez-vous du phare', giver: null,
+    desc: 'Rose et Aurèle se retrouvent au pied du phare, à la nuit tombée (après 19 h). Ne rate ça pour rien au monde !',
+    hint: 'Rends-toi au Cap du Phare entre 19 h et 5 h. S\'il fait jour, fais une sieste dans ton lit.',
+    goals: [ev('reunion', 1, 'Assister aux retrouvailles, la nuit')],
+    target: T.lighthouse, reward: { coins: 1500, stars: 25, furniture: { 'lanterne-gardien': 1 }, title: 'Messager·e du cœur' } },
   // Épilogue
   { id: 'citrouille', chapter: 'epilogue', title: 'La citrouille géante', giver: 'rose',
     desc: 'Les citrouilles demandent de la patience… Mamie Rose vend les semis.',
@@ -361,6 +439,7 @@ export const STORY = [
     goals: [ev('harvest', 1, 'Récolter une citrouille', (d) => d.crop === 'citrouille')],
     target: T.garden, reward: { coins: 300 } },
   { id: 'agrandir', chapter: 'epilogue', title: 'Pousser les murs', giver: 'bruno',
+    thanks: ['bruno', 'Pousser des murs, c\'est mon travail préféré ! Profite de ta nouvelle pièce.'],
     desc: 'Bruno peut agrandir ta maison : plus de place pour tes meubles et une nouvelle façade !',
     hint: 'Parle à Bruno → Boutique → onglet 🔨 Travaux.',
     goals: [st((g) => g.house.size, 1, 'Agrandir ta maison')],
@@ -388,6 +467,7 @@ export const STORY = [
 ];
 
 const CHAPTER_REWARDS = {
+  retrouvailles: { coins: 800, furniture: { 'lanterne-gardien': 1 } },
   pins: { coins: 600, furniture: { 'lit-chalet': 1 } },
   lagon: { coins: 800, furniture: { 'bar-tiki': 1 } },
   arrivee: { coins: 100 },
@@ -398,6 +478,11 @@ const CHAPTER_REWARDS = {
   chemins: { coins: 400 },
   famille: { coins: 500, furniture: { 'coussin-coeur': 1 } },
 };
+
+/** Récompense de fin d'un chapitre (avec ses 10 étoiles), ou null. */
+export function chapterReward(id) {
+  return CHAPTER_REWARDS[id] ? { ...CHAPTER_REWARDS[id], stars: 10 } : null;
+}
 
 const INTROS = [
   'Tu pourrais m\'aider ?',
@@ -440,9 +525,10 @@ export class Quests {
     this.lighthouseLit = false;
     this.seenChapters = [];
     this.stats = { cooked: 0, fish: 0, sold: 0, earned: 0 };
-    const events = ['talk', 'plant', 'water', 'harvest', 'pet', 'feed', 'gather', 'sell', 'catch', 'adopt', 'buy', 'place', 'cook', 'gift', 'request', 'enter', 'insect', 'story', 'zone', 'facade', 'ride', 'job', 'heartEvent', 'finale', 'stargaze', 'emote', 'photo', 'treeLit', 'whale'];
+    const events = ['talk', 'plant', 'water', 'harvest', 'pet', 'feed', 'gather', 'sell', 'catch', 'adopt', 'buy', 'place', 'cook', 'gift', 'request', 'enter', 'insect', 'story', 'zone', 'facade', 'ride', 'job', 'heartEvent', 'finale', 'stargaze', 'emote', 'photo', 'treeLit', 'whale', 'reunion', 'page'];
     for (const e of events) game.on(e, (d) => this.onEvent(e, d));
     game.on('friendship', () => this.check());
+    game.on('page', () => this.check());
     // Lieux visités : l'état est mis à jour par d'autres écouteurs du même événement.
     game.on('zone', () => setTimeout(() => this.check(), 0));
     game.on('sell', (d) => {
@@ -504,23 +590,39 @@ export class Quests {
     g.audio.play('adopt');
     g.requestSave();
     const next = this.current;
-    // Fin de chapitre : une étincelle du Cœur se rallume.
+    // Le mot de l'habitant (dans une bulle s'il est tout près, sinon en message).
+    if (q.thanks) setTimeout(() => this.sayThanks(q.thanks), 1300);
+    // Fin de chapitre : l'étincelle rejoint le phare, puis la carte « Chapitre terminé ».
     if (!next || next.chapter !== q.chapter) {
       const chap = CHAPTERS.find((c) => c.id === q.chapter);
       if (CHAPTER_REWARDS[q.chapter]) {
         if (chap.n <= 7) this.sparks = Math.min(7, this.sparks + 1);
-        g.world.village.setLighthouseLevel?.(this.sparks / 7, this.lighthouseLit);
-        const sparkTxt = chap.n <= 7 ? ` Étincelle du Cœur ${this.sparks}/7 —` : '';
-        setTimeout(() => g.grantReward({ ...CHAPTER_REWARDS[q.chapter], stars: 10 }, null, `✨ Chapitre ${chap.n} terminé !${sparkTxt}`), 1800);
-      }
-      if (next) setTimeout(() => this.showChapter(), 4200);
+        g.carnet?.sync();
+        this.pendingBeat = true;
+        setTimeout(() => g.storyBeat(chap, next), q.thanks ? 3600 : 1600);
+      } else if (next) setTimeout(() => this.showChapter(), 4200);
     } else {
-      setTimeout(() => g.ui.toast(`📜 Nouvelle quête : ${next.title}`, 3500), 1600);
+      setTimeout(() => g.ui.toast(`📜 Nouvelle quête : ${next.title}`, 3500), q.thanks ? 4200 : 1600);
     }
     if (!next) setTimeout(() => g.ui.toast('🌟 Tu as terminé toute l\'histoire de Doucebrise ! Merci d\'avoir joué ♥', 6000), 2600);
     g.ui.refreshQuest();
     // Une quête peut être déjà remplie (objectifs d'état).
     setTimeout(() => this.check(), 50);
+  }
+
+  /** Mot d'un habitant à la fin d'une quête. */
+  sayThanks([who, text]) {
+    const g = this.game;
+    const v = g.villagers.get(who);
+    if (!v) return;
+    const near = v.root.visible && Math.hypot(v.pos.x - g.player.pos.x, v.pos.z - g.player.pos.z) < 14;
+    if (near && !g.indoors && !g.busy && !g.panel) v.say(text, 4500);
+    else g.ui.toast(`${v.def.emoji} ${v.def.name} : « ${text} »`, 5000);
+  }
+
+  /** Le chapitre est-il terminé (toutes ses quêtes) ? */
+  chapterDone(id) {
+    return this.chapterQuests(id).every((q) => this.completed.includes(q.id));
   }
 
   /** Carte d'introduction du chapitre en cours (une seule fois). */
@@ -567,7 +669,7 @@ export class Quests {
         if (Object.keys(take).length) g.ui.refreshInventory();
         if (q.story.reward) g.grantReward(q.story.reward, v);
         g.emit('story', { id: q.id, villager: v });
-      });
+      }, { cinematic: true });
     } }];
   }
 
@@ -579,6 +681,10 @@ export class Quests {
     if (!q || this.finaleRunning) return;
     if (q.id === 'sapin-rallume' || q.id === 'chant-baleine') {
       this.updateArchipelago(q);
+      return;
+    }
+    if (q.id === 'rendez-vous') {
+      this.updateReunion(q);
       return;
     }
     if (q.id !== 'rallumer') return;
@@ -597,6 +703,25 @@ export class Quests {
     } else if (d < 9 && !this.warned) {
       this.warned = true;
       g.ui.toast('🗼 Tout le monde viendra à la tombée de la nuit (19 h). Fais une sieste ou reviens plus tard !', 4000);
+    }
+  }
+
+  /** Chapitre 11 : Rose et Aurèle au pied du phare, la nuit. */
+  updateReunion(q) {
+    const g = this.game;
+    if (g.busy || g.state !== 'play') return;
+    const h = g.world.sky.hour;
+    const L = LANDMARKS.lighthouse;
+    const d = Math.hypot(g.player.pos.x - L.x, g.player.pos.z - L.z);
+    if (d < 11 && (h >= 19 || h < 5)) {
+      this.finaleRunning = true;
+      g.reunion(() => {
+        this.finaleRunning = false;
+        g.emit('reunion', {});
+      });
+    } else if (d < 11 && this.warned !== q.id) {
+      this.warned = q.id;
+      g.ui.toast('💌 Rose et Aurèle se retrouveront ici à la nuit tombée (19 h). Reviens ce soir !', 4500);
     }
   }
 

@@ -6,7 +6,7 @@ import { escapeHtml } from './ui.js';
 // la distance, et une étoile sur la mini-carte. Dorée pour l'histoire, bleue pour
 // les petits boulots.
 
-const COLORS = { story: '#ffcf3a', job: '#5bb6ff', side: '#c58cff' };
+const COLORS = { story: '#ffcf3a', job: '#5bb6ff', side: '#c58cff', page: '#ffb38a' };
 
 function starTexture(color) {
   const c = document.createElement('canvas');
@@ -94,7 +94,7 @@ export class Guide {
   update(dt) {
     const g = this.game;
     this.t += dt;
-    const playing = g.state === 'play' && this.enabled && !g.photo.active && !g.inFinale;
+    const playing = g.state === 'play' && this.enabled && !g.photo.active && !g.inFinale && !g.dialogue.cine;
     const story = playing ? this.resolve(g.quests.target()) : null;
     const job = playing ? this.resolve(g.jobs.target()) : null;
     let side = null;
@@ -105,7 +105,9 @@ export class Guide {
         side = null;
       }
     }
-    this.targets = { story, job, side };
+    // Page du carnet suivie (la page a déjà sa colonne de lumière : pas de balise).
+    const page = playing ? this.resolve(g.carnet?.target()) : null;
+    this.targets = { story, job, side, page };
     const p = g.player.pos;
     const near = (t) => t && Math.hypot(t.x - p.x, t.z - p.z) < 6;
     this.beacons.story.set(story, this.t, near(story));
@@ -113,7 +115,7 @@ export class Guide {
     this.beacons.side.set(side, this.t, near(side));
     // La flèche suit la mission en cours en priorité (plus urgente), puis la quête
     // d'habitant suivie, sinon l'histoire.
-    const main = job ? { ...job, kind: 'job' } : side ? { ...side, kind: 'side' } : story ? { ...story, kind: 'story' } : null;
+    const main = job ? { ...job, kind: 'job' } : side ? { ...side, kind: 'side' } : page ? { ...page, kind: 'page' } : story ? { ...story, kind: 'story' } : null;
     this.updateArrow(main);
   }
 
@@ -142,6 +144,7 @@ export class Guide {
     el.classList.remove('hidden');
     el.classList.toggle('job', t.kind === 'job');
     el.classList.toggle('side', t.kind === 'side');
+    el.classList.toggle('page', t.kind === 'page');
     let angle = Math.PI / 2;
     if (onScreen) {
       el.classList.add('onscreen');

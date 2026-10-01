@@ -313,6 +313,8 @@ export class UI {
       html = `<div class="qt-chap">${chap.emoji} ${chap.id === 'epilogue' ? 'Épilogue' : `Chapitre ${chap.n}`} · ${inChap.indexOf(q) + 1}/${inChap.length}</div>
         <div class="qt-title">📜 ${escapeHtml(q.title)}</div><div class="qt-goal"><span class="qt-em">📜</span>${escapeHtml(goal.label)}${goal.count > 1 ? ` — ${p}/${goal.count}` : ''}</div>`;
     }
+    const page = q && q.id !== 'pages' ? g.carnet?.next() : null;
+    if (page) html += `<div class="qt-page" title="Carnet du gardien : page ${page.n}">📖 ${escapeHtml(page.riddle)}</div>`;
     const job = g.jobs?.active;
     if (job) html += `<div class="qt-job">${JOB_TYPES[job.type].emoji} ${escapeHtml(g.jobs.progressText())}</div>`;
     const sq = g.sideQuests;
@@ -426,7 +428,9 @@ export class UI {
         continue;
       }
       _v.copy(b.posFn()).project(this.game.camera);
-      const hidden = _v.z > 1 || this.game.busy || this.game.panel;
+      // Pendant les scènes (phare, sapin, retrouvailles…), les répliques restent visibles.
+      const g = this.game;
+      const hidden = _v.z > 1 || (g.busy && !g.inFinale) || g.panel;
       b.el.style.display = hidden ? 'none' : '';
       b.el.style.left = `${Math.round((_v.x * 0.5 + 0.5) * window.innerWidth)}px`;
       b.el.style.top = `${Math.round((-_v.y * 0.5 + 0.5) * window.innerHeight)}px`;
@@ -454,6 +458,53 @@ export class UI {
       if (q) setTimeout(() => this.toast(`📜 ${q.title} — ${q.desc}`, 6000), 300);
       g.guide?.flash();
     };
+  }
+
+  /**
+   * Carte de fin de chapitre : le phare et ses étincelles, ce qu'on a vécu, les récompenses,
+   * la page du carnet qui s'est envolée et le chapitre suivant.
+   */
+  chapterEnd(chap, next, reward, done) {
+    const g = this.game;
+    const el = $('#chapter');
+    const q = g.quests;
+    const page = g.carnet?.pageOfChapter(chap.id);
+    const freshPage = page && !g.carnet.found.has(page.n) ? page : null;
+    if (freshPage) g.carnet.introduced = true;
+    const nextChap = next ? CHAPTERS.find((c) => c.id === next.chapter) : null;
+    let meter = '';
+    if (chap.n <= 7) {
+      const dots = Array.from({ length: 7 }, (_, i) => `<span class="lh-dot${i < q.sparks ? ' on' : ''}${i === q.sparks - 1 ? ' new' : ''}">✦</span>`).join('');
+      meter = `<div class="lh-meter"><div class="lh-tower">🗼</div><div class="lh-dots">${dots}</div><div class="lh-label">Étincelles du Cœur : ${q.sparks}/7</div></div>`;
+    }
+    const rewards = reward ? g.journal.rewardText(reward).split(' · ').map((r) => `<span class="chip-r">${escapeHtml(r)}</span>`).join('') : '';
+    el.innerHTML = `<div class="chapter-card chap-end"><div class="chap-num">${chap.id === 'epilogue' ? 'Épilogue' : `Chapitre ${chap.n}`} · terminé</div>
+      <h2>${chap.emoji} ${escapeHtml(chap.title)}</h2>${meter}
+      ${chap.recap ? `<p class="chap-recap">${escapeHtml(chap.recap)}</p>` : ''}
+      ${rewards ? `<div class="chap-rewards">${rewards}</div>` : ''}
+      ${freshPage ? `<div class="chap-page"><b>📖 Une page du carnet du gardien s'est envolée !</b><i>« ${escapeHtml(freshPage.riddle)} »</i></div>` : ''}
+      ${nextChap && nextChap.id !== chap.id ? `<div class="chap-next">À suivre — ${nextChap.id === 'epilogue' ? '' : `Chapitre ${nextChap.n} : `}${nextChap.emoji} ${escapeHtml(nextChap.title)}</div>` : ''}
+      <div class="chap-btns">${freshPage ? '<button class="btn" data-chap-track>🧭 Me guider vers la page</button>' : ''}<button class="btn big primary" data-chap-ok>Continuer</button></div></div>`;
+    el.classList.remove('hidden');
+    g.audio.play('chapter');
+    g.input.enabled = false;
+    this.chapterOpen = true;
+    const close = () => {
+      el.classList.add('hidden');
+      g.input.enabled = true;
+      this.chapterOpen = false;
+      this.refreshQuest();
+      done?.();
+    };
+    el.querySelector('[data-chap-ok]').onclick = close;
+    const tr = el.querySelector('[data-chap-track]');
+    if (tr) {
+      tr.onclick = () => {
+        g.carnet.track(freshPage.n);
+        close();
+        g.guide?.flash();
+      };
+    }
   }
 
   refreshAll() {
@@ -799,6 +850,11 @@ export class UI {
       const hi = g.visits.houseOf(pl);
       if (hi >= 0) places.push([v.doorFront(hi, 1.6), pl.emoji]);
     }
+    // Pages du carnet libérées, pas encore trouvées.
+    for (const pg of g.carnet?.available() || []) {
+      const sp = g.carnet.spotOf(pg);
+      if (sp) places.push([sp, '📖']);
+    }
     for (const [pl, em] of places) {
       if (!pl) continue;
       const [px, py] = toMap(pl.x, pl.z);
@@ -807,7 +863,7 @@ export class UI {
     // Objectifs du guide.
     for (const m of g.guide?.mapMarkers() || []) {
       const [mx, my] = toMap(m.x, m.z);
-      const col = m.kind === 'job' ? '#5bb6ff' : '#ffcf3a';
+      const col = m.kind === 'job' ? '#5bb6ff' : m.kind === 'side' ? '#c58cff' : m.kind === 'page' ? '#ffb38a' : '#ffcf3a';
       if (m.area) {
         ctx.strokeStyle = col;
         ctx.lineWidth = 3;

@@ -1737,6 +1737,26 @@ def('fauteuil-plaid', {
     return s.build();
   },
 });
+def('lanterne-gardien', {
+  label: 'Lanterne du gardien', emoji: '🏮', price: 0, w: 0.45, d: 0.45, color: '#b98457', where: 'both', cat: 'deco',
+  light: { y: 0.4, color: '#ffb36b', intensity: 3.2, dist: 5 },
+  build(c) {
+    // La petite lanterne en bois sculptée pour Rose : porte au cœur découpé, anse ronde.
+    const s = new Shape();
+    s.add(G.box(0.32, 0.05, 0.32), c, { pos: [0, 0.025, 0] });
+    for (const x of [-0.14, 0.14]) for (const z of [-0.14, 0.14]) s.add(G.box(0.04, 0.42, 0.04), c, { pos: [x, 0.26, z] });
+    s.add(G.box(0.34, 0.05, 0.34), c, { pos: [0, 0.48, 0] });
+    s.add(G.cone(0.22, 0.18, 4), '#8f6243', { pos: [0, 0.6, 0], rot: [0, Math.PI / 4, 0] });
+    s.add(G.torus(0.07, 0.014, 5, 12), '#8f6243', { pos: [0, 0.74, 0] });
+    for (const sx of [-1, 1]) s.add(G.sphere(0.035, 8, 6), '#e5484d', { pos: [sx * 0.025, 0.3, 0.165], scale: [1, 1, 0.4] });
+    s.add(G.cone(0.05, 0.06, 4), '#e5484d', { pos: [0, 0.265, 0.165], rot: [Math.PI, 0, Math.PI / 4], scale: [1, 1, 0.4] });
+    return s.build();
+  },
+  glow() {
+    return new Shape().add(G.box(0.24, 0.38, 0.24), '#ffd89a', { pos: [0, 0.26, 0] }).build();
+  },
+});
+
 def('lanterne-chalet', {
   label: 'Lanterne de chalet', emoji: '🏮', price: 150, w: 0.4, d: 0.4, color: '#4e4c62', where: 'both', cat: 'deco', shop: 'atelier',
   light: { y: 0.35, color: '#ffc27a', intensity: 3, dist: 5 },

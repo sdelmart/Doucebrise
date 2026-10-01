@@ -82,9 +82,17 @@ L'écran reste dégagé pour profiter de l'île (Paramètres → Affichage → I
 - **Grande carte** zoomable de l'archipel (relief, chemins, boutiques, voyages), mini-carte.
 
 ### 🗼 L'histoire : « Le Cœur de Doucebrise »
-- **10 chapitres + un épilogue** (45 quêtes) : de la lettre de Mamie Rose jusqu'à la grande soirée où l'on rallume le phare avec tout le village.
+- **11 chapitres + un épilogue** (49 quêtes) : de la lettre de Mamie Rose jusqu'à la grande soirée où l'on rallume le phare avec tout le village, puis l'archipel.
 - **Chapitre 9 — « La Nuit des Veilleurs »** à Bourg-Sapin : le grand sapin s'est éteint ; cristaux du Pic, veillée à la source chaude et cérémonie où tout le bourg le rallume.
 - **Chapitre 10 — « Le Chant du Lagon »** à Port-Corail : la conque de Nérée, la fête à la paillote et le retour de la **baleine** au large de l'île Corail.
+- **📖 Le carnet du gardien** (`src/game/carnet.js`) : chaque chapitre terminé (1 à 7) libère une page du journal de l'ancien gardien du phare, quelque part sur l'île : une colonne de lumière pâle la signale de loin, une énigme dit où chercher (« Là où arrivent les lettres… », « Au bout des planches qui avancent dans la mer… »). On la ramasse (`E`) et on la lit sur un parchemin. Page après page se dévoile pourquoi le phare s'est éteint, la tempête où le gardien a sauvé le petit Marin, la lanterne sculptée pour Rose… et la signature de la dernière page. Journal → onglet **📖 Carnet** : relire les pages, énigmes, « 🧭 Me guider » (flèche orange). Les parties déjà commencées voient les pages des chapitres finis s'envoler d'un coup (annonce au chargement).
+- **Chapitre 11 — « Les retrouvailles »** : rapporter son carnet à Aurèle (c'était lui, le gardien !), porter sa lettre à Mamie Rose, puis, la nuit, la scène au pied du phare où ils se retrouvent cinquante ans après (et où il pose enfin sa question). Lanterne du gardien et titre « Messager·e du cœur ».
+- **Mise en scène** :
+  - Fin de chapitre : une **étincelle** quitte la joueuse et file jusqu'à la lanterne du phare, qui s'éclaire un peu plus ; puis la carte **« Chapitre terminé »** (les 7 étincelles du Cœur, ce qu'on a vécu, les récompenses, la page envolée et son énigme, le chapitre suivant).
+  - Répliques d'histoire et scènes d'amitié **en plan cinéma** : bandes noires, caméra par-dessus l'épaule sur l'habitant qui parle.
+  - À chaque quête finie, l'habitant concerné dit un **petit mot** (dans une bulle s'il est là, sinon en message).
+  - Les habitants **parlent de l'histoire** : le phare qui se réveille, le gardien (Marin s'en souvient, Bruno connaît la lanterne de son grand-père), et après les retrouvailles, Rose et Aurèle.
+  - Correction : les répliques des habitants s'affichent enfin pendant les grandes scènes (phare, sapin, retrouvailles).
 - Une **astuce** apparaît la première fois qu'on découvre quelque chose (voyages, vœux, source chaude, luge, visites…).
 - **Guide** : balise lumineuse, flèche au bord de l'écran avec la distance et étoile sur la mini-carte — dorée pour l'histoire, violette pour les quêtes des habitants, bleue pour les petits boulots.
 
@@ -216,7 +224,7 @@ assets/models/
 - **3 profils de sauvegarde** sur l'écran titre, chacun avec son **pseudo** (obligatoire à la création), sa saison, ses pièces et son temps de jeu. Export / import de sauvegarde en fichier.
 
 ### 🎯 Progression
-- **7 métiers** à 10 niveaux, **3 défis par jour**, **77 succès**, **titres**, carnet d'étoiles de 30 paliers, petits boulots, **record de luge**.
+- **7 métiers** à 10 niveaux, **3 défis par jour**, **78 succès**, **titres**, carnet d'étoiles de 30 paliers, petits boulots, **record de luge**.
 
 ### 🌱 Activités
 - **Potager**, **cueillette** (baies, pommes, myrtilles, noix de coco, cristaux, corail et perles…), **pêche** (**38 poissons** entre mer, étang, Lac Miroir et Lagon Turquoise), **insectes** (**22 espèces**), **cuisine** (16 recettes), boutiques dans les trois villages.
@@ -261,7 +269,8 @@ src/
                          et lieux publics (visits.js : café, garage, muséum, aquarium)
   game/                  Objets, potager, cueillette, pêche, insectes, cuisine, histoire, quêtes des
                          habitants, progression, petits boulots, véhicules, calendrier, fêtes de saison
-                         (festivals.js, fête des neiges : snowfest.js), voyages, luge
+                         (festivals.js, fête des neiges : snowfest.js), voyages, luge, carnet du
+                         gardien (carnet.js : pages à retrouver, énigmes, parchemin)
   ui/                    HUD (interface épurée, menus rapides), carnet du matin (morning.js), guide,
                          menus (titre, pause, paramètres), carte, dialogues, boutiques, journal,
                          photo, compteur FPS

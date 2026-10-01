@@ -1,4 +1,4 @@
-// Test des quêtes : joue toute l'histoire (11 chapitres) avec les vraies actions du jeu
+// Test des quêtes : joue toute l'histoire (12 chapitres) avec les vraies actions du jeu
 // (parler, planter, pêcher, cuisiner, acheter, décorer, adopter, scènes de nuit…), puis
 // vérifie chaque quête des habitants (proposition, objectifs, remise, récompenses) et la
 // cohérence des données (objets, meubles, recettes, habitants, lieux, prérequis).
@@ -54,12 +54,15 @@ await page.evaluate(() => {
     wait,
     /** Referme cartes de chapitre, dialogues et fenêtres. */
     async settle() {
-      for (let i = 0; i < 40; i++) {
+      // Fin de chapitre : l'étincelle vole jusqu'au phare, puis la carte « Chapitre terminé ».
+      for (let i = 0; i < 120; i++) {
+        document.querySelector('#chapter:not(.hidden) [data-chap-ok]')?.click();
         document.querySelector('#chapter:not(.hidden) button')?.click();
         if (g.dialogue.villager) g.dialogue.close();
         if (g.panel) g.closePanels();
         if (g.shop?.isOpen) g.shop.close();
-        if (!g.busy && !g.panel && !document.querySelector('#chapter:not(.hidden)')) return;
+        if (g.carnet?.isOpen) g.carnet.close();
+        if (!g.busy && !g.panel && !g.quests.pendingBeat && !document.querySelector('#chapter:not(.hidden)')) return;
         await wait(250);
       }
     },
@@ -485,6 +488,35 @@ const STEPS = {
     const s = g.world.fishingSpots.find((f) => f.habitat === 'lagon');
     g.player.teleport(s.x, s.z, 0);
     await QT.ceremony('chant-baleine');
+  },
+  pages: async () => {
+    // Les sept pages du carnet, libérées une à une par les chapitres 1 à 7.
+    const g = window.game;
+    await QT.settle();
+    g.world.sky.hour = 11;
+    const list = g.carnet.available();
+    if (list.length + g.carnet.count !== 7) throw new Error(`pages libérées : ${list.length + g.carnet.count}/7`);
+    for (const p of list) {
+      const s = g.carnet.spotOf(p);
+      g.player.teleport(s.x + 0.4, s.z + 0.4, 0);
+      await QT.frames(2);
+      const near = g.carnet.nearest();
+      if (near?.n !== p.n) throw new Error(`page ${p.n} hors de portée (${near?.n})`);
+      g.carnet.pick(near);
+      if (!g.carnet.isOpen) throw new Error(`page ${p.n} : lecture non ouverte`);
+      g.carnet.close();
+      await QT.frames(1);
+    }
+  },
+  'carnet-aurele': async () => QT.story('aurele', /carnet/),
+  'lettre-rose': async () => QT.story('rose', /lettre/),
+  'rendez-vous': async () => {
+    const g = window.game;
+    await QT.settle();
+    await QT.night(20);
+    const L = window.__LANDMARKS.lighthouse;
+    g.player.teleport(L.x - 5, L.z + 5, 0);
+    await QT.ceremony('rendez-vous', 900);
   },
   citrouille: async () => {
     const g = window.game;

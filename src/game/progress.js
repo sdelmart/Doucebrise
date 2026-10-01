@@ -152,6 +152,7 @@ export const ACHIEVEMENTS = [
   A('veilleurs', 'Nuit des Veilleurs', 'Rallumer le grand sapin de Bourg-Sapin.', (g) => g.quests.completed.includes('sapin-rallume'), { coins: 400 }),
   A('baleine', 'Le chant du lagon', 'Faire revenir la baleine au large de l\'île Corail.', (g) => g.quests.completed.includes('chant-baleine'), { coins: 600 }),
   A('visite', 'Toc toc !', 'Rendre visite à un habitant chez lui.', (g) => Object.keys(g.visits.visitedDay).length >= 1),
+  A('carnet-7', 'Le carnet du gardien', 'Retrouver les sept pages du carnet du gardien du phare.', (g) => g.carnet.count >= 7, { title: 'Chasseur·se de pages', coins: 500 }),
   A('lieux-4', 'Touriste de l\'archipel', 'Entrer au Café des Chats, au garage de Léo, au Muséum des Pins et à l\'Aquarium du lagon.', (g) => g.visits.placesSeen.size >= 4, { title: 'Touriste', coins: 400 }),
   A('visites-16', 'Voisin·e de tout l\'archipel', 'Rendre visite aux 16 habitants.', (g) => Object.keys(g.visits.visitedDay).length >= 16, { title: 'Voisin·e modèle', coins: 800 }),
   A('kiosque', 'Première représentation', 'Jouer un air au kiosque à musique.', (g, s) => s.music >= 1),

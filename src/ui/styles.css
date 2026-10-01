@@ -1164,3 +1164,69 @@ body.photo-mode .morning { display: none; }
 .look-btns { display: flex; gap: 6px; margin-top: auto; }
 .look-btns .btn:first-child { flex: 1; }
 #cr-look-save { margin-top: 8px; }
+
+/* Histoire : bandes de cinéma pendant les répliques d'histoire et les scènes d'amitié */
+body::before, body::after {
+  content: ''; position: fixed; left: 0; right: 0; height: 0; background: #1c1726; z-index: 20; pointer-events: none;
+  transition: height 0.45s ease;
+}
+body::before { top: 0; }
+body::after { bottom: 0; }
+body.letterbox::before, body.letterbox::after { height: 9vh; }
+body.letterbox .hud { opacity: 0.35; transition: opacity 0.4s; }
+
+/* Fin de chapitre */
+.chapter-card.chap-end { background: linear-gradient(#fffaf0, #fff1dc); max-width: 520px; }
+.chap-end h2 { margin-bottom: 6px; }
+.lh-meter { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 6px 0 10px; }
+.lh-tower { font-size: 46px; filter: drop-shadow(0 0 10px rgba(255, 210, 120, 0.9)); }
+.lh-dots { display: flex; gap: 7px; }
+.lh-dot { font-size: 20px; color: #d8cbb8; }
+.lh-dot.on { color: #ffb72e; text-shadow: 0 0 8px rgba(255, 190, 60, 0.9); }
+.lh-dot.new { animation: lh-pop 1.2s ease-out both; }
+@keyframes lh-pop { 0% { transform: scale(0.2); opacity: 0; } 55% { transform: scale(1.7); opacity: 1; } 100% { transform: scale(1); } }
+.lh-label { font-weight: 900; font-size: 13px; color: var(--ink-soft); }
+.chap-recap { font-style: italic; }
+.chap-rewards { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 8px 0; }
+.chip-r { background: #fff; border: 2px solid var(--line); border-radius: 999px; padding: 3px 10px; font-weight: 800; font-size: 13px; }
+.chap-page { background: #fbf1dc; border: 2px dashed #d9b98a; border-radius: 14px; padding: 10px 12px; margin: 10px 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.chap-page i { font-family: Georgia, 'Times New Roman', serif; color: #6b4a2e; }
+.chap-next { font-weight: 900; color: var(--pink-d); font-size: 14px; margin: 8px 0 12px; }
+.chap-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+/* Suivi : page du carnet à retrouver */
+.qt-page { font-weight: 700; font-size: 12px; color: #a0623a; margin-top: 3px; border-top: 1px dashed var(--line); padding-top: 3px; max-width: 260px; font-style: italic; }
+.guide-arrow.page .ga-pointer { background: #ffb38a; }
+
+/* Carnet du gardien : page de parchemin */
+#carnet-page { background: rgba(42, 30, 20, 0.45); }
+.parchment {
+  position: relative; width: min(520px, 100%); max-height: 88vh; overflow-y: auto; padding: 26px 30px 22px;
+  background: radial-gradient(ellipse at 30% 20%, #fff8e6 0%, #f6e6c4 60%, #ecd5a6 100%);
+  border-radius: 6px 18px 8px 16px; box-shadow: 0 18px 40px rgba(40, 25, 10, 0.4), inset 0 0 40px rgba(160, 110, 50, 0.25);
+  color: #4a3424; animation: page-in 0.5s ease-out;
+}
+@keyframes page-in { from { transform: rotate(-4deg) translateY(30px) scale(0.92); opacity: 0; } to { transform: none; opacity: 1; } }
+.pc-head { font-weight: 900; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #a0784e; }
+.pc-art { position: absolute; right: 22px; top: 18px; font-size: 54px; opacity: 0.55; filter: sepia(0.8) saturate(0.7); transform: rotate(8deg); }
+.pc-date { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 700; font-size: 20px; margin: 10px 70px 10px 0; color: #5b3a22; }
+.pc-text p { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 17px; line-height: 1.6; margin: 0 0 10px; }
+.pc-sign { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 19px; text-align: right; margin: 4px 6px 12px; color: #6b4a2e; }
+.pc-found { font-weight: 900; font-size: 14px; color: #a0623a; text-align: center; margin-bottom: 8px; }
+.pc-twist { font-style: italic; color: #c0584a; }
+.parchment .btn { display: block; margin: 6px auto 0; }
+
+/* Journal : liste des pages */
+.carnet-list { display: flex; flex-direction: column; gap: 8px; }
+.carnet-item { display: flex; gap: 10px; align-items: flex-start; text-align: left; width: 100%; background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 8px 10px; font: inherit; color: inherit; }
+.carnet-item.found { background: #fbf1dc; border-color: #e3c99c; cursor: pointer; }
+.carnet-item.found:hover { background: #fff6e4; }
+.carnet-item.locked { opacity: 0.6; }
+.ci-art { font-size: 28px; width: 36px; text-align: center; }
+.ci-body { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.ci-body b { font-size: 14px; }
+.ci-body em { color: #a0623a; font-weight: 800; font-style: normal; font-size: 12px; }
+.ci-body .btn { align-self: flex-start; margin-top: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .parchment, .lh-dot.new { animation: none; }
+}

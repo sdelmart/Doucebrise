@@ -621,6 +621,94 @@ try {
     const closed = await page.evaluate(() => { const g = window.game; g.world.sky.hour = 22; const ok = g.visits.canVisit({ place: { hours: [8, 20] } }); g.world.sky.hour = 11; return ok; });
     if (closed) throw new Error('le muséum est ouvert à 22 h');
   });
+  await step('Histoire (fin de chapitre, étincelle, carnet du gardien, dialogue en plan cinéma)', async () => {
+    // Pages : toutes posées sur un sol où l'on marche, hors des obstacles.
+    const spots = await page.evaluate(() => {
+      const g = window.game;
+      const out = [];
+      for (const p of g.carnet.pages) {
+        const s = g.carnet.spotOf(p);
+        if (!s) out.push(`page ${p.n} sans emplacement`);
+        else if (g.world.groundAt(s.x, s.z) < 0.1) out.push(`page ${p.n} dans l'eau`);
+        else {
+          const r = g.world.colliders.resolve(s.x, s.z, 0.4);
+          if (Math.hypot(r.x - s.x, r.z - s.z) > 0.05) out.push(`page ${p.n} dans un obstacle`);
+        }
+      }
+      if (g.carnet.pages.length !== 7) out.push(`${g.carnet.pages.length} pages au lieu de 7`);
+      return out.join(' ; ');
+    });
+    if (spots) throw new Error(spots);
+    // Fin du chapitre 1 : étincelle, puis carte « Chapitre terminé » avec la page envolée.
+    await page.evaluate(() => {
+      const g = window.game;
+      const q = g.quests;
+      g.world.sky.hour = 11;
+      for (const id of ['bienvenue', 'maison']) if (!q.completed.includes(id)) q.completed.push(id);
+      q.index = window.game.debugData().STORY.findIndex((x) => x.id === 'potager');
+      q.progress['potager:0'] = 1;
+      q.progress['potager:1'] = 1;
+      g.player.teleport(4, 6, 0);
+      q.check();
+    });
+    await page.waitForSelector('#chapter:not(.hidden) .chap-end', { timeout: 90000 });
+    const card = await page.evaluate(() => {
+      const g = window.game;
+      const el = document.querySelector('#chapter .chap-end');
+      const out = [];
+      if (!/Chapitre 1/i.test(el.textContent)) out.push('carte de fin sans numéro de chapitre');
+      if (!el.querySelector('.chap-page')) out.push('page envolée absente de la carte');
+      if (el.querySelectorAll('.lh-dot.on').length !== g.quests.sparks || g.quests.sparks < 1) out.push('étincelles du phare');
+      if (g.world.village.lhLevel <= 0) out.push('le phare ne s\'éclaire pas');
+      el.querySelector('[data-chap-track]').click();
+      if (g.carnet.tracked !== 1) out.push('la page n\'est pas suivie');
+      return out.join(' ; ');
+    });
+    if (card) throw new Error(card);
+    await page.waitForFunction(() => !window.game.quests.pendingBeat, null, { timeout: 30000 });
+    await page.waitForSelector('#chapter:not(.hidden) [data-chap-ok]', { timeout: 30000 }).catch(() => {});
+    await page.evaluate(() => document.querySelector('#chapter:not(.hidden) [data-chap-ok]')?.click());
+    const pg = await page.evaluate(async () => {
+      const g = window.game;
+      const out = [];
+      if (!g.guide.targets.page && g.guide.targets !== undefined) await new Promise((r) => setTimeout(r, 500));
+      const p = g.carnet.available()[0];
+      if (!p || p.n !== 1) return 'page 1 non libérée';
+      if (!document.querySelector('.qt-page')) out.push('énigme absente du suivi');
+      const s = g.carnet.spotOf(p);
+      g.player.teleport(s.x + 0.4, s.z + 0.4, 0);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const near = g.carnet.nearest();
+      if (near?.n !== 1) return 'page hors de portée';
+      const coins = g.coins;
+      g.carnet.pick(near);
+      if (!g.carnet.isOpen || !document.querySelector('#carnet-page .pc-text p')) out.push('lecture de la page');
+      g.carnet.close();
+      if (g.carnet.count !== 1 || g.coins <= coins) out.push('page non rangée ou sans récompense');
+      if (g.carnet.items.size !== 0) out.push('la page ramassée est encore posée');
+      const saved = JSON.parse(JSON.stringify(g.carnet.serialize()));
+      if (!saved.f?.includes(1)) out.push('page non sauvegardée');
+      g.journal.tab = 'carnet';
+      g.openPanel('journal');
+      if (!document.querySelector('#journal .carnet-item.found')) out.push('onglet Carnet');
+      g.closePanels();
+      return out.join(' ; ');
+    });
+    if (pg) throw new Error(pg);
+    // Répliques d'histoire : bandes de cinéma, plan sur l'habitant, retour derrière la joueuse.
+    const cine = await page.evaluate(() => {
+      const g = window.game;
+      const v = g.villagers.get('rose');
+      g.player.teleport(v.pos.x + 1.3, v.pos.z + 0.6, 0);
+      g.dialogue.start(v);
+      g.dialogue.sequence(['Une réplique.', 'Une autre.'], () => {}, { cinematic: true });
+      const on = document.body.classList.contains('letterbox') && g.cam.mode === 'cine';
+      g.dialogue.close();
+      const off = !document.body.classList.contains('letterbox') && g.cam.mode === 'follow';
+      return on && off ? '' : `plan cinéma : ${on ? '' : 'pas activé'} ${off ? '' : 'pas refermé'}`;
+    });
+    if (cine) throw new Error(cine);
+  });
   await step('Course de luge', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;

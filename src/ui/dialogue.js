@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { ITEMS, countItem, takeItem } from '../game/items.js';
 import { HEART_EVENTS } from '../npc/villagers.js';
 import { FISH } from '../game/fish.js';
@@ -115,16 +116,19 @@ export class Dialogue {
     }));
     this.render(`💞 ${ev.text}`, choices);
     this.el.classList.add('heart-scene');
+    this.cinematic(true);
   }
 
   /** Enchaîne plusieurs répliques, puis appelle done(). */
-  sequence(lines, done) {
+  sequence(lines, done, { cinematic = false } = {}) {
     let i = 0;
+    if (cinematic) this.cinematic(true);
     const next = () => {
       const last = i === lines.length - 1;
       const text = lines[i++];
       this.render(text, [{ label: last ? '✨ D\'accord !' : '▶ Suite', primary: true, action: () => {
         if (last) {
+          this.cinematic(false);
           done?.();
           if (this.villager) this.render(this.villager.greeting());
         } else next();
@@ -133,8 +137,46 @@ export class Dialogue {
     next();
   }
 
+  /**
+   * Répliques de l'histoire : bandes de cinéma et plan sur l'habitant qui parle, vu de
+   * trois quarts par-dessus l'épaule de la joueuse ; la caméra revient ensuite derrière elle.
+   */
+  cinematic(on) {
+    const g = this.game;
+    if (on === !!this.cine) return;
+    if (!on) {
+      const prev = this.cine;
+      this.cine = null;
+      document.body.classList.remove('letterbox');
+      if (g.cam.mode === 'cine' && !g.inFinale) {
+        g.cam.setMode('follow');
+        Object.assign(g.cam, prev);
+      }
+      return;
+    }
+    const v = this.villager;
+    if (!v || g.inFinale) return;
+    const p = g.player.pos;
+    const dir = new THREE.Vector3(v.pos.x - p.x, 0, v.pos.z - p.z);
+    if (dir.lengthSq() < 0.01) dir.set(0, 0, 1);
+    dir.normalize();
+    let side = new THREE.Vector3(-dir.z, 0, dir.x);
+    const mid = new THREE.Vector3((p.x + v.pos.x) / 2, (p.y + v.pos.y) / 2, (p.z + v.pos.z) / 2);
+    // Du côté où se trouve déjà la caméra (pas de saut d'un bord à l'autre).
+    if (side.dot(g.camera.position.clone().sub(mid)) < 0) side = side.negate();
+    const h = 1.45 * (v.def.appearance?.height || 1);
+    const pos = mid.clone().addScaledVector(side, 2.7).addScaledVector(dir, -1.1);
+    pos.y = mid.y + h + 0.25;
+    const look = new THREE.Vector3(v.pos.x, v.pos.y + h * 0.82, v.pos.z).addScaledVector(dir, -0.3);
+    this.cine = { yaw: g.cam.yaw, pitch: g.cam.pitch, dist: g.cam.dist };
+    g.cam.setCinematic(pos, look);
+    g.cam.snap = true;
+    document.body.classList.add('letterbox');
+  }
+
   close() {
     if (!this.villager) return;
+    this.cinematic(false);
     this.villager = null;
     this.el.classList.add('hidden');
     this.el.classList.remove('heart-scene');

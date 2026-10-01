@@ -792,6 +792,36 @@ const SHARED_LINES = {
 };
 for (const v of VILLAGERS) if (EXTRA_CHAT[v.id]) v.lines.chat.push(...EXTRA_CHAT[v.id]);
 
+// L'île réagit à l'histoire : le phare qui se réveille, le carnet du gardien, les retrouvailles.
+const STORY_LINES = {
+  sparks: ['Tu as vu ? Le phare clignote un peu plus fort, le soir.', 'On dirait que le vieux phare se réveille… Drôle, non ?', 'Ma grand-mère disait que le phare brille quand les gens s\'aiment bien. Des histoires de grand-mère !', 'Hier soir, j\'ai cru voir une étincelle filer vers le phare. J\'ai rêvé ?'],
+  lit: ['Depuis que le phare brille, je dors comme un bébé.', 'Tout l\'archipel a vu le phare, l\'autre nuit !', 'Le phare brille, et même les mouettes ont l\'air plus joyeuses.'],
+  wed: ['Tu as vu Rose et Aurèle se promener main dans la main ? Trop mignons !', 'Un mariage à Doucebrise ! Ça faisait des années !', 'Il paraît qu\'Aurèle a réparé la lanterne de Rose. Elle ne la quitte plus.', 'Cinquante ans d\'attente… et ils se sont retrouvés grâce à toi !'],
+  rose: ['Aurèle vient dîner ce soir. Je lui fais sa tarte aux pommes préférée !', 'Il a enfin pu lire ce qu\'il avait gravé sous la lanterne… à voix haute. ♥', 'Merci, mon petit. Chaque soir, je regarde le phare et je pense à toi.'],
+  aurele: ['Je descends voir Rose à chaque pleine lune, maintenant. Le Pont des Brumes ne me fait plus peur.', 'Cinquante ans de brume… et il suffisait d\'une lettre. Merci.', 'Rose me trouve plus bavard qu\'avant. C\'est ta faute, ça !'],
+};
+
+/** Réplique liée à l'avancée de l'histoire, ou null. */
+function storyLine(v, g) {
+  const q = g.quests;
+  if (!q) return null;
+  const done = (id) => q.completed.includes(id);
+  const pick = (l) => l[Math.floor(Math.random() * l.length)];
+  const id = v.def.id;
+  if (done('rendez-vous')) return id === 'rose' ? pick(STORY_LINES.rose) : id === 'aurele' ? pick(STORY_LINES.aurele) : pick(STORY_LINES.wed);
+  if (done('carnet-aurele')) {
+    if (id === 'aurele') return 'Tu crois qu\'elle a lu ma lettre ? Je n\'en dors plus…';
+    if (id === 'rose' && done('lettre-rose')) return 'Ce soir, au phare… J\'ai ressorti ma plus belle robe. Ne te moque pas !';
+  }
+  const found = g.carnet?.found || new Set();
+  if (id === 'marin' && found.has(4)) return 'Le gardien du phare ? Il m\'a sauvé la vie, une nuit de tempête. J\'avais douze ans. Je ne l\'ai jamais revu…';
+  if (id === 'bruno' && found.has(5)) return 'Mon grand-père Barnabé sculptait des lanternes. Il paraît qu\'il en avait fait une pour le gardien du phare !';
+  if (id === 'rose' && found.size && !done('carnet-aurele')) return 'Un vieux carnet, dis-tu ? … Non, ne me raconte pas. Certaines histoires dorment mieux au fond d\'un tiroir.';
+  if (q.lighthouseLit) return pick(STORY_LINES.lit);
+  if (q.sparks >= 1 && v.villageId === 'main') return pick(STORY_LINES.sparks);
+  return null;
+}
+
 const RING = 6.8;
 const WALK = 2.3;
 
@@ -1125,6 +1155,8 @@ export class Villager {
       else pool.push(fest);
     }
     if (g.visits?.active?.v === this) pool.push(pick(SHARED_LINES.visit), pick(SHARED_LINES.visit));
+    const st = storyLine(this, g);
+    if (st && Math.random() < 0.45) pool.unshift(st);
     if (w.seasonIndex === 3) pool.push(this.line('snow'));
     if (w.seasonIndex === 2) pool.push(this.line('autumn'));
     if (h >= 18) pool.push(this.line('evening'));

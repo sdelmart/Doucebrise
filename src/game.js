@@ -19,7 +19,7 @@ import { Vehicles, VEHICLES } from './game/vehicles.js';
 import { Jobs } from './game/jobs.js';
 import { Calendar } from './game/calendar.js';
 import { Garden } from './game/garden.js';
-import { Quests, STORY, CHAPTERS } from './game/quests.js';
+import { Quests, STORY, CHAPTERS, chapterReward } from './game/quests.js';
 import { Cooking } from './game/cooking.js';
 import { Archipelago } from './game/travel.js';
 import { SideQuests, SIDE_QUESTS } from './game/sidequests.js';
@@ -27,6 +27,7 @@ import { SledRace } from './game/sled.js';
 import { House } from './house/house.js';
 import { DecorMode } from './house/decor.js';
 import { Visits } from './house/visits.js';
+import { Carnet, PAGES } from './game/carnet.js';
 import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS, FURNITURE_CATS, shopFurniture } from './house/furniture.js';
 import { HOME_SIZES, ROOF_STYLES, FACADES, HOME_EXTRAS } from './world/home.js';
 import { Input, initKeyboardLayout, logicalCode, isTyping } from './core/input.js';
@@ -35,7 +36,7 @@ import { PostFX } from './core/postfx.js';
 import { Particles } from './core/particles.js';
 import { Audio } from './core/audio.js';
 import { MusicPlayer } from './core/music.js';
-import { setRenderStyle } from './core/materials.js';
+import { setRenderStyle, softDotTexture } from './core/materials.js';
 import { AutoQuality, effectiveGraphics, initialLevel } from './core/autoquality.js';
 import { ViewCull } from './core/viewcull.js';
 import { loadSave, writeSave, clearSave, getSlot } from './core/save.js';
@@ -141,6 +142,7 @@ export class Game {
     this.garden = new Garden(this);
     this.house = new House(this);
     this.visits = new Visits(this);
+    this.carnet = new Carnet(this);
     this.cooking = new Cooking(this);
     this.quests = new Quests(this);
     this.archipelago = new Archipelago(this);
@@ -386,6 +388,7 @@ export class Game {
       this.requestSave();
     } else {
       setTimeout(() => this.quests.showChapter(), 900);
+      setTimeout(() => this.carnet.announce(), 2600);
     }
   }
 
@@ -406,7 +409,7 @@ export class Game {
   }
 
   get busy() {
-    return this.dialogue.open || this.shop.isOpen || this.adoption.isOpen || this.cooking.isOpen || !!this.festivals.plating || !!this.festivals.snow?.building || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden');
+    return this.dialogue.open || this.shop.isOpen || this.adoption.isOpen || this.carnet.isOpen || this.cooking.isOpen || !!this.festivals.plating || !!this.festivals.snow?.building || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden');
   }
 
   openPanel(name) {
@@ -742,7 +745,7 @@ export class Game {
   }
 
   /** Donne une récompense (quête, amitié). */
-  grantReward(r, villager = null, title = null) {
+  grantReward(r, villager = null, title = null, { quiet = false } = {}) {
     const parts = [];
     if (typeof r.furniture === 'string') r = { ...r, furniture: { [r.furniture]: 1 } };
     if (r.coins) {
@@ -779,9 +782,9 @@ export class Game {
       const opt = OPTIONS[key]?.find((o) => o.id === id);
       parts.push(`${opt?.icon || '👒'} ${opt ? opt.label : 'tenue spéciale'}`);
     }
-    if (r.furniture) setTimeout(() => this.ui.toast('🛋️ Nouveau meuble rangé ! Chez toi, appuie sur B pour décorer.', 3500), 900);
+    if (r.furniture && !quiet) setTimeout(() => this.ui.toast('🛋️ Nouveau meuble rangé ! Chez toi, appuie sur B pour décorer.', 3500), 900);
     const who = villager ? `${villager.def.emoji} ${villager.def.name} t'offre : ` : '🎁 ';
-    if (parts.length) this.ui.toast(title ? `${title} ${parts.join(' · ')}` : `${who}${parts.join(' · ')}`, 4500);
+    if (parts.length && !quiet) this.ui.toast(title ? `${title} ${parts.join(' · ')}` : `${who}${parts.join(' · ')}`, 4500);
     if (villager) this.particles.emit('sparkle', villager.pos.clone().setY(villager.pos.y + 2), { count: 4 });
     this.ui.refreshAll();
     this.requestSave();
@@ -1112,6 +1115,14 @@ export class Game {
       return;
     }
 
+    const page = !this.vehicles.riding ? this.carnet.nearest() : null;
+    if (page) {
+      const ps = this.carnet.spotOf(page);
+      this.ui.setPrompt({ pos: new THREE.Vector3(ps.x, ps.y + 2.4, ps.z), title: '📖 Une page du carnet', sub: `Carnet du gardien · page ${page.n}/${PAGES.length}`, actions: [{ key: 'E', label: 'Ramasser' }] });
+      if (input.hit('KeyE')) this.carnet.pick(page);
+      return;
+    }
+
     const v = this.villagers.nearest();
     if (v) {
       const req = this.quests.requestFor(v.def.id);
@@ -1396,6 +1407,190 @@ export class Game {
     }, 13500);
   }
 
+  // --- Mise en scène de l'histoire -------------------------------------------------------
+
+  /**
+   * Fin de chapitre : pour les sept premiers, une étincelle quitte la joueuse et file
+   * jusqu'au phare, qui s'éclaire un peu plus ; puis la carte « Chapitre terminé »
+   * (récompenses, page du carnet envolée, chapitre suivant).
+   */
+  storyBeat(chap, next) {
+    // On attend la fin d'un dialogue, d'une fenêtre ou de la décoration.
+    if (this.busy || this.panel || this.state !== 'play') {
+      setTimeout(() => this.storyBeat(chap, next), 700);
+      return;
+    }
+    const q = this.quests;
+    const reward = chapterReward(chap.id);
+    if (reward) this.grantReward(reward, null, null, { quiet: true });
+    const lit = () => this.world.village.setLighthouseLevel?.(q.sparks / 7, q.lighthouseLit);
+    const card = () => this.ui.chapterEnd(chap, next, reward, () => {
+      q.pendingBeat = false;
+      if (next) setTimeout(() => q.showChapter(), 500);
+    });
+    if (chap.n > 7 || this.indoors || this.vehicles.riding || this.festivals.snow?.fight) {
+      lit();
+      card();
+      return;
+    }
+    this.sparkFlight(lit, card);
+  }
+
+  /** Une étincelle s'élève de la joueuse et rejoint la lanterne du phare. */
+  sparkFlight(lit, after) {
+    this.inFinale = true;
+    this.standUp();
+    if (this.fishing.active) this.fishing.stop();
+    this.ui.setPrompt(null);
+    this.ui.showHUD(false);
+    const top = this.world.village.beam.position.clone();
+    const p = this.player.pos;
+    const start = new THREE.Vector3(p.x, p.y + 1.5, p.z);
+    const toL = new THREE.Vector3(top.x - p.x, 0, top.z - p.z).normalize();
+    const side = new THREE.Vector3(-toL.z, 0, toL.x);
+    const mid = start.clone().lerp(top, 0.5);
+    mid.y = Math.max(start.y, top.y) + 16;
+    this.player.face(top.x, top.z);
+    this.character.play('celebrate', 1.6);
+    // Plan 1 : derrière la joueuse, l'étincelle s'élève vers le ciel.
+    this.cam.setCinematic(start.clone().addScaledVector(toL, -5).addScaledVector(side, 1.6).setY(start.y + 0.7), start.clone().addScaledVector(toL, 10).setY(start.y + 2.4));
+    this.cam.snap = true;
+    const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDotTexture(), color: '#ffd27a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    spark.scale.setScalar(1.3);
+    spark.position.copy(start);
+    this.scene.add(spark);
+    this.audio.play('pick');
+    const t0 = performance.now();
+    const DUR = 3.4;
+    let cut = false;
+    const a = new THREE.Vector3();
+    const finish = () => {
+      this.scene.remove(spark);
+      spark.material.dispose();
+      lit();
+      this.audio.play('chapter');
+      this.particles.emit('sparkle', top.clone(), { count: 30, spread: 3, size: 1.1, life: 2, rise: 0.6 });
+      this.particles.emit('heart', top.clone().setY(top.y + 1), { count: 6, spread: 2, size: 0.9, life: 2 });
+      this.ui.levelBanner(`✨ Étincelle du Cœur ${this.quests.sparks}/7`);
+      setTimeout(() => {
+        this.inFinale = false;
+        this.ui.showHUD(true);
+        this.cam.setMode('follow');
+        this.cam.yaw = this.player.rotY + Math.PI;
+        this.cam.snap = true;
+        after();
+      }, 2200);
+    };
+    const tick = () => {
+      const t = (performance.now() - t0) / 1000;
+      const k = Math.min(1, t / DUR);
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      a.copy(start).multiplyScalar((1 - e) * (1 - e)).addScaledVector(mid, 2 * (1 - e) * e).addScaledVector(top, e * e);
+      spark.position.copy(a);
+      spark.scale.setScalar(1.2 + Math.sin(t * 22) * 0.25);
+      this.particles.emit('sparkle', a.clone(), { count: 1, spread: 0.3, size: 0.5, life: 0.9 });
+      // Plan 2 : le phare, de trois quarts ; l'étincelle arrive par le ciel.
+      if (!cut && t > 1.3) {
+        cut = true;
+        this.cam.setCinematic(top.clone().addScaledVector(toL, -24).addScaledVector(side, 9).setY(top.y - 2), top.clone().setY(top.y - 3));
+        this.cam.snap = true;
+      }
+      if (k < 1) requestAnimationFrame(tick);
+      else finish();
+    };
+    requestAnimationFrame(tick);
+  }
+
+  /** Chapitre 11 : Rose et Aurèle se retrouvent au pied du phare, la nuit. */
+  reunion(done) {
+    const L = LANDMARKS.lighthouse;
+    this.inFinale = true;
+    if (this.vehicles.riding) this.vehicles.dismount(true);
+    this.standUp();
+    if (this.fishing.active) this.fishing.stop();
+    this.ui.setPrompt(null);
+    this.ui.showHUD(false);
+    const rose = this.villagers.get('rose');
+    const aurele = this.villagers.get('aurele');
+    const toC = new THREE.Vector3(-L.x, 0, -L.z).normalize();
+    const side = new THREE.Vector3(-toC.z, 0, toC.x);
+    const mid = new THREE.Vector3(L.x, 0, L.z).addScaledVector(toC, 5.2);
+    const at = (v, s) => {
+      const x = mid.x + side.x * s;
+      const z = mid.z + side.z * s;
+      v.character.setSit(false);
+      v.character.setFishing(false);
+      v.override = { x, z, rot: Math.atan2(-side.x * s, -side.z * s) };
+    };
+    // Les habitants de Doucebrise sont venus aussi, un peu en retrait.
+    const crowd = ['mimi', 'marin', 'bruno', 'pomme', 'noe', 'lila', 'leo'].map((id) => this.villagers.get(id)).filter(Boolean);
+    this.fade(() => {
+      // La joueuse un peu à l'écart, de trois quarts : témoin de la scène, dans le champ.
+      const px = mid.x + toC.x * 2.6 + side.x * 2.7;
+      const pz = mid.z + toC.z * 2.6 + side.z * 2.7;
+      this.player.teleport(px, pz, Math.atan2(mid.x - px, mid.z - pz));
+      at(rose, -0.85);
+      at(aurele, 0.85);
+      crowd.forEach((v, i) => {
+        const a = (i - (crowd.length - 1) / 2) * 0.32;
+        const r = 9.5 + (i % 2) * 1.2;
+        const dir = toC.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
+        const x = mid.x + dir.x * r;
+        const z = mid.z + dir.z * r;
+        v.character.setSit(false);
+        v.character.setFishing(false);
+        v.override = { x, z, rot: Math.atan2(mid.x - x, mid.z - z) };
+      });
+      for (const f of this.animals.followers()) f.teleport(px + side.x * 1.5, pz + side.z * 1.5);
+      const gy = this.world.heightAt(mid.x, mid.z);
+      this.cam.setCinematic(mid.clone().addScaledVector(toC, 5.4).addScaledVector(side, -1.6).setY(gy + 2.0), mid.clone().addScaledVector(side, 0.6).setY(gy + 1.3));
+      this.cam.snap = true;
+      this.world.village.beamMat.color.set('#ffb3c8');
+    }, 500);
+    const say = (v, text, t, ms = 3600) => setTimeout(() => v.say(text, ms), t);
+    say(aurele, 'Rose… Tu es venue.', 1800);
+    say(rose, 'Cinquante ans, vieux têtard. Tu en as mis, du temps.', 4800);
+    say(aurele, 'J\'avais une question à te poser… le soir où le phare serait le plus beau de tous.', 8000, 4200);
+    setTimeout(() => aurele.character.play('think', 2.5), 11600);
+    say(aurele, 'Rose… veux-tu bien m\'épouser ?', 12300, 3400);
+    say(rose, 'Tu crois que j\'ai gardé ta lanterne cinquante ans pour te dire non ? Oui. Mille fois oui !', 16000, 4000);
+    setTimeout(() => {
+      rose.character.play('dance', 4);
+      aurele.character.play('dance', 4);
+      this.character.play('celebrate', 2.5);
+      for (const v of crowd) v.character.play('celebrate', 2);
+      this.audio.play('chapter');
+      this.ui.levelBanner('💌 Rose et Aurèle se sont retrouvés !');
+      const gy = this.world.heightAt(mid.x, mid.z);
+      this.particles.emit('heart', mid.clone().setY(gy + 2.4), { count: 14, spread: 1.6, size: 1, life: 2.4, rise: 0.6 });
+      // Cœurs d'artifice au-dessus de la mer.
+      const fw = this.festivals?.fireworks;
+      for (let k = 0; k < 5; k++) {
+        setTimeout(() => fw?.launch(new THREE.Vector3(L.x - toC.x * 10 + side.x * (k - 2) * 6, 2, L.z - toC.z * 10 + side.z * (k - 2) * 6), { kind: 'coeur', color: ['#ff8fab', '#ffd166', '#ff6f91', '#c9a0ff', '#ffb3c8'][k], camera: this.camera, height: 22 + k }), k * 700);
+      }
+    }, 19600);
+    say(rose, 'Et toi, mon petit… merci. Tu as rallumé bien plus qu\'un phare.', 24200, 4200);
+    const lines = ['Ohhh ♥', 'Enfin !', 'Snif…', 'Vive les mariés !', 'Miaou ♥', 'Quelle histoire !', 'Bravo !'];
+    crowd.forEach((v, i) => say(v, lines[i % lines.length], 21000 + i * 450, 2400));
+    setTimeout(() => {
+      this.fade(() => {
+        for (const v of [rose, aurele, ...crowd]) {
+          v.override = null;
+          v.placeAt(v.scheduled(this.world.sky.hour));
+        }
+        this.world.village.beamMat.color.set(this.quests.lighthouseLit ? '#ffd76a' : '#fff1b8');
+        this.inFinale = false;
+        this.ui.showHUD(true);
+        this.cam.setMode('follow');
+        this.cam.yaw = this.player.rotY + Math.PI;
+        this.cam.pitch = 0.36;
+        this.cam.dist = 9;
+        this.cam.snap = true;
+        done();
+      }, 500);
+    }, 29500);
+  }
+
   // --- Scènes de l'archipel ----------------------------------------------------------
 
   /** Chapitre 9 : tout Bourg-Sapin rassemblé, le grand sapin se rallume. */
@@ -1576,6 +1771,7 @@ export class Game {
     this.audio.setRain(this.state === 'play' && !this.indoors ? this.world.weather.rainAmt : 0);
     this.world.weather.indoors = this.indoors;
     this.visits.update(this.camera, dt);
+    this.carnet.update(dt);
     this.animals.update(sdt, this.world.sky.isNight);
     this.villagers.update(sdt);
     this.resources.update(sdt);
@@ -1647,7 +1843,7 @@ export class Game {
 
   /** Données du jeu, pour les tests automatiques (scripts/quests-test.mjs). */
   debugData() {
-    return { STORY, CHAPTERS, SIDE_QUESTS, ZONES, LANDMARKS, ITEMS, RECIPES, FURNITURE, VEHICLES, FISH, INSECTS, fishWhere };
+    return { STORY, CHAPTERS, SIDE_QUESTS, ZONES, LANDMARKS, ITEMS, RECIPES, FURNITURE, VEHICLES, FISH, INSECTS, PAGES, fishWhere };
   }
 
   /** Rapport de pixels utilisé (écran × netteté max × résolution de rendu). */
@@ -1825,6 +2021,7 @@ export class Game {
       tips: this.tips.serialize(),
       visits: this.visits.serialize(),
       sideQuests: this.sideQuests.serialize(),
+      carnet: this.carnet.serialize(),
       sled: this.sled.serialize(),
       festivals: this.festivals.serialize(),
       stats: { playtime: Math.round(this.playtime || 0) },
@@ -1862,6 +2059,8 @@ export class Game {
     this.tips.restore(s.tips);
     this.visits.restore(s.visits);
     this.sideQuests.restore(s.sideQuests);
+    this.carnet.restore(s.carnet);
+    this.carnet.sync();
     this.sled.restore(s.sled);
     this.festivals.restore(s.festivals);
     this.playtime = s.stats?.playtime || 0;
