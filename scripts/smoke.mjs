@@ -404,6 +404,40 @@ try {
     });
     if (r) throw new Error(r);
   });
+  await step('Décor sans objets imbriqués (banc du marché, terrasse du café, tas de bois…)', async () => {
+    const r = await page.evaluate(() => {
+      // Obstacles du dehors (les pièces intérieures, très loin, ont des murs qui se touchent
+      // exprès) ; un recouvrement de plus de 30 cm = un objet dans un autre.
+      const all = new Set();
+      for (const list of window.game.world.colliders.grid.values()) for (const c of list) if (c.x < 500) all.add(c);
+      const cs = [...all];
+      const poly = (c) => c.type === 'circle'
+        ? Array.from({ length: 8 }, (_, i) => [c.x + Math.cos((i / 8) * Math.PI * 2) * c.r, c.z + Math.sin((i / 8) * Math.PI * 2) * c.r])
+        : [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => [c.x + sx * c.hw * c.cos + sz * c.hd * c.sin, c.z - sx * c.hw * c.sin + sz * c.hd * c.cos]);
+      const axes = (p) => p.map((a, i) => { const b = p[(i + 1) % p.length]; const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(a[1] - b[1]) / l, (b[0] - a[0]) / l]; });
+      const depth = (A, B) => {
+        let min = Infinity;
+        for (const [ax, az] of [...axes(A), ...axes(B)]) {
+          const pa = A.map((p) => p[0] * ax + p[1] * az);
+          const pb = B.map((p) => p[0] * ax + p[1] * az);
+          min = Math.min(min, Math.min(Math.max(...pa), Math.max(...pb)) - Math.max(Math.min(...pa), Math.min(...pb)));
+          if (min <= 0) return 0;
+        }
+        return min;
+      };
+      const P = cs.map(poly);
+      const out = [];
+      for (let i = 0; i < cs.length; i++) {
+        for (let j = i + 1; j < cs.length; j++) {
+          if (Math.hypot(cs[i].x - cs[j].x, cs[i].z - cs[j].z) > 12) continue;
+          const d = depth(P[i], P[j]);
+          if (d > 0.3) out.push(`${d.toFixed(2)} m vers (${cs[i].x.toFixed(1)}, ${cs[i].z.toFixed(1)})`);
+        }
+      }
+      return cs.length < 200 ? `trop peu d'obstacles (${cs.length})` : out.join(' ; ');
+    });
+    if (r) throw new Error(r);
+  });
   await step('Course de luge', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;

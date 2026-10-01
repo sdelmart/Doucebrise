@@ -832,7 +832,9 @@ export class IslandVillages {
     this.add(id, wellGeo(), wx, this.h(wx, wz), wz, 0.4);
     this.world.colliders.addCircle(wx, wz, 1.0);
     this.world.reserve(wx, wz, 2);
-    for (const [ox, oz, r] of [[-9, 4, 0.5], [6, 8, -0.3], [-4, -9, 1.2]]) {
+    // (Hors du cercle des lanternes et de la piste de luge : un tas était sous la dernière
+    // porte de la piste, un autre contre une lanterne.)
+    for (const [ox, oz, r] of [[-10.5, 6.8, 0.5], [6, 8, -0.3], [-11, -6.9, 0.8]]) {
       const x = B.x + ox;
       const z = B.z + oz;
       this.add(id, woodpile(), x, this.h(x, z), z, r);

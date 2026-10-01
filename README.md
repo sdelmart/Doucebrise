@@ -27,7 +27,7 @@ Version de production (fichiers statiques dans `dist/`, déployables sur n'impor
 
 ## Tests
 
-`npm run build && npm run test:smoke` lance le jeu dans Chromium sans écran : écran titre, nouvelle partie, fenêtres principales, déplacement, course de luge, sauvegarde et reprise. Le test échoue à la moindre erreur JavaScript. Il tourne aussi sur GitHub à chaque envoi (workflow **Test du jeu**, captures d'écran en *Artifacts*).
+`npm run build && npm run test:smoke` lance le jeu dans Chromium sans écran : écran titre, nouvelle partie, fenêtres principales, déplacement, décor sans objets imbriqués (un banc, une table ou un tas de bois posé dans un étal, une maison ou une porte de la piste), course de luge, sauvegarde et reprise. Le test échoue à la moindre erreur JavaScript. Il tourne aussi sur GitHub à chaque envoi (workflow **Test du jeu**, captures d'écran en *Artifacts*).
 
 `npm run build && npm run test:quests` **joue toute l'histoire** (les 45 quêtes des 11 chapitres, avec les vraies actions du jeu : parler, planter, pêcher, cuisiner, acheter, décorer, adopter, cérémonies de nuit…), puis **les 58 quêtes des habitants** (proposition, objectifs, remise, récompenses), les **six petits boulots**, deux semaines de demandes et de défis (aucune répétition d'un jour à l'autre), et vérifie la cohérence des données (objets, meubles, recettes, habitants, prérequis) et la sauvegarde. Il tourne aussi sur GitHub à chaque envoi.
 

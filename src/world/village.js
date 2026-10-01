@@ -703,9 +703,10 @@ export class Village {
       s.add(G.box(0.1, 1.15, 1.15), trim, { pos: [sx * (w / 2 + 0.04), 0.5 + h * 0.56, 0] });
       glass.add(G.box(0.05, 0.95, 0.95), '#ffffff', { pos: [sx * (w / 2 + 0.07), 0.5 + h * 0.56, 0] });
     }
-    // Terrasse : tables rondes et chaises.
-    for (const tx of [-2.6, 3.4]) {
-      const tz = fz + 2.2;
+    // Terrasse : tables rondes et chaises, de part et d'autre de la porte (la table de gauche
+    // était cachée dans le comptoir à gâteaux).
+    this.cafeTables = [[0.2, fz + 2.3], [3.4, fz + 2.2]];
+    for (const [tx, tz] of this.cafeTables) {
       s.add(G.cyl(0.5, 0.5, 0.06, 16), trim, { pos: [tx, 0.8, tz] });
       s.add(G.cyl(0.05, 0.05, 0.75, 6), '#4e4c62', { pos: [tx, 0.4, tz] });
       s.add(G.cyl(0.25, 0.28, 0.05, 10), '#4e4c62', { pos: [tx, 0.03, tz] });
@@ -717,7 +718,6 @@ export class Village {
         for (const lz of [-0.15, 0.15]) s.add(G.cyl(0.02, 0.02, 0.46, 5), '#4e4c62', { pos: [tx + cx, 0.23, tz + lz] });
       }
     }
-    this.cafeTables = [[-2.6, fz + 2.2], [3.4, fz + 2.2]];
     // Comptoir à gâteaux.
     const c = new Shape();
     c.add(G.box(1.8, 0.9, 0.8), '#fffaf2', { pos: [0, 0.45, 0] });
@@ -776,7 +776,10 @@ export class Village {
     s.add(G.torus(0.25, 0.04, 5, 12, Math.PI * 1.4), '#2e2e3a', { pos: [px + 0.38, 0.85, d / 2 + 0.6], rot: [0, Math.PI / 2, 0] });
     for (let i = 0; i < 3; i++) s.add(G.torus(0.34, 0.14, 8, 16), '#2e2e3a', { pos: [-w / 2 - 0.9, 0.15 + i * 0.28, d / 2 - 0.4], rot: [Math.PI / 2, 0, 0] });
     s.add(G.torus(0.34, 0.14, 8, 16), '#2e2e3a', { pos: [-w / 2 - 0.9, 0.35, d / 2 + 0.6], rot: [0.2, 0, 1.4] });
-    // Voiturette d'exposition.
+    // Voiturette d'exposition, sur le côté du garage (devant, elle entrait dans la maison
+    // voisine).
+    const carX = -w / 2 - 3.4;
+    const carZ = d / 2 - 0.3;
     const car = vehicleModel('voiturette', '#8fd6e8');
     const carShape = new Shape().addRaw(car.geo);
     const wg = wheelGeo(0.3, 0.18);
@@ -787,7 +790,7 @@ export class Village {
     }
     const carGeo = carShape.build();
     carGeo.rotateY(-0.6);
-    carGeo.translate(-3.3, 0.02, d / 2 + 3.4);
+    carGeo.translate(carX, 0.02, carZ);
     s.addRaw(carGeo);
     wg.dispose();
     // Comptoir : établi avec des pièces détachées.
@@ -803,7 +806,7 @@ export class Village {
       deg: 58, r: 30, geo: s.build(), glass: glass.build(), w, d, id: 'garage', label: '🔧 Garage de Léo',
       counter: { geo: c.build(), side: 2.6 }, sign: { x: 0, y: h + 1.0, w: 3.4 }, signColors: ['#fffaf0', '#c0584a'], reserve: 9,
     });
-    const cp = rotate2(-3.3, d / 2 + 3.4, b.rot);
+    const cp = rotate2(carX, carZ, b.rot);
     this.world.colliders.addBox(b.x + cp[0], b.z + cp[1], 0.8, 1.3, b.rot - 0.6);
     const pp = rotate2(px, d / 2 + 0.6, b.rot);
     this.world.colliders.addCircle(b.x + pp[0], b.z + pp[1], 0.5);
@@ -964,10 +967,18 @@ export class Village {
   buildProps(rng) {
     const bench = benchGeo();
     this.benches = [];
+    const stall = { x: 6.5, z: -7.5 };
     for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + Math.PI / 4 + 0.1;
-      const x = Math.cos(a) * 9.8;
-      const z = Math.sin(a) * 9.8;
+      let a = (i / 4) * Math.PI * 2 + Math.PI / 4 + 0.1;
+      let r = 9.8;
+      // Le banc du coin du marché était dans le stand : il se rapproche de la fontaine,
+      // un peu décalé (le pavé y est libre, et l'on garde l'accès au comptoir).
+      if (Math.hypot(Math.cos(a) * r - stall.x, Math.sin(a) * r - stall.z) < 4) {
+        r = 7.4;
+        a += 0.21;
+      }
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
       const rot = Math.atan2(-x, -z);
       this.static.addRaw(place(bench.clone(), x, 2.3, z, rot));
       this.world.colliders.addBox(x, z, 1.15, 0.45, rot);
@@ -979,8 +990,7 @@ export class Village {
     }
     // Stand du marché.
     {
-      const x = 6.5;
-      const z = -7.5;
+      const { x, z } = stall;
       const rot = Math.atan2(-x, -z);
       this.static.addRaw(place(stallGeo(), x, 2.3, z, rot));
       this.world.colliders.addBox(x, z, 1.8, 0.8, rot);
