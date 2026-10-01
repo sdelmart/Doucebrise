@@ -12,6 +12,8 @@ Chaque envoi sur GitHub construit automatiquement les applications (workflow **A
 2. **Doucebrise-Windows** : installateur `Doucebrise-x.y.z-installation.exe` et version portable `Doucebrise-x.y.z-portable.exe` (aucune installation).
 3. **Doucebrise-macOS** : `Doucebrise-x.y.z-mac.dmg`, universel (Mac Intel et Apple Silicon). L'application n'étant pas signée par un compte développeur Apple, au premier lancement : clic droit sur Doucebrise → **Ouvrir** → **Ouvrir**.
 
+**Mettre à jour sans perdre sa partie** : les sauvegardes ne sont pas rangées avec le programme, mais dans le dossier de l'utilisateur (`%APPDATA%\Doucebrise` sous Windows, `~/Library/Application Support/Doucebrise` sous macOS). Il suffit d'installer la nouvelle version par-dessus l'ancienne (ou de remplacer le `.exe` portable) puis de choisir **Continuer** : la partie reprend où elle en était, les anciennes sauvegardes sont toujours relues par les nouvelles versions. Par précaution, avant une mise à jour : **Paramètres → Sauvegarde → 📤 Exporter le profil** ; en cas de souci, **écran titre → Profils → 📥 Importer**. Dans le navigateur, la sauvegarde reste dans le navigateur : il suffit de recharger la page (même adresse, même navigateur).
+
 Un tag `v*` (par exemple `v0.5.0`) publie aussi les fichiers dans une **Release** GitHub. L'application vérifie au démarrage si une Release plus récente existe et l'annonce sur l'écran titre, avec un lien pour la télécharger (désactivable dans Paramètres → Jeu ; nécessite un dépôt public).
 
 Pour construire soi-même : `npm run dist:win` (sous Windows) ou `npm run dist:mac` (sous macOS). `npm run app` lance l'application de bureau en local.
@@ -227,7 +229,7 @@ assets/models/
 - **7 métiers** à 10 niveaux, **3 défis par jour**, **78 succès**, **titres**, carnet d'étoiles de 30 paliers, petits boulots, **record de luge**.
 
 ### 🌱 Activités
-- **Potager**, **cueillette** (baies, pommes, myrtilles, noix de coco, cristaux, corail et perles…), **pêche** (**38 poissons** entre mer, étang, Lac Miroir et Lagon Turquoise), **insectes** (**22 espèces**), **cuisine** (16 recettes), boutiques dans les trois villages.
+- **Potager** : planter, arroser, récolter ; la pluie mouille la terre et fait pousser, mais on peut toujours arroser soi-même une parcelle mouillée par la pluie (utile pour les quêtes et défis d'arrosage). **Cueillette** (baies, pommes, myrtilles, noix de coco, cristaux, corail et perles…), **pêche** (**38 poissons** entre mer, étang, Lac Miroir et Lagon Turquoise), **insectes** (**22 espèces**), **cuisine** (16 recettes), boutiques dans les trois villages.
 - **Pêche au moulinet** : l'**ombre du poisson** approche du flotteur (sa taille trahit la prise), quelques **touches** trompeuses avant la vraie morsure (ferrer trop tôt fait fuir le poisson), puis le **combat** : maintiens `E` (ou le panneau, au doigt) pour mouliner, relâche quand le poisson tire, sinon la ligne casse. Plus la prise est rare, plus elle se débat ; les meilleures cannes ont une ligne plus solide.
 
 ### 🛋️ Maison et décoration

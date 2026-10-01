@@ -3,7 +3,9 @@ import { Shape, G, toon, vertexColorToon, withOutline } from '../core/materials.
 import { ITEMS } from './items.js';
 
 // Potager : 9 parcelles dans le jardin. On plante, on arrose (la pluie aide),
-// la plante grandit en 4 stades puis on récolte.
+// la plante grandit en 4 stades puis on récolte. L'arrosage à la main (waterUntil)
+// et la pluie (rainUntil) sont comptés à part : la pluie fait pousser, mais on peut
+// toujours arroser soi-même une parcelle mouillée par la pluie.
 
 export const CROPS = {
   carotte: { hours: 16, yield: [2, 3] },
@@ -140,7 +142,7 @@ export class Garden {
         const plant = new THREE.Group();
         plant.position.set(x, y + 0.15, z);
         this.group.add(plant);
-        this.plots.push({ x, z, y: y + 0.15, soil, plant, crop: null, growth: 0, waterUntil: -1, stage: -1, mesh: null });
+        this.plots.push({ x, z, y: y + 0.15, soil, plant, crop: null, growth: 0, waterUntil: -1, rainUntil: -1, stage: -1, mesh: null });
       }
     }
     const fm = new THREE.Mesh(frame.build(), vertexColorToon());
@@ -191,7 +193,13 @@ export class Garden {
     return pl.crop && pl.growth >= CROPS[pl.crop].hours;
   }
 
+  /** Terre mouillée (arrosoir ou pluie) : la plante pousse. */
   watered(pl) {
+    return this.now() < Math.max(pl.waterUntil, pl.rainUntil);
+  }
+
+  /** Arrosée à la main : plus besoin d'y revenir. */
+  handWatered(pl) {
     return this.now() < pl.waterUntil;
   }
 
@@ -209,12 +217,12 @@ export class Garden {
     const it = ITEMS[pl.crop];
     if (this.ripe(pl)) return { pos, title: `${it.emoji} ${it.label}`, sub: 'Prêt à récolter !', actions: [{ key: 'E', label: 'Récolter' }] };
     const pct = Math.floor((pl.growth / CROPS[pl.crop].hours) * 100);
-    const wet = this.watered(pl);
+    const done = this.handWatered(pl);
     return {
       pos,
       title: `${it.emoji} ${it.label} · ${pct} %`,
-      sub: wet ? '💧 Arrosé — ça pousse !' : 'La terre est sèche…',
-      actions: wet ? [] : [{ key: 'E', label: 'Arroser 💧' }],
+      sub: done ? '💧 Arrosé — ça pousse !' : this.watered(pl) ? '🌧️ La pluie l\'a mouillé — ça pousse !' : 'La terre est sèche…',
+      actions: done ? [] : [{ key: 'E', label: 'Arroser 💧' }],
     };
   }
 
@@ -253,7 +261,7 @@ export class Garden {
       pl.crop = null;
       pl.growth = 0;
       this.refresh(pl);
-    } else if (!this.watered(pl)) {
+    } else if (!this.handWatered(pl)) {
       this.water(pl);
       g.player.face(pl.x, pl.z);
       g.player.character.play('feed', 0.9);
@@ -301,14 +309,17 @@ export class Garden {
     const w = this.game.world.weather;
     const winter = w.seasonIndex === 3 ? 0.5 : 1;
     for (const pl of this.plots) {
-      if (w.isRaining && pl.waterUntil < now + 12) pl.waterUntil = now + 24;
+      if (w.isRaining) pl.rainUntil = now + 24;
       if (pl.crop && pl.waterUntil > now && !this.ripe(pl)) pl.growth = Math.min(CROPS[pl.crop].hours, pl.growth + hours * winter);
       this.refresh(pl);
     }
   }
 
   serialize() {
-    return this.plots.map((p) => (p.crop ? { c: p.crop, g: +p.growth.toFixed(2), w: +p.waterUntil.toFixed(2) } : { w: +p.waterUntil.toFixed(2) }));
+    return this.plots.map((p) => {
+      const o = { w: +p.waterUntil.toFixed(2), r: +p.rainUntil.toFixed(2) };
+      return p.crop ? { c: p.crop, g: +p.growth.toFixed(2), ...o } : o;
+    });
   }
 
   restore(data) {
@@ -318,7 +329,11 @@ export class Garden {
       if (!pl || !d) return;
       pl.crop = d.c || null;
       pl.growth = d.g || 0;
-      pl.waterUntil = d.w ?? -1;
+      // Anciennes sauvegardes : un seul « mouillé » qui mêlait pluie et arrosoir ;
+      // on le compte comme de la pluie pour qu'on puisse de nouveau arroser.
+      const old = d.r === undefined;
+      pl.waterUntil = old ? -1 : d.w ?? -1;
+      pl.rainUntil = (old ? d.w : d.r) ?? -1;
       pl.stage = -2;
       this.refresh(pl);
     });

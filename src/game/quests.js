@@ -33,6 +33,11 @@ export const T = {
     return { x: y.x, z: y.z, label: '🌱 Ton potager' };
   },
   shop: (id, label) => (g) => {
+    // On achète et on vend en parlant au marchand : le repère le suit (à son étal, en
+    // balade ou chez lui) plutôt que de rester planté sur le comptoir.
+    const keeper = g.villagers.list.find((v) => v.def.shop === id);
+    const t = keeper && T.villager(keeper.def.id)(g);
+    if (t) return t;
     const s = g.world.village.shopSpots[id];
     return s ? { x: s.x + Math.sin(s.rot) * 2, z: s.z + Math.cos(s.rot) * 2, label } : null;
   },

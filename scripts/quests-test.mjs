@@ -283,9 +283,17 @@ const STEPS = {
     await QT.wait(600);
     const pl = g.garden.plots[0];
     g.player.teleport(pl.x + 0.5, pl.z + 0.5, 0);
-    await QT.frames(1);
+    // Il pleut sur le potager : on doit quand même pouvoir arroser soi-même.
+    g.world.weather.force('pluie');
+    await QT.frames(2);
+    g.garden.tickT = 0;
+    g.garden.update(0);
+    if (!g.garden.watered(pl)) throw new Error('la pluie ne mouille pas le potager');
     g.garden.interact(pl);
+    if (!g.garden.prompt(pl).actions.some((a) => a.label.startsWith('Arroser'))) throw new Error('impossible d\'arroser sous la pluie');
     g.garden.interact(pl);
+    g.world.weather.force(null);
+    await QT.frames(2);
   },
   amis: async () => QT.pet(3),
   cafe: async () => QT.talk('mimi'),
