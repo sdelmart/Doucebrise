@@ -228,6 +228,20 @@ function normalizeGeo(geo) {
  * elle choisit le grain posé sur sa couleur. Sans étiquette, la matière se devine d'après
  * la couleur (bois pour les bruns).
  */
+// Petites pièces (verre d'une lanterne, pot, tasse, fruit…) : pas de grain deviné. Le
+// grain du décor est fait pour les murs et les planches (motifs d'un à deux mètres) ;
+// deviné d'après la couleur, il mettait de l'enduit sur le verre des lampes et du bois sur
+// les pots en terre cuite.
+const SURF_PLAIN = 6; // SURF.plain (world/decor.js)
+const SMALL = 0.45;
+const _box = new THREE.Box3();
+const _size = new THREE.Vector3();
+function isSmall(geo) {
+  if (!geo.attributes.position) return false;
+  _box.setFromBufferAttribute(geo.attributes.position).getSize(_size);
+  return Math.max(_size.x, _size.y, _size.z) < SMALL;
+}
+
 export function setSurf(geo, surf) {
   geo.setAttribute('aSurf', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count).fill(surf), 1));
   return geo;
@@ -262,6 +276,7 @@ export class Shape {
       paint(geo, color);
     }
     if (t.surf !== undefined) setSurf(geo, t.surf);
+    else if (isSmall(geo)) setSurf(geo, SURF_PLAIN);
     this.parts.push(normalizeGeo(geo));
     return this;
   }
@@ -315,4 +330,27 @@ export function paintGradientY(geo, colBottom, colTop, yMin, yMax) {
   }
   geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
   return geo;
+}
+
+let SOFT_DOT = null;
+/**
+ * Point rond et doux (blanc, transparent vers les bords) pour les lueurs et les gouttes :
+ * un sprite ou des points sans texture s'affichent en carrés pleins.
+ */
+export function softDotTexture() {
+  if (SOFT_DOT) return SOFT_DOT;
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.25, 'rgba(255,255,255,0.55)');
+  g.addColorStop(0.6, 'rgba(255,255,255,0.12)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  SOFT_DOT = new THREE.CanvasTexture(c);
+  SOFT_DOT.colorSpace = THREE.SRGBColorSpace;
+  return SOFT_DOT;
 }

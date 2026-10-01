@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ITEMS } from './items.js';
 import { zoneAt } from '../world/layout.js';
-import { Shape, G, vertexColorToon } from '../core/materials.js';
+import { Shape, G, vertexColorToon, softDotTexture } from '../core/materials.js';
 
 // Insectes : 22 espèces à attraper au filet (offert par Noé). Chacune a ses lieux,
 // ses heures et ses saisons ; certaines ne sortent que sous la pluie ou la nuit.
@@ -113,7 +113,8 @@ function insectMesh(def) {
     }
   }
   if (def.glow) {
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ color: def.color, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+    // Halo rond qui s'efface vers les bords (sans texture, le sprite était un carré plein).
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDotTexture(), color: def.color, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
     halo.scale.setScalar(0.5);
     group.add(halo);
   }

@@ -119,6 +119,8 @@ export class Character {
   flushParts() {
     for (const [parent, groups] of this.pending) {
       for (const [key, geos] of Object.entries(groups)) {
+        // (Matière du décor, inutile ici : certaines pièces l'ont, d'autres non.)
+        if (geos.length > 1) for (const g of geos) g.deleteAttribute('aSurf');
         const geo = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
         if (geos.length > 1) geos.forEach((g) => g.dispose());
         const mesh = new THREE.Mesh(geo, vertexColorToon());

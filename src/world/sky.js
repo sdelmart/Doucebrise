@@ -32,6 +32,7 @@ const _lx = new THREE.Vector3();
 const _ly = new THREE.Vector3();
 const _lz = new THREE.Vector3();
 const _snap = new THREE.Vector3();
+const _aim = new THREE.Vector3();
 
 const KEY_COLORS = KEYS.map((k) => [k[0], new THREE.Color(k[1]), new THREE.Color(k[2]), new THREE.Color(k[3]), k[4], new THREE.Color(k[5]), new THREE.Color(k[6]), k[7]]);
 
@@ -212,8 +213,27 @@ export class DayNight {
     this.shooting = [null, null];
   }
 
+  /**
+   * Direction d'une étoile filante qu'on verra passer : dans la bande de ciel visible à
+   * l'écran, devant la caméra. Null quand l'écran ne montre presque pas de ciel (caméra
+   * baissée vers le personnage) : l'étoile passe alors ailleurs, sans invite.
+   */
+  aimInView() {
+    const cam = this.shootCamera;
+    if (!cam) return null;
+    cam.getWorldDirection(_aim);
+    const pitch = Math.asin(THREE.MathUtils.clamp(_aim.y, -1, 1));
+    const half = THREE.MathUtils.degToRad(cam.fov / 2);
+    const top = pitch + half * 0.85;
+    const low = Math.max(0.08, pitch - half * 0.5);
+    if (top - low < 0.1) return null;
+    const elev = low + (top - low) * (0.35 + Math.random() * 0.4);
+    const az = Math.atan2(_aim.z, _aim.x) + (Math.random() - 0.5) * half * cam.aspect;
+    return new THREE.Vector3(Math.cos(az) * Math.cos(elev), Math.sin(elev), Math.sin(az) * Math.cos(elev));
+  }
+
   /** Lance une étoile filante (vers un point de vue donné, sinon au hasard). */
-  spawnShootingStar(eye = null, look = null) {
+  spawnShootingStar(eye = null, look = null, { minY = 0.3 } = {}) {
     const slot = this.shooting[0] ? (this.shooting[1] ? -1 : 1) : 0;
     if (slot < 0) return null;
     let base;
@@ -222,7 +242,7 @@ export class DayNight {
       const a = Math.random() * Math.PI * 2;
       base = new THREE.Vector3(Math.cos(a), 0.55 + Math.random() * 0.3, Math.sin(a)).normalize();
     }
-    base.y = Math.max(base.y, 0.3);
+    base.y = Math.max(base.y, minY);
     base.normalize();
     const side = new THREE.Vector3(-base.z, 0, base.x).normalize();
     const a = base.clone().addScaledVector(side, -0.28).add(new THREE.Vector3(0, 0.12, 0)).normalize();
@@ -375,9 +395,11 @@ export class DayNight {
     if (dt > 0 && nf > 0.85 && this.cloudCover < 0.5) {
       this.shootT = (this.shootT ?? 8) - dt;
       if (this.shootT <= 0) {
-        const [a, b] = this.shootEvery || [18, 40];
+        const [a, b] = this.shootEvery || [70, 140];
         this.shootT = a + Math.random() * (b - a);
-        this.spawnShootingStar();
+        const dir = this.aimInView();
+        if (dir) this.spawnShootingStar(_snap.set(0, 0, 0), dir, { minY: 0.05 });
+        else this.spawnShootingStar();
       }
     }
     this.updateShooting(dt);

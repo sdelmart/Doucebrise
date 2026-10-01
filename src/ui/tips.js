@@ -9,6 +9,7 @@ const TIPS = {
   menus: { emoji: '☰', title: 'Les menus rapides', text: () => `Sac, journal, tenue, carte, photo… tout est rangé derrière le bouton ☰ sous la mini-carte (${actionKey('menu')}). Quand tu te promènes, l'interface se fait discrète. Un clic sur l'horloge montre le programme du jour.` },
   quete: { emoji: '❗', title: 'Quêtes des habitants', text: () => 'Un « ! » doré au-dessus d\'un habitant : il a une quête pour toi. Un « ? » vert : tu peux la lui rendre. Tes quêtes sont dans le journal (J), onglet Quêtes.' },
   voyage: { emoji: '🧭', title: 'Voyager', text: () => `Les panneaux « Voyages » relient les villages que tu as déjà découverts à pied. Appuie sur ${actionKey('interact')} pour choisir ta destination.` },
+  etoile: { emoji: '🌠', title: 'Une étoile filante est passée', text: () => `Les nuits claires, tourne la caméra vers le ciel (clic maintenu en glissant vers le haut) : quand une étoile filante passe devant toi, appuie vite sur ${actionKey('feed')} pour faire un vœu.` },
   voeu: { emoji: '🌠', title: 'Une étoile filante !', text: () => `Quand une étoile filante traverse le ciel, appuie vite sur ${actionKey('feed')} pour faire un vœu. Parfois, un cadeau arrive au courrier le lendemain…` },
   source: { emoji: '♨️', title: 'La source chaude', text: () => 'Un bain par jour donne le bonus « Bien-être » : +20 % d\'expérience pendant 4 heures.' },
   kiosque: { emoji: '🎼', title: 'Le kiosque à musique', text: () => 'Joue un air sur le kiosque : les habitants autour viendront t\'applaudir !' },

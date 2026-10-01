@@ -8,7 +8,7 @@ import { crownOf } from '../core/models.js';
 import { TREE_KINDS, TreeForest, treeTextures, clearTreeCache, treeFocus, updateLeafLighting } from './trees.js';
 import { groundTextures } from './terrainTextures.js';
 import { rockGeometries, addRockDetail } from './rocks.js';
-import { fineFlowerGeo, fineTulipGeo, fineMushroomGeo } from './flowers.js';
+import { fineFlowerGeo, fineTulipGeo, fineMushroomGeo, fineSunflowerGeo, fineCarrotGeo, fineEdelweissGeo, fineHibiscusGeo, fineCrystalGeo, fineCoralGeo } from './flowers.js';
 
 // Végétation instanciée : arbres, buissons à baies, fleurs, herbe, rochers,
 // champignons, tournesols et carottes sauvages (les trois derniers sont récoltables).
@@ -209,6 +209,7 @@ function mushroomGeo() {
 }
 
 function sunflowerGeo() {
+  if (isRealistic()) return fineSunflowerGeo();
   const s = new Shape();
   s.add(G.cyl(0.04, 0.06, 1.6, 6), '#5aa04f', { pos: [0, 0.8, 0] });
   s.add(G.sphere(0.18, 6, 4), '#5fae55', { pos: [0.14, 0.7, 0], scale: [1, 0.25, 0.5], rot: [0, 0, 0.4] });
@@ -227,11 +228,28 @@ function sunflowerGeo() {
 
 function sunflowerSeedsGeo() {
   const s = new Shape();
+  if (isRealistic()) {
+    // Cœur bombé : graines brunes, plus sombres au centre.
+    s.add(G.sphere(0.155, 16, 10), (g) => {
+      const pos = g.attributes.position;
+      const col = new Float32Array(pos.count * 3);
+      const dark = new THREE.Color('#3b2414');
+      const light = new THREE.Color('#8a5a2a');
+      for (let i = 0; i < pos.count; i++) {
+        const r = Math.hypot(pos.getX(i), pos.getY(i) - 1.7) / 0.155;
+        const c = dark.clone().lerp(light, Math.min(1, r * 1.1));
+        col.set([c.r, c.g, c.b], i * 3);
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    }, { pos: [0, 1.7, 0.06], scale: [1, 1, 0.3] });
+    return s.build();
+  }
   s.add(G.sphere(0.2, 12, 8), '#6b4326', { pos: [0, 1.7, 0.1], scale: [1, 1, 0.35] });
   return s.build();
 }
 
 function carrotGeo() {
+  if (isRealistic()) return fineCarrotGeo();
   const s = new Shape();
   s.add(G.cone(0.1, 0.2, 7), '#f28a2e', { pos: [0, 0.03, 0], rot: [Math.PI, 0, 0] });
   for (let i = 0; i < 4; i++) {
@@ -298,6 +316,7 @@ function coconutsGeo(top) {
 }
 
 function crystalGeo() {
+  if (isRealistic()) return fineCrystalGeo();
   const s = new Shape();
   s.add(G.dodeca(0.6), '#9a948c', { scale: [1.2, 0.5, 1] });
   const cols = ['#c9a0ff', '#9fd8ff', '#ffb3e6', '#b9f0ff'];
@@ -310,6 +329,7 @@ function crystalGeo() {
 }
 
 function edelweissGeo() {
+  if (isRealistic()) return fineEdelweissGeo();
   const s = new Shape();
   s.add(G.cyl(0.018, 0.022, 0.3, 4, true), '#8fb58a', { pos: [0, 0.15, 0] });
   for (let i = 0; i < 7; i++) {
@@ -321,6 +341,7 @@ function edelweissGeo() {
 }
 
 function hibiscusGeo() {
+  if (isRealistic()) return fineHibiscusGeo();
   const s = new Shape();
   s.add(G.ico(0.45, 1), (g) => paintGradientY(g, '#3f8f4a', '#79c65f', 0, 0.8), { pos: [0, 0.4, 0], scale: [1.2, 0.9, 1.1] });
   const cols = ['#ff5d73', '#ff8fb1', '#ffb347'];
@@ -338,6 +359,7 @@ function hibiscusGeo() {
 }
 
 function coralGeo() {
+  if (isRealistic()) return fineCoralGeo();
   const s = new Shape();
   const cols = ['#ff7f91', '#ffb3a0', '#c9a0ff'];
   for (let i = 0; i < 6; i++) {
@@ -471,6 +493,8 @@ export class Vegetation {
     if (isRealistic()) flowerMat.side = THREE.DoubleSide;
     const grassMat = addSeason(addWind(vc(), { strength: 0.6, base: 0.0, key: 'grass' }), { leaf: 0.7, snowLo: -1, snowHi: 0, snow: 0.75 });
     const tallMat = addSeason(addWind(vc(), { strength: 0.025, base: 0.1, key: 'tall' }), { leaf: 0.5, snowLo: 0.4, snowHi: 0.8, snow: 0.8 });
+    // (Feuilles et pétales fins des tournesols et hibiscus : visibles des deux côtés.)
+    if (isRealistic()) tallMat.side = THREE.DoubleSide;
     const staticMat = addSeason(vc(), { snowLo: 0.4, snowHi: 0.8 });
     // Rochers générés (rendu réaliste) : roche photographiée du sol, un peu de mousse.
     this.rockMat = isRealistic() && groundTextures() ? addRockDetail(addSeason(vc(), { snowLo: 0.4, snowHi: 0.8, key: 'rock' }), { moss: 0.45 }) : null;
@@ -511,7 +535,7 @@ export class Vegetation {
     const col = new THREE.Color();
     const pos = new THREE.Vector3();
     for (const m of list) {
-      if (m.count < 12 || !m.parent) continue;
+      if (m.count < 12 || !m.parent || m.userData.noSplit) continue;
       // Seulement les plus lourds : pour les petits, un appel de dessin de plus coûte
       // davantage que les triangles épargnés.
       const tris = ((m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3) * m.count;
@@ -700,6 +724,7 @@ export class Vegetation {
 
     // Cristaux sur les flancs de la montagne (récoltables).
     const crystals = makeInstanced(crystalGeo(), toon('#ffffff', { vertexColors: true, emissive: '#6a5aa0', emissiveIntensity: 0.25 }), 16, { cast: true });
+    crystals.name = 'cristaux';
     const P = LANDMARKS.peak;
     let n = 0;
     for (let t = 0; t < 600 && n < 14; t++) {
@@ -739,6 +764,7 @@ export class Vegetation {
     this.addTo('pins', bb);
     for (const m of blue.meshes) this.addTo('pins', m);
     const edel = makeInstanced(edelweissGeo(), flowerMat, 160, { cast: false });
+    edel.name = 'edelweiss';
     for (let c = 0; c < 26; c++) {
       const cx = I.x + rng.range(-60, 60);
       const cz = I.z + rng.range(-60, 60);
@@ -830,6 +856,7 @@ export class Vegetation {
 
     // Hibiscus, fleurs, étoiles de mer, coquillages, coraux du lagon.
     const hib = makeInstanced(hibiscusGeo(), tallMat, 40);
+    hib.name = 'hibiscus';
     this.scatter(rng, 32, 3000, { ...area, pad: 1.6, pathPad: 2, maxSlope: 0.35 }, (x, z, h) => {
       const i = pushInstance(hib, x, h - 0.05, z, rng.range(0, 6.28), rng.range(0.9, 1.3));
       this.world.colliders.addCircle(x, z, 0.45);
@@ -852,6 +879,7 @@ export class Vegetation {
     flowers.forEach((f) => this.addTo('corail', f));
     const stars = makeInstanced(starfishGeo(), staticMat, 40, { cast: false });
     const corals = makeInstanced(coralGeo(), staticMat, 70, { cast: false });
+    corals.name = 'coraux';
     let sp = 0;
     for (let t = 0; t < 3000; t++) {
       const a = rng.range(0, Math.PI * 2);
@@ -1173,6 +1201,7 @@ export class Vegetation {
 
   placeSunflowers(rng, mat) {
     const flowers = makeInstanced(sunflowerGeo(), mat, 20);
+    flowers.name = 'tournesols';
     const seeds = makeInstanced(sunflowerSeedsGeo(), mat, 20, { cast: false });
     const spots = [];
     for (let i = 0; i < 7; i++) spots.push([58 + i * 1.6, 20 + Math.sin(i) * 0.6]);
@@ -1196,6 +1225,7 @@ export class Vegetation {
 
   placeCarrots(rng, mat) {
     const carrots = makeInstanced(carrotGeo(), mat, 40, { cast: false });
+    carrots.name = 'carottes';
     this.scatter(rng, 26, 2000, { area: 30, center: [50, 8], pad: 0.8, pathPad: 2 }, (x, z, h) => {
       const i = pushInstance(carrots, x, h, z, rng.range(0, 6.28), 1.2);
       this.world.reserve(x, z, 0.8);

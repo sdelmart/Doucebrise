@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Shape, G, toon, vertexColorToon, getGradientMap, addSeason, shadedMaterial } from '../core/materials.js';
+import { Shape, G, toon, vertexColorToon, getGradientMap, addSeason, shadedMaterial, softDotTexture } from '../core/materials.js';
 import { createRng } from '../core/math.js';
 import { LANDMARKS, ZONES } from './layout.js';
 import { buildHome, fencePoints, DEFAULT_HOME, HOME_SIZES } from './home.js';
@@ -475,7 +475,7 @@ export class Village {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
     this.fountainSeeds = Array.from({ length: n }, () => ({ a: Math.random() * Math.PI * 2, t: Math.random(), s: 0.8 + Math.random() * 0.4 }));
-    this.fountainDrops = new THREE.Points(geo, new THREE.PointsMaterial({ color: '#dff7ff', size: 0.16, transparent: true, opacity: 0.9 }));
+    this.fountainDrops = new THREE.Points(geo, new THREE.PointsMaterial({ color: '#dff7ff', size: 0.22, map: softDotTexture(), transparent: true, opacity: 0.9, depthWrite: false }));
     this.fountainDrops.position.set(0, y, 0);
     this.fountainDrops.frustumCulled = false;
     this.group.add(this.fountainDrops);

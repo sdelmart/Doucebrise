@@ -380,6 +380,30 @@ try {
     });
     if (r) throw new Error(r);
   });
+  await step('Petits défauts (halos ronds, étoiles filantes visibles)', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const out = [];
+      if (!g.world.village.fountainDrops?.material.map) out.push('gouttes de la fontaine sans texture (carrés)');
+      // Étoile filante hors de l'écran : pas d'invite ; devant la caméra : invite.
+      g.wishT = 0;
+      g.lastWishAt = -1e9;
+      const cam = g.camera;
+      cam.updateMatrixWorld();
+      const fwd = cam.getWorldDirection(cam.position.clone()).setY(0).normalize();
+      const behind = fwd.clone().negate().setY(0.6).normalize();
+      g.onShootingStar({ a: behind, b: behind.clone().add(fwd.clone().multiplyScalar(0.01)).normalize() });
+      if (g.wishT > 0) out.push('invite de vœu pour une étoile invisible');
+      cam.updateMatrixWorld();
+      const look = cam.getWorldDirection(cam.position.clone());
+      g.onShootingStar({ a: look.clone(), b: look.clone() });
+      if (!(g.wishT > 0)) out.push('pas d\'invite pour une étoile devant la caméra');
+      g.wishT = 0;
+      g.ui.wishPrompt?.(false);
+      return out.join(' ; ');
+    });
+    if (r) throw new Error(r);
+  });
   await step('Course de luge', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;

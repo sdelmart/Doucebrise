@@ -46,17 +46,16 @@ function pixelsOf(img) {
 /** Charge les textures des arbres (à appeler avant de construire le monde). */
 export async function loadTreeTextures() {
   if (textures) return textures;
-  // Les arbres sont dessinés par lots (plusieurs arbres en un appel) : sans cette
-  // possibilité (Firefox), chaque arbre coûterait un dessin, et le jeu reprend les
-  // arbres des packs de modèles, plus légers.
+  // Les arbres sont dessinés par lots (plusieurs arbres en un appel). Sans cette
+  // possibilité (Firefox), ils sont dessinés par forme d'arbre (un maillage instancié par
+  // type, variante et niveau de détail) : mêmes arbres, quelques appels de plus.
+  let batched = false;
   try {
     const gl = document.createElement('canvas').getContext('webgl2');
-    const ok = !!gl?.getExtension('WEBGL_multi_draw');
-    gl?.getExtension('WEBGL_lose_context')?.loseContext();
-    if (!ok) {
-      console.info('Arbres réalistes indisponibles ici (WEBGL_multi_draw absent) : arbres simples.');
-      return null;
-    }
+    if (!gl) return null;
+    batched = !!gl.getExtension('WEBGL_multi_draw');
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    if (!batched) console.info('Arbres réalistes : WEBGL_multi_draw absent, dessin par forme d\'arbre.');
   } catch {
     return null;
   }
@@ -81,7 +80,7 @@ export async function loadTreeTextures() {
     tex.generateMipmaps = true;
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.needsUpdate = true;
-    textures = { bark: arrayTexture(bark, BARK_LAYERS, true), barkNormal: arrayTexture(barkN, BARK_LAYERS, false), leaves: tex };
+    textures = { bark: arrayTexture(bark, BARK_LAYERS, true), barkNormal: arrayTexture(barkN, BARK_LAYERS, false), leaves: tex, batched };
   } catch (err) {
     console.warn('Textures des arbres indisponibles :', err);
     textures = null;
@@ -388,6 +387,12 @@ function geometriesOf(species, seed, lod, snow) {
 
 /** Libère les géométries de travail (une fois toutes les îles construites). */
 export function clearTreeCache() {
+  // Dessin par forme d'arbre (sans lots) : les maillages instanciés gardent ces géométries.
+  if (textures && !textures.batched) {
+    geoCache.clear();
+    treeCache.clear();
+    return;
+  }
   for (const g of geoCache.values()) {
     g.bark.dispose();
     g.leaf.dispose();
@@ -508,6 +513,10 @@ export class TreeForest extends THREE.Group {
   build() {
     if (!this.trees.length) return;
     const mats = treeMaterials();
+    if (!textures.batched) {
+      this.buildInstanced(mats);
+      return;
+    }
     // Géométries utilisées : type × variante × niveau de détail.
     const used = new Map();
     for (const t of this.trees) {
@@ -567,9 +576,85 @@ export class TreeForest extends THREE.Group {
     shadowLod(this.leaves, this.trees, 'lid', 'leaf');
   }
 
+  /**
+   * Sans dessin par lots (Firefox) : un maillage instancié par forme d'arbre (type ×
+   * variante) et par niveau de détail, pour l'écorce et le feuillage. Les arbres passent
+   * d'un maillage à l'autre quand leur niveau de détail change.
+   */
+  buildInstanced(mats) {
+    const shapes = new Map();
+    for (const t of this.trees) {
+      const key = `${t.kind.name}|${t.variant}`;
+      let sh = shapes.get(key);
+      if (!sh) {
+        const seed = t.kind.seeds[t.variant];
+        sh = { trees: [], lods: LODS.map((_, lod) => geometriesOf(t.kind.species, seed, lod, t.kind.snow)), meshes: [] };
+        shapes.set(key, sh);
+      }
+      sh.trees.push(t);
+      t.shape = sh;
+      _q.setFromAxisAngle(_up, t.rotY);
+      t.matrix = new THREE.Matrix4().compose(_p.set(t.x, t.y, t.z), _q, _s.setScalar(t.scale));
+      t.lod = LODS.length - 1;
+    }
+    for (const sh of shapes.values()) {
+      // Volume englobant commun à tous les arbres de cette forme (ils peuvent être écartés
+      // ensemble quand ils sont tous hors champ).
+      const box = new THREE.Box3();
+      const g0 = sh.lods[0];
+      g0.leaf.computeBoundingSphere();
+      g0.bark.computeBoundingSphere();
+      const r = Math.max(g0.leaf.boundingSphere.radius + g0.leaf.boundingSphere.center.length(), g0.bark.boundingSphere.radius + g0.bark.boundingSphere.center.length());
+      for (const t of sh.trees) box.expandByPoint(_p.set(t.x, t.y, t.z));
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      sphere.radius += r * Math.max(...sh.trees.map((t) => t.scale));
+      sh.meshes = sh.lods.map((g) => {
+        const out = {};
+        for (const [part, mat, depth] of [['bark', mats.bark, mats.barkDepth], ['leaf', mats.leaves, mats.leafDepth]]) {
+          const m = new THREE.InstancedMesh(g[part], mat, sh.trees.length);
+          m.count = 0;
+          m.castShadow = true;
+          m.receiveShadow = true;
+          m.customDepthMaterial = depth;
+          m.boundingSphere = sphere;
+          m.userData.noSplit = true;
+          m.name = part === 'bark' ? 'écorce' : 'feuillage';
+          this.add(m);
+          out[part] = m;
+        }
+        return out;
+      });
+      this.fillShape(sh);
+    }
+    this.shapes = [...shapes.values()];
+    this.instanced = true;
+  }
+
+  /** Répartit les arbres d'une forme entre ses maillages, selon leur niveau de détail. */
+  fillShape(sh) {
+    const counts = sh.meshes.map(() => 0);
+    for (const t of sh.trees) {
+      const l = t.lod;
+      const i = counts[l]++;
+      _c.setScalar(t.tint);
+      for (const m of [sh.meshes[l].bark, sh.meshes[l].leaf]) {
+        m.setMatrixAt(i, t.matrix);
+        m.setColorAt(i, _c);
+      }
+    }
+    sh.meshes.forEach((pair, l) => {
+      for (const m of [pair.bark, pair.leaf]) {
+        m.count = counts[l];
+        m.visible = counts[l] > 0;
+        m.instanceMatrix.needsUpdate = true;
+        if (m.instanceColor) m.instanceColor.needsUpdate = true;
+      }
+    });
+  }
+
   /** Niveau de détail de chaque arbre selon sa distance à la caméra. */
   update(cam) {
-    if (!this.bark || !this.visible) return;
+    if ((!this.bark && !this.instanced) || !this.visible) return;
     if (this.lastCam.distanceToSquared(cam) < 0.25) return;
     this.lastCam.copy(cam);
     const t0 = LOD_DIST[0] * this.lodScale;
@@ -587,8 +672,19 @@ export class TreeForest extends THREE.Group {
       }
       if (l !== t.lod) {
         t.lod = l;
-        this.bark.setGeometryIdAt(t.bid, t.ids[l].bark);
-        this.leaves.setGeometryIdAt(t.lid, t.ids[l].leaf);
+        if (this.instanced) {
+          t.shape.dirty = true;
+        } else {
+          this.bark.setGeometryIdAt(t.bid, t.ids[l].bark);
+          this.leaves.setGeometryIdAt(t.lid, t.ids[l].leaf);
+        }
+      }
+    }
+    if (this.instanced) {
+      for (const sh of this.shapes) {
+        if (!sh.dirty) continue;
+        sh.dirty = false;
+        this.fillShape(sh);
       }
     }
   }

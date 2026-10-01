@@ -30,14 +30,15 @@ const HIDDEN = /hat|helmet|visor|cape|quiver|mask/i; // chapeaux, capes et carqu
 // la pièce (Head, Body, Arm, Leg) : peau, cheveux, haut, bas… Les cases non listées gardent
 // leur couleur (yeux, ceintures, boucles). « 0-1,2 » : colonnes 0 à 1, ligne 2.
 
-const ROLE = { keep: 0, skin: 1, hair: 2, top: 3, top2: 4, sleeve: 5, sleeve2: 6, lower: 7, legs: 8, shoes: 9 };
+const ROLE = { keep: 0, skin: 1, hair: 2, top: 3, top2: 4, sleeve: 5, sleeve2: 6, lower: 7, legs: 8, shoes: 9, bag: 10 };
 const COMMON = {
   Head: { skin: ['0-1,0-1'], hair: ['2-3,0-1'] },
   Leg: { shoes: ['6-7,4-5'], legs: ['14-15,2-3'] },
 };
 const ROLES = {
   Mage: {
-    Body: { top: ['0-1,2'], lower: ['0-1,3'], top2: ['6-7,0-1'] },
+    // Sacoche (cases bleu canard 4,4-5) : assortie à la tenue au lieu de rester bleue.
+    Body: { top: ['0-1,2'], lower: ['0-1,3'], top2: ['6-7,0-1'], bag: ['4,4-5'] },
     Arm: { skin: ['15,5'], sleeve: ['0-1,2-3'], sleeve2: ['9,0-1'] },
   },
   Knight: {
@@ -90,6 +91,8 @@ function roleTable(model, kind) {
 }
 
 /** Couleur de chaque rôle pour une apparence d'habitant. */
+const LEATHER = new THREE.Color('#7a5236');
+
 function paletteOf(a) {
   const dress = a.top === 'robe';
   const overalls = a.top === 'salopette';
@@ -104,6 +107,8 @@ function paletteOf(a) {
   out[ROLE.lower] = dress || overalls ? a.topColor : a.bottomColor;
   out[ROLE.legs] = bareLegs ? a.skin : overalls ? a.topColor : a.bottomColor;
   out[ROLE.shoes] = a.shoesColor;
+  // Sacoche : deuxième couleur de la tenue, un peu cuir.
+  out[ROLE.bag] = a.topColor2 ? new THREE.Color(a.topColor2).lerp(LEATHER, 0.35) : null;
   return out.map((c) => (c ? new THREE.Color(c) : null));
 }
 

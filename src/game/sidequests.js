@@ -351,7 +351,7 @@ export const SIDE_QUESTS = [
   S('sacha-voeu', 'sacha', 'Le vœu de l\'étoile', {
     req: { after: 'sacha-chevres', f: 40 },
     offer: ['Les nuits claires, des étoiles filantes traversent le ciel. Si tu es rapide, tu peux faire un vœu (touche F).', 'Fais-en un pour moi aussi, d\'accord ?'],
-    desc: 'Fais un vœu en voyant une étoile filante, la nuit (touche F quand elle passe).',
+    desc: 'Fais un vœu en voyant une étoile filante, la nuit : tourne la caméra vers le ciel, ou regarde dans une longue-vue (touche F quand elle passe).',
     goals: [on('wish', 1, 'Faire un vœu')],
     thanks: 'Tu as fait un vœu ? Ne me dis pas lequel, sinon il ne se réalise pas ! Tiens, mon carnet, il est à toi.',
     reward: { coins: 300, furniture: { 'etoile-murale': 1 }, stars: 5 },

@@ -184,6 +184,7 @@ export class Game {
     document.querySelector('#btn-music')?.classList.toggle('off', !this.audio.musicOn);
     this.applySettings();
     this.world.sky.onShootingStar = (st) => this.onShootingStar(st);
+    this.world.sky.shootCamera = this.camera;
     this.world.weather.onThunder = (delay) => this.audio.thunder(delay);
     this.cam.setMode('title');
     this.cam.snap = true;
@@ -521,12 +522,38 @@ export class Game {
 
   // --- Étoiles filantes et vœux -------------------------------------------------------
 
-  onShootingStar() {
+  /**
+   * Étoile filante : l'invite « fais un vœu » seulement si on la voit passer à l'écran, et
+   * pas en pleine conversation, pêche ou menu (la longue-vue, elle, est faite pour ça).
+   * Pendant la pluie d'étoiles de la fête, une invite de temps en temps seulement.
+   */
+  onShootingStar(st) {
     if (this.state !== 'play' || this.indoors) return;
+    const gazing = this.archipelago.gazing;
+    if (!gazing && (this.busy || this.panel || this.fishing.active)) return;
+    if (!gazing && st && !this.inView(st)) {
+      // Première étoile manquée : on explique comment la voir.
+      this.tips.show('etoile');
+      return;
+    }
+    if (!gazing && this.elapsed - (this.lastWishAt ?? -1e9) < 30) return;
+    this.lastWishAt = this.elapsed;
     this.tips.show('voeu');
     this.audio.play('star');
     this.wishT = 2.6;
     this.ui.wishPrompt?.(true);
+  }
+
+  /** Le trajet d'une étoile filante (directions dans le ciel) passe-t-il à l'écran ? */
+  inView(st) {
+    const cam = this.camera;
+    cam.updateMatrixWorld();
+    const v = new THREE.Vector3();
+    for (const k of [0, 0.5, 1]) {
+      v.copy(st.a).lerp(st.b, k).normalize().multiplyScalar(300).add(cam.position).project(cam);
+      if (v.z < 1 && Math.abs(v.x) < 0.95 && Math.abs(v.y) < 0.95) return true;
+    }
+    return false;
   }
 
   makeWish() {
@@ -1622,7 +1649,8 @@ export class Game {
     const golden = sky.sunDir.y > 0 ? 1 - Math.min(1, sky.sunDir.y / 0.35) : 0;
     this.postfx.setMood({ night: sky.nightFactor, golden, flash: w.weather.flash * 0.25, fog: w.weather.fogAmt });
     const festival = this.calendar.festival?.id === 'etoiles';
-    sky.shootEvery = festival ? [2, 5] : [16, 38];
+    // Quelques étoiles filantes par nuit (une pluie pendant la Nuit des étoiles).
+    sky.shootEvery = festival ? [2, 5] : [70, 140];
     this.atmoT = (this.atmoT || 0) - dt;
     if (this.atmoT <= 0) {
       this.atmoT = 0.5;
