@@ -564,6 +564,63 @@ try {
     });
     if (r) throw new Error(r);
   });
+  await step('Personnalisation et lieux (aventurier habillé, mes tenues, café, garage, muséum, aquarium)', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const out = [];
+      // Aventurier : ses couleurs, un chapeau (la coiffe d'origine s'enlève), des ailes qui bougent.
+      const before = { ...g.character.appearance };
+      const id = g.character.impl.id;
+      if (!id) return 'personnage importé absent';
+      g.setAppearance({ ...before, modelColors: false, hat: 'aucun', glasses: 'aucune', back: 'aucun' });
+      const plain = g.character.impl.meshes[0].geometry.attributes.position.count;
+      g.setAppearance({ ...before, modelColors: true, topColor: '#ff5a6e', hat: 'pasteque', glasses: 'rondes', back: 'ailes' });
+      const impl = g.character.impl;
+      if (!/:00$/.test(g.character.kindKey)) out.push(`coiffe / cape d'aventurier gardées sous les accessoires (${g.character.kindKey})`);
+      if (!(impl.meshes[0].geometry.attributes.position.count > plain)) out.push('chapeau et lunettes absents du modèle');
+      if (!impl.moving?.wings?.length) out.push('ailes absentes');
+      impl.update(0.1, { speed: 3, running: false, grounded: false });
+      if (!impl.moving?.wings?.[0]?.pivot.rotation.y) out.push('les ailes ne battent pas');
+      // Mes tenues : sauvegardées avec la partie.
+      g.looks.push({ name: 'Test', look: { ...g.character.appearance } });
+      if (!g.looks.length) out.push('tenue non enregistrée');
+      g.setAppearance(before);
+      g.looks.pop();
+      return out.join(' ; ');
+    });
+    if (r) throw new Error(r);
+    // Lieux publics : porte, intérieur, contenu, sortie.
+    const want = { cafe: (v) => v.guests.length >= 1 && v.active?.v?.def.id === 'mimi', garage: (v) => v.spots.length >= 4, musee: (v) => v.spots.length >= 9, aquarium: (v) => v.anims.length >= 5 };
+    for (const id of Object.keys(want)) {
+      const t = await page.evaluate((pid) => {
+        const g = window.game;
+        g.world.sky.hour = 11;
+        const hi = g.world.village.houses.findIndex((h) => h.id === { cafe: 'cafe', garage: 'garage', musee: 'pins-4', aquarium: 'corail-1' }[pid]);
+        const d = g.world.village.doorFront(hi, 1.0);
+        g.player.teleport(d.x, d.z, d.rot + Math.PI);
+        const door = g.visits.nearestDoor();
+        if (door?.id !== pid) return `porte de ${pid} introuvable`;
+        if (!/Entrer/.test(g.visits.doorPrompt(door).actions[0].label)) return `${pid} fermé à 11 h`;
+        g.visits.enter(door);
+        return '';
+      }, id);
+      if (t) throw new Error(t);
+      await page.waitForFunction(() => !!window.game.visits.active, null, { timeout: 30000 });
+      const bad = await page.evaluate(([pid, test]) => {
+        const v = window.game.visits;
+        return new Function('v', `return (${test})(v)`)(v) ? '' : `${pid} : intérieur incomplet`;
+      }, [id, want[id].toString()]);
+      if (bad) throw new Error(bad);
+      await page.evaluate(() => window.game.visits.exit());
+      await page.waitForFunction(() => !window.game.visits.active, null, { timeout: 30000 });
+      const left = await page.evaluate(() => window.game.animals.animals.filter((a) => a.room).length);
+      if (left) throw new Error(`${left} chat(s) restés enfermés après ${id}`);
+    }
+    const seen = await page.evaluate(() => window.game.visits.placesSeen.size);
+    if (seen !== 4) throw new Error(`lieux visités : ${seen}/4`);
+    const closed = await page.evaluate(() => { const g = window.game; g.world.sky.hour = 22; const ok = g.visits.canVisit({ place: { hours: [8, 20] } }); g.world.sky.hour = 11; return ok; });
+    if (closed) throw new Error('le muséum est ouvert à 22 h');
+  });
   await step('Course de luge', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;
@@ -742,7 +799,11 @@ try {
     if (r) throw new Error(r);
   });
   await step('Sauvegarde et reprise', async () => {
-    await page.evaluate(() => window.game.saveNow());
+    await page.evaluate(() => {
+      const g = window.game;
+      g.looks.push({ name: 'Du dimanche', look: { ...g.character.appearance, hat: 'beret' } });
+      g.saveNow();
+    });
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => window.game && window.game.state === 'title', null, { timeout: 180000 });
     await page.click('#btn-continue');
@@ -750,6 +811,8 @@ try {
     await settle();
     const name = await page.evaluate(() => window.game.character.appearance.name);
     if (name !== 'Fumée') throw new Error(`profil perdu (nom : ${name})`);
+    const look = await page.evaluate(() => window.game.looks[0]?.name);
+    if (look !== 'Du dimanche') throw new Error('tenue enregistrée perdue');
     await page.waitForTimeout(2000);
     await page.screenshot({ path: `${OUT}/3-reprise.png` });
   });

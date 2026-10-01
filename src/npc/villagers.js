@@ -1124,7 +1124,7 @@ export class Villager {
       if (Math.random() < 0.55) pool.unshift(fest);
       else pool.push(fest);
     }
-    if (g.visits?.active === this) pool.push(pick(SHARED_LINES.visit), pick(SHARED_LINES.visit));
+    if (g.visits?.active?.v === this) pool.push(pick(SHARED_LINES.visit), pick(SHARED_LINES.visit));
     if (w.seasonIndex === 3) pool.push(this.line('snow'));
     if (w.seasonIndex === 2) pool.push(this.line('autumn'));
     if (h >= 18) pool.push(this.line('evening'));

@@ -1151,3 +1151,16 @@ body.photo-mode .morning { display: none; }
   .sp-mascot, .i-dot, .brise-swirl path { animation: none; }
   .brise-swirl path { stroke-dashoffset: 0; }
 }
+
+/* Créateur : tenues enregistrées */
+.looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.look-card { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.look-card.worn { border-color: var(--pink); box-shadow: 0 0 0 3px #ffe1ea; }
+.look-name { font: inherit; font-weight: 800; font-size: 13px; border: none; border-bottom: 2px dashed var(--line); background: transparent; color: var(--ink); padding: 2px 0; width: 100%; }
+.look-name:focus { outline: none; border-bottom-color: var(--pink); }
+.look-dots { display: flex; gap: 4px; min-height: 16px; }
+.look-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
+.look-sum { font-size: 11.5px; color: var(--ink-soft, #8a7a6e); line-height: 1.3; }
+.look-btns { display: flex; gap: 6px; margin-top: auto; }
+.look-btns .btn:first-child { flex: 1; }
+#cr-look-save { margin-top: 8px; }

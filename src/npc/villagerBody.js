@@ -4,6 +4,7 @@ import { ModelBody } from '../player/avatar.js';
 import { Character, CLASSIC_FRAME } from '../player/character.js';
 import { getModel, pixelsOf } from '../core/models.js';
 import { vertexColorToon } from '../core/materials.js';
+import { damp } from '../core/math.js';
 
 // Habitants en personnages KayKit animés (même squelette et mêmes animations que le
 // joueur). Chaque habitant reçoit un modèle repeint à ses couleurs (peau, cheveux,
@@ -23,7 +24,10 @@ export const VILLAGER_MODELS = {
 const FALLBACK = ['Mage', 'Rogue', 'Knight', 'Ranger', 'Barbarian'];
 
 const HEIGHT = 1.5; // taille à l'échelle 1 (tête comprise, sans chapeau)
-const HIDDEN = /hat|helmet|visor|cape|quiver|mask/i; // chapeaux, capes et carquois d'aventurier
+// Équipement d'aventurier : chapeaux et casques, capes et carquois. Les habitants ne le
+// portent jamais ; la joueuse peut le garder (s'il ne gêne pas ses propres accessoires).
+const GEAR_HAT = /hat|helmet|visor|mask/i;
+const GEAR_BACK = /cape|quiver/i;
 
 // --- Couleurs -------------------------------------------------------------------------
 // Chaque case de la palette KayKit (16 colonnes × 8 lignes) a un rôle, selon le modèle et
@@ -131,27 +135,31 @@ function close(a, b) {
 
 const bases = new Map();
 
-function modelBase(name) {
-  if (bases.has(name)) return bases.get(name);
+/** Modèle de base, sans l'équipement d'aventurier (sauf ce qu'on demande de garder). */
+function modelBase(name, keepHat = false, keepBack = false) {
+  const key = `${name}:${keepHat ? 1 : 0}${keepBack ? 1 : 0}`;
+  if (bases.has(key)) return bases.get(key);
   let base = null;
   const gltf = getModel(`characters/${name}`);
   if (gltf) {
     try {
-      base = buildBase(name, gltf);
+      base = buildBase(name, gltf, keepHat, keepBack);
     } catch (e) {
       console.warn(`Habitant ${name} : modèle inutilisable`, e);
     }
   }
-  bases.set(name, base);
+  bases.set(key, base);
   return base;
 }
 
-function buildBase(name, gltf) {
+function buildBase(name, gltf, keepHat = false, keepBack = false) {
   const scene = cloneSkinned(gltf.scene);
   scene.updateMatrixWorld(true);
   const meshes = [];
   scene.traverse((o) => {
-    if (o.isMesh && !HIDDEN.test(o.name)) meshes.push(o);
+    if (!o.isMesh) return;
+    if (GEAR_HAT.test(o.name) ? !keepHat : GEAR_BACK.test(o.name) ? !keepBack : false) return;
+    meshes.push(o);
   });
   const ref = meshes.find((m) => m.isSkinnedMesh && kindOf(m) === 'Body') || meshes.find((m) => m.isSkinnedMesh);
   if (!ref) return null;
@@ -179,6 +187,7 @@ function buildBase(name, gltf) {
   const skinWeight = new Float32Array(count * 4);
   const role = new Uint8Array(count);
   const kind = new Uint8Array(count); // 0 tête, 1 corps, 2 bras, 3 jambes, 4 autre
+  const gear = new Uint8Array(count); // équipement d'aventurier gardé (chapeau, cape)
   const cell = new Uint8Array(count);
   const lum = new Float32Array(count);
   const rest = new Float32Array(count * 3); // position au repos (repère du modèle)
@@ -195,6 +204,7 @@ function buildBase(name, gltf) {
     const mat = Array.isArray(m.material) ? m.material[0] : m.material;
     const tex = mat?.map ? pixelsOf(mat.map) : null;
     const kd = kindOf(m);
+    const isGear = GEAR_HAT.test(m.name) || GEAR_BACK.test(m.name) ? 1 : 0;
     const table = roleTable(name, kd);
     let A;
     let map = null;
@@ -274,6 +284,7 @@ function buildBase(name, gltf) {
       lum[k] = 0.2126 * r + 0.7152 * gg + 0.0722 * bb;
       cell[k] = cl;
       kind[k] = KINDS.indexOf(kd);
+      gear[k] = isGear;
       let ro = table.get(cl) || 0;
       if (ro === ROLE.top && table.split !== null && _w.y < table.split) ro = ROLE.lower;
       role[k] = ro;
@@ -299,13 +310,17 @@ function buildBase(name, gltf) {
 
   // --- Mesures (repère du modèle, au repos) -------------------------------------------
   const box = new THREE.Box3();
-  for (let k = 0; k < count; k++) box.expandByPoint(_v.fromArray(rest, k * 3));
+  const bodyBox = new THREE.Box3();
+  for (let k = 0; k < count; k++) {
+    box.expandByPoint(_v.fromArray(rest, k * 3));
+    if (!gear[k]) bodyBox.expandByPoint(_v);
+  }
   const P = (k) => _v.fromArray(rest, k * 3);
   // Tête : du menton (bas de la peau du visage) au sommet des cheveux.
   let chin = Infinity;
   let top = -Infinity;
   for (let k = 0; k < count; k++) {
-    if (kind[k] !== 0) continue;
+    if (kind[k] !== 0 || gear[k]) continue;
     const y = rest[k * 3 + 1];
     top = Math.max(top, y);
     if (role[k] === ROLE.skin) chin = Math.min(chin, y);
@@ -314,11 +329,11 @@ function buildBase(name, gltf) {
   if (!Number.isFinite(top)) top = box.max.y;
   if (!Number.isFinite(chin)) chin = box.min.y + H * 0.55;
   const head = new THREE.Box3();
-  for (let k = 0; k < count; k++) if (kind[k] === 0 && rest[k * 3 + 1] >= chin) head.expandByPoint(P(k));
+  for (let k = 0; k < count; k++) if (kind[k] === 0 && !gear[k] && rest[k * 3 + 1] >= chin) head.expandByPoint(P(k));
   if (head.isEmpty()) head.set(new THREE.Vector3(-H * 0.2, chin, -H * 0.2), new THREE.Vector3(H * 0.2, top, H * 0.2));
   const center = new THREE.Vector3((head.min.x + head.max.x) / 2, (chin + top) / 2, (head.min.z + head.max.z) / 2);
   // Rayon de la tête (cheveux compris) selon la direction : les chapeaux épousent sa forme.
-  const radius = radiusMap(count, (k) => kind[k] === 0, P, center);
+  const radius = radiusMap(count, (k) => kind[k] === 0 && !gear[k], P, center);
   // Yeux : cases sombres du visage (colonnes 4-5, lignes 0-1).
   const eyes = [new THREE.Vector3(), new THREE.Vector3()];
   const en = [0, 0];
@@ -385,6 +400,7 @@ function buildBase(name, gltf) {
     jointInverses: joints.map((j) => j.inverse),
     box,
     height: box.max.y - box.min.y,
+    bodyHeight: bodyBox.max.y - bodyBox.min.y,
     head: { center, radius, chin, top },
     eyes: eyeInfo,
     torso,
@@ -443,7 +459,9 @@ function radiusMap(count, keep, P, center) {
 
 // --- Accessoires (chapeaux, lunettes, écharpe, sac) --------------------------------------
 
-const BACKS = new Set(['sac', 'echarpe', 'panier', 'nounours', 'sacChat', 'sacRando', 'filet', 'guitare', 'surf', 'luge']);
+const BACKS = new Set(['sac', 'echarpe', 'panier', 'nounours', 'sacChat', 'sacRando', 'filet', 'guitare', 'surf', 'luge', 'sacPasteque']);
+// Accessoires de dos qui bougent (ailes, cape, queue) : maillages à part, accrochés au torse.
+const MOVING_BACKS = new Set(['ailes', 'papillon', 'ailesAnge', 'ailesArcEnCiel', 'cape', 'queueRenard']);
 
 /** Accessoires du personnage classique, construits par ses propres fonctions. */
 function classicParts(a) {
@@ -524,8 +542,8 @@ function fitParts(parts, base) {
 }
 
 /** Géométrie d'un habitant : modèle repeint + accessoires, en un seul maillage animé. */
-function villagerGeometry(base, a) {
-  const pal = paletteOf(a);
+function villagerGeometry(base, a, { keepColors = false } = {}) {
+  const pal = keepColors ? [] : paletteOf(a);
   const acc = fitParts(classicParts(a), base);
   let extra = 0;
   for (const p of acc) extra += p.geo.attributes.position.count;
@@ -600,7 +618,7 @@ class VillagerBody extends ModelBody {
     });
     for (const o of old) o.removeFromParent();
 
-    const { geo, box } = villagerGeometry(base, this.appearance);
+    const { geo, box } = this.buildGeometry();
     const bones = base.jointNames.map((n) => this.byName[n]);
     const skeleton = new THREE.Skeleton(bones, base.jointInverses.map((m) => m.clone()));
     const mesh = new THREE.SkinnedMesh(geo, vertexColorToon());
@@ -621,6 +639,10 @@ class VillagerBody extends ModelBody {
     this.every = 1;
     this.pending = 0;
     return [mesh];
+  }
+
+  buildGeometry() {
+    return villagerGeometry(this.opts.base, this.appearance);
   }
 
   get targetHeight() {
@@ -683,4 +705,156 @@ export function createVillagerBody(id, appearance) {
     }
   }
   return null;
+}
+
+// --- Joueuse en aventurière -----------------------------------------------------------------
+// Même principe que les habitants : le modèle KayKit repeint (si on choisit ses couleurs),
+// avec les chapeaux, lunettes et sacs du style Classique. Les ailes, la cape et la queue de
+// renard sont des maillages à part, accrochés au torse, pour pouvoir bouger.
+
+const PLAYER_HEIGHT = 1.42; // corps à l'échelle 1, sans chapeau (tous les modèles pareils)
+
+/** Équipement d'aventurier gardé : jamais sous un chapeau ni avec un accessoire de dos. */
+export function gearKept(a) {
+  return {
+    hat: a.gearHat !== false && (!a.hat || a.hat === 'aucun'),
+    back: a.gearCape !== false && (!a.back || a.back === 'aucun'),
+  };
+}
+
+/** Ce qui change le maillage (couleurs et accessoires). */
+function lookKey(a) {
+  return [a.modelColors ? 1 : 0, a.skin, a.hairColor, a.top, a.topColor, a.topColor2, a.bottom, a.bottomColor, a.shoesColor, a.hat, a.hatColor, a.glasses, a.glassesColor, a.back, a.backColor].join('|');
+}
+
+const _tm = new THREE.Matrix4();
+
+class PlayerBody extends VillagerBody {
+  prepareMeshes() {
+    const meshes = super.prepareMeshes();
+    // Toujours dessinée (gros plans, créateur), animée à chaque image.
+    meshes[0].frustumCulled = false;
+    meshes[0].name = 'player';
+    this.buildMoving();
+    return meshes;
+  }
+
+  buildGeometry() {
+    return villagerGeometry(this.opts.base, this.appearance, { keepColors: !this.appearance.modelColors });
+  }
+
+  get targetHeight() {
+    return PLAYER_HEIGHT;
+  }
+
+  measureHeight() {
+    return this.opts.base.bodyHeight || this.opts.base.height;
+  }
+
+  setDistance() {}
+
+  setAppearance(a) {
+    const prev = this.appearance;
+    this.appearance = { ...a };
+    if (a.height !== prev.height || a.build !== prev.build) {
+      this.applyScale();
+      this.hipsY = this.boneHeight('hips') || this.hipsY;
+      for (const acc of [this.rod, this.net]) acc?.scale.setScalar(1 / (this.unit * (a.height || 1)));
+    }
+    if (lookKey(a) !== lookKey(prev)) this.rebuildLook();
+  }
+
+  /** Nouvelles couleurs ou nouveaux accessoires : on refait le maillage (même squelette). */
+  rebuildLook() {
+    const mesh = this.meshes[0];
+    const old = mesh.geometry;
+    const { geo } = this.buildGeometry();
+    mesh.geometry = geo;
+    for (const o of mesh.parent.children) if (o !== mesh && o.geometry === old) o.geometry = geo;
+    old.dispose();
+    this.clearMoving();
+    this.buildMoving();
+  }
+
+  /** Ailes, cape, queue : construites comme pour le Classique, dans le repère du torse. */
+  buildMoving() {
+    const a = this.appearance;
+    this.moving = null;
+    if (!MOVING_BACKS.has(a.back)) return;
+    const base = this.opts.base;
+    const chest = this.byName[base.jointNames[base.chestJoint]];
+    if (!chest) return;
+    const t = base.torso;
+    const frame = new THREE.Group();
+    frame.matrixAutoUpdate = false;
+    _tm.compose(new THREE.Vector3(0, t.hipsY, t.cz), new THREE.Quaternion(), new THREE.Vector3(t.halfX / F.torsoHalf[0], (t.neckY - t.hipsY) / F.neck, t.halfZ / F.torsoHalf[1]));
+    frame.matrix.copy(base.jointInverses[base.chestJoint]).multiply(_tm);
+    frame.matrixWorldNeedsUpdate = true;
+    const holder = {
+      torso: frame,
+      parts: [],
+      materials: [],
+      wings: [],
+      cape: null,
+      foxTail: null,
+      addPart(parent, geo, mat = vertexColorToon(), { shadow = true } = {}) {
+        const m = new THREE.Mesh(geo, mat);
+        m.castShadow = shadow;
+        m.receiveShadow = shadow;
+        m.frustumCulled = false;
+        parent.add(m);
+        return m;
+      },
+    };
+    Character.prototype.buildBack.call(holder, a, 1);
+    chest.add(frame);
+    this.moving = holder;
+  }
+
+  clearMoving() {
+    const mv = this.moving;
+    if (!mv) return;
+    mv.torso.removeFromParent();
+    mv.torso.traverse((o) => {
+      if (o.isMesh) o.geometry.dispose();
+    });
+    for (const m of mv.materials) m.dispose();
+    this.moving = null;
+  }
+
+  update(dt, s = { speed: 0, running: false, grounded: true }) {
+    super.update(dt, s);
+    const mv = this.moving;
+    if (!mv) return;
+    const t = this.anim.t;
+    const amp = THREE.MathUtils.clamp((s.speed || 0) / 6, 0, 1);
+    for (const w of mv.wings) {
+      const f = s.grounded === false ? 14 : 3;
+      w.pivot.rotation.y = w.side * (0.25 + Math.abs(Math.sin(t * f)) * 0.55);
+    }
+    // La cape se soulève vers l'arrière en marchant.
+    if (mv.cape) mv.cape.rotation.x = damp(mv.cape.rotation.x, amp * 0.45 + (s.running ? 0.3 : 0) + Math.sin(t * 3) * 0.04, 6, dt);
+    if (mv.foxTail) {
+      mv.foxTail.rotation.y = Math.sin(t * (4 + amp * 4)) * 0.35;
+      mv.foxTail.rotation.x = -0.1 + amp * 0.2;
+    }
+  }
+
+  dispose() {
+    this.clearMoving();
+    super.dispose();
+  }
+}
+
+/** Le joueur en aventurier (modèle importé), ou null si le modèle n'est pas utilisable. */
+export function createPlayerBody(id, appearance) {
+  const keep = gearKept(appearance);
+  const base = modelBase(id.split('/').pop(), keep.hat, keep.back);
+  if (!base) return null;
+  try {
+    return new PlayerBody(id, appearance, { base });
+  } catch (e) {
+    console.warn(`Joueur ${id} : modèle d'origine`, e);
+    return null;
+  }
 }

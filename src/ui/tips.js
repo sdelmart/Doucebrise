@@ -19,7 +19,7 @@ const TIPS = {
   pause: { emoji: '⏸️', title: 'Le menu', text: () => `${escapeHtml('Échap')} ouvre le menu : paramètres (graphismes, touches, son), sauvegarde et profils. ${escapeHtml(actionKey('fps'))} affiche le compteur d'images par seconde.` },
   neige: { emoji: '☃️', title: 'La Fête des neiges', text: () => `Parle à Hugo pour construire ton bonhomme de neige (il juge la forme et le style), et à Noé, Léo ou Sacha pour la bataille de boules de neige : ${actionKey('interact')} pour lancer, bouge pour esquiver !` },
   luge: { emoji: '🛷', title: 'La course de luge', text: () => 'Au sommet du Pic, prends la luge de Hugo et dévale la pente jusqu\'au bourg. Chaque porte manquée coûte une seconde, et les étoiles rapportent des pièces !' },
-  visite: { emoji: '🚪', title: 'Rendre visite', text: () => `Frappe à la porte d'un habitant (${actionKey('interact')}) quand il est chez lui, le soir ou tôt le matin. Chacun a décoré sa maison à sa façon !` },
+  visite: { emoji: '🚪', title: 'Rendre visite', text: () => `Frappe à la porte d'un habitant (${actionKey('interact')}) entre 6 h et 22 h : chacun a décoré sa maison à sa façon ! Le café, le garage, le muséum et l'aquarium t'ouvrent aussi leurs portes en journée.` },
 };
 
 export class Tips {

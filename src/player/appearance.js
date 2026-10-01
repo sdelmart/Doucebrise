@@ -57,6 +57,9 @@ export const OPTIONS = {
 
 export const DEFAULT_APPEARANCE = {
   model: 'auto', // 'auto' : personnage importé s'il y en a, 'classique' : construit en code
+  modelColors: false, // aventurier : couleurs d'origine (false) ou celles choisies ci-dessous
+  gearHat: true, // aventurier : garder sa coiffe (chapeau de mage, casque…) sans autre chapeau
+  gearCape: true, // aventurier : garder sa cape / son carquois sans accessoire de dos
   name: 'Lou',
   skin: '#fbd5bd',
   height: 1,

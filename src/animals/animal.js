@@ -65,8 +65,9 @@ export class Animal {
       outfit: Object.keys(this.outfit).length ? this.outfit : undefined,
       petToday: this.petToday,
       lastPetDay: this.lastPetDay,
-      x: this.adopted ? +this.pos.x.toFixed(1) : undefined,
-      z: this.adopted ? +this.pos.z.toFixed(1) : undefined,
+      // Pas dans une pièce (visite, maison) : il retrouvera le jardin au chargement.
+      x: this.adopted && this.pos.x < 500 ? +this.pos.x.toFixed(1) : undefined,
+      z: this.adopted && this.pos.x < 500 ? +this.pos.z.toFixed(1) : undefined,
     };
   }
 
@@ -83,6 +84,7 @@ export class Animal {
     if (this.adopted) {
       this.home = { ...yard };
       if (typeof data.x === 'number') this.teleport(data.x, data.z);
+      else this.teleport(yard.x + (Math.random() - 0.5) * 3, yard.z + (Math.random() - 0.5) * 3);
     }
     this.setOutfit(outfit);
   }
@@ -141,6 +143,9 @@ export class Animal {
   }
 
   canGo(x, z) {
+    // Dans une pièce (chats du café pendant la visite) : rester entre les murs.
+    const rm = this.room;
+    if (rm) return Math.abs(x - rm.x) < rm.hw && Math.abs(z - rm.z) < rm.hd;
     const h = this.world.groundAt(x, z);
     if (this.species === 'canard' || this.species === 'loutre') return h > -3;
     return h > 0.25;

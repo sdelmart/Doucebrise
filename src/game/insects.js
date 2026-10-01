@@ -49,7 +49,7 @@ function inHours(h, [a, b]) {
   return a <= b ? h >= a && h < b : h >= a || h < b;
 }
 
-function insectMesh(def) {
+export function insectMesh(def) {
   const s = new Shape();
   const wings = new Shape();
   const c = def.color;

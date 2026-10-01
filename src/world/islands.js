@@ -844,6 +844,7 @@ export class IslandVillages {
     // Boutiques : pâtisserie d'Élise, atelier de Hugo.
     this.shop(id, 'patisserie', 'Pâtisserie', 1, pastryStand(), '#fff1dc', '#c0584a');
     this.shop(id, 'atelier', 'Atelier du bois', 2, woodStand(), '#fff1dc', '#6b4a2e');
+    this.placeSign(id, 'Muséum', 4, '#f3ead8', '#5b4636');
     // Panneau de voyage.
     this.travelSign(id, 'pins', 'Bourg-Sapin', '🏔️', B.x - 6.5, B.z + 7.5);
     // Source chaude.
@@ -967,6 +968,7 @@ export class IslandVillages {
     this.shop(id, 'capitainerie', 'Capitainerie', 3, fishStand(), '#e8f3ff', '#2f5f8a');
     this.shop(id, 'galerie', 'Galerie', 4, easelStand(), '#fff6e8', '#8a4a9a');
     this.shop(id, 'plongee', 'Plongée', 5, diveStand(), '#e2f7ef', '#2f7f6a');
+    this.placeSign(id, 'Aquarium', 1, '#e2f4ff', '#2f5f8a');
     this.travelSign(id, 'corail', 'Port-Corail', '⚓', Pt.x + 6.8, Pt.z - 7.2);
     // Port : pontons, bateaux amarrés, capitainerie.
     this.harbor(id);
@@ -1099,6 +1101,20 @@ export class IslandVillages {
     this.add(id, new Shape().add(G.box(0.1, 1.9, 0.1), WOOD_DARK, { pos: [0, 0.95, 0] }).build(), sx + post[0], y, sz + post[1], h.rot);
     this.sign(id, label, sx + post[0], y + 2.0, sz + post[1], h.rot, 1.6, [bg, fg]);
     this.world.colliders.addCircle(sx + post[0], sz + post[1], 0.15);
+  }
+
+  /** Enseigne sur poteau près de la porte d'une maison devenue lieu public (muséum…). */
+  placeSign(id, label, houseIdx, bg, fg) {
+    const h = this.village.houses.filter((hh) => hh.village === id)[houseIdx];
+    const fwd = [Math.sin(h.rot), Math.cos(h.rot)];
+    const side = [fwd[1], -fwd[0]];
+    const x = h.x + fwd[0] * (h.d / 2 + 1.3) + side[0] * 1.7;
+    const z = h.z + fwd[1] * (h.d / 2 + 1.3) + side[1] * 1.7;
+    const y = this.h(x, z);
+    this.add(id, new Shape().add(G.box(0.1, 1.9, 0.1), WOOD_DARK, { pos: [0, 0.95, 0] }).build(), x, y, z, h.rot);
+    this.sign(id, label, x, y + 2.0, z, h.rot, 1.5, [bg, fg]);
+    this.world.colliders.addCircle(x, z, 0.15);
+    this.world.reserve(x, z, 1.2);
   }
 
   travelSign(id, travelId, name, emoji, x, z) {

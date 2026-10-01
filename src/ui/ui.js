@@ -5,6 +5,7 @@ import { ZONES, MAP_RANGE } from '../world/layout.js';
 import { STORY, CHAPTERS } from '../game/quests.js';
 import { JOB_TYPES } from '../game/jobs.js';
 import { ACTIONS } from '../core/settings.js';
+import { PLACES } from '../house/visits.js';
 import { actionKey, keyLabel } from '../core/input.js';
 
 // Libellés de touches des bulles d'action (« E », « Maj »…) → touche réelle du joueur.
@@ -792,6 +793,12 @@ export class UI {
     if (isl.telescope) places.push([isl.telescope, '🔭']);
     if (isl.bandstand) places.push([isl.bandstand, '🎼']);
     if (g.sled) places.push([g.sled.startSign, '🛷']);
+    // Muséum et aquarium : devant leur porte.
+    for (const id of ['musee', 'aquarium']) {
+      const pl = PLACES[id];
+      const hi = g.visits.houseOf(pl);
+      if (hi >= 0) places.push([v.doorFront(hi, 1.6), pl.emoji]);
+    }
     for (const [pl, em] of places) {
       if (!pl) continue;
       const [px, py] = toMap(pl.x, pl.z);

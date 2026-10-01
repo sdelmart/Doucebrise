@@ -93,7 +93,13 @@ L'écran reste dégagé pour profiter de l'île (Paramètres → Affichage → I
 - **Bourg-Sapin** : Grand-père Aurèle (source chaude), Élise (pâtisserie), Hugo (atelier du bois), Sacha (guide de montagne).
 - **Port-Corail** : Capitaine Nérée (capitainerie), Coralie (club de plongée), Paco (paillote), Maëlys (galerie de peinture).
 - **Quêtes des habitants** : un « ! » doré au-dessus de la tête = une quête à proposer, un « ? » = une quête à rendre. Cueillettes, pêche au lac ou au lagon, insectes rares, photos, concerts, livraisons de lettres et de colis d'un village à l'autre, amitiés à renouer… avec meubles, recettes, titres et étoiles en récompense. Journal → onglet **Quêtes** pour suivre ou abandonner.
-- **Visites** : frappe à la porte d'un habitant le soir ou tôt le matin (quand il est chez lui) et découvre son intérieur, décoré à son image — 16 maisons toutes différentes.
+- **Visites** : frappe à la porte d'un habitant (de 6 h à 22 h) et découvre son intérieur, décoré à son image — 14 maisons toutes différentes.
+- **Lieux à visiter** (portes marquées sur la carte) :
+  - **☕ Café des Chats** (7 h–21 h) : Mimi derrière son comptoir à gâteaux, tables bistrot, arbres à chat… et les **pensionnaires du café** qui entrent avec toi (à caresser, nourrir, adopter) ; ils retrouvent leur terrasse en sortant.
+  - **🔧 Garage de Léo** (8 h–20 h) : voiturette, scooter, vélo et trottinette exposés (« À toi ! » ou leur prix, à tes couleurs si tu les as), établi et mur à outils ; la boutique de Léo d'un appui sur `E`.
+  - **🏛️ Muséum des Pins** (Bourg-Sapin, 8 h–20 h) : tes insectes les plus rares sous des cloches de verre, et le grand panneau des 22 espèces (attrapées ou « ? »).
+  - **🐠 Aquarium du lagon** (Port-Corail, 8 h–20 h) : deux bassins et une grande colonne où nagent les pensionnaires et **chaque espèce que tu as pêchée**, et le panneau des 38 poissons.
+  - Près d'une vitrine, d'un bassin ou d'un panneau, `E` ouvre le détail des collections. Succès « Touriste de l'archipel » pour les quatre.
 - Emplois du temps, scènes d'amitié à 2 et 4 cœurs, anniversaires, courrier chaque matin, bavardages (qui parlent de la météo, des aurores, des fêtes…), demandes du jour (petit « ! » bleu).
 - **Quêtes courtes et variées** : les demandes du jour viennent des habitants déjà rencontrés, dans les villages déjà visités, souvent pour un objet qu'ils aiment, jamais le même habitant ni le même objet deux jours de suite ; les défis du jour ne proposent que ce qui est faisable à ce stade ; les petits boulots restent près de chez toi et changent d'un jour à l'autre. Les quêtes « va voir… », « adopte… », « vis une scène d'amitié » sont validées si c'est déjà fait.
 
@@ -155,7 +161,9 @@ Le premier jour de chaque saison (sauf le tout premier jour de la partie) :
 - **Sol détaillé** : textures photographiques (Poly Haven, CC0) mélangées selon le terrain — herbe, sous-bois, terre des chemins, sable, roche des falaises, pavés des places, neige des sommets — avec relief (normales) et transitions par la hauteur (les cailloux dépassent de l'herbe). Les couleurs des biomes et des saisons sont gardées.
 - **Tapis d'herbe dense** autour du joueur : des dizaines de milliers de brins animés par le vent, qui s'écartent à ton passage, dorés en automne et tassés sous la neige (réglage « Herbe »).
 - **Personnage 3D animé** (KayKit Adventurers) : Mage, Chevalier, Barbare, Rôdeur, Voleur, Voleur à capuche — ou le style **Classique** entièrement personnalisable (onglet Style du créateur). Marche, course, saut, cueillette, caresses via les animations KayKit ; s'asseoir, saluer, danser, applaudir, pêcher sont posés en code.
-- **Habitants 3D animés** (`src/npc/villagerBody.js`) : les 16 habitants utilisent les mêmes modèles et animations que le joueur (marche, attente, assis sur les bancs, salut, joie, pêche, parapluie), **repeints à leurs couleurs** — peau, cheveux (ou barbe), haut, bas, chaussures — et coiffés de **leurs chapeaux, lunettes, écharpes et sacs** d'avant, ajustés à la forme de la tête et du torse. Chaque habitant est fusionné en un seul maillage animé avec un matériau partagé (un appel de dessin), n'est pas dessiné hors champ, et s'anime moins souvent au loin. Sans les modèles, le jeu reprend les habitants construits en code.
+- **Aventurier à ton image** : couleurs « D'origine » ou « À mon goût » (peau, cheveux, haut, bas, chaussures ; robe, jupe et salopette changent aussi les jambes), taille et carrure, et **tous les chapeaux, lunettes et accessoires de dos** (ailes qui battent, cape qui se soulève en marchant, queue de renard qui remue). La coiffe et la cape d'aventurier se gardent ou s'enlèvent ; un chapeau ou un sac les remplace. Tous les aventuriers ont la même taille de corps.
+- **Mes tenues** (onglet du créateur) : enregistre jusqu'à 6 looks (personnage, couleurs, accessoires), renomme-les, remets-les d'un clic ; ils sont gardés dans la sauvegarde. Parties d'avant la v0.19 : les accessoires choisis pour le style Classique ne s'ajoutent pas d'un coup à l'aventurier, ils attendent dans « Mes tenues » (« Mes accessoires »).
+- **Habitants 3D animés** (`src/npc/villagerBody.js`) : les 16 habitants utilisent les mêmes modèles et animations que le joueur (marche, attente, assis sur les bancs, salut, joie, pêche, parapluie), **repeints à leurs couleurs** — peau, cheveux (ou barbe), haut, bas, chaussures — et coiffés de **leurs chapeaux, lunettes, écharpes et sacs** d'avant, ajustés à la forme de la tête et du torse. Chaque habitant est fusionné en un seul maillage animé avec un matériau partagé (un appel de dessin), n'est pas dessiné hors champ, et s'anime moins souvent au loin. Sans les modèles, le jeu reprend les habitants construits en code. Le joueur en aventurier passe par le même atelier (couleurs et accessoires choisis dans le créateur).
 - **Gestes de métier** (`src/npc/jobGestures.js`) : pendant leurs heures de travail, les habitants s'activent à côté de leur étal ou à leur poste, un outil en main — Bruno cloue et scie, Rose arrose ses semis, Pomme range ses fruits et appelle les clients, Lila coud, Mimi essuie le comptoir et sert, Léo visse, Élise étale la pâte et fouette, Hugo sculpte, Aurèle balaie, Sacha lit sa carte et montre les sommets, Noé scrute l'horizon aux jumelles, Nérée à la longue-vue, Coralie nettoie son masque, Paco secoue ses cocktails, Maëlys peint (Marin, lui, pêche). Gestes en alternance avec des pauses, bruits d'outils entendus de près ; ils s'interrompent quand on vient leur parler.
 - **Arbres réalistes** (rendu réaliste) : chênes, bouleaux, cerisiers, pommiers, arbres dorés, pins, sapins et arbres tropicaux, **générés au lancement** (tronc et branches qui poussent selon l'essence, `src/world/treeGen.js`, d'après EZ-Tree) avec des **écorces** et des **rameaux photographiés**. Plusieurs variantes par essence ; le vent fait bouger l'arbre et frémir les feuilles.
   - **Saisons** : feuilles rousses à l'automne (quelques-unes tombent), **branches nues** l'hiver avec la neige posée dessus, feuillage revenu au printemps ; les cerisiers sont roses, les sapins d'altitude gardent leur neige.
@@ -208,7 +216,7 @@ assets/models/
 - **3 profils de sauvegarde** sur l'écran titre, chacun avec son **pseudo** (obligatoire à la création), sa saison, ses pièces et son temps de jeu. Export / import de sauvegarde en fichier.
 
 ### 🎯 Progression
-- **7 métiers** à 10 niveaux, **3 défis par jour**, **76 succès**, **titres**, carnet d'étoiles de 30 paliers, petits boulots, **record de luge**.
+- **7 métiers** à 10 niveaux, **3 défis par jour**, **77 succès**, **titres**, carnet d'étoiles de 30 paliers, petits boulots, **record de luge**.
 
 ### 🌱 Activités
 - **Potager**, **cueillette** (baies, pommes, myrtilles, noix de coco, cristaux, corail et perles…), **pêche** (**38 poissons** entre mer, étang, Lac Miroir et Lagon Turquoise), **insectes** (**22 espèces**), **cuisine** (16 recettes), boutiques dans les trois villages.
@@ -244,12 +252,13 @@ src/
                          eau, villages, îles, végétation (modèles importés : natureModels.js ;
                          arbres générés : treeGen.js, trees.js),
                          tapis d'herbe (grassField.js), feux d'artifice (fireworks.js), collisions
-  player/                Personnage classique, personnage importé animé (avatar.js), visage,
-                         apparence, déplacement, caméra
+  player/                Personnage classique, personnage importé animé (avatar.js ; body.js
+                         choisit entre les deux), visage, apparence, déplacement, caméra
   animals/               Espèces (modèles 3D), comportement, gestion
   npc/                   Habitants : apparence, emploi du temps, trajets, goûts et répliques,
                          gestes de métier (jobGestures.js), répliques des fêtes (festivalTalk.js)
   house/                 Maison : pièce, meubles, papiers peints, mode décoration, visites chez les habitants
+                         et lieux publics (visits.js : café, garage, muséum, aquarium)
   game/                  Objets, potager, cueillette, pêche, insectes, cuisine, histoire, quêtes des
                          habitants, progression, petits boulots, véhicules, calendrier, fêtes de saison
                          (festivals.js, fête des neiges : snowfest.js), voyages, luge

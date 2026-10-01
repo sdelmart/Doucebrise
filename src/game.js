@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { World } from './world/world.js';
 import { zoneAt, LANDMARKS, islandAt, ZONES } from './world/layout.js';
 import { whaleModel } from './world/islands.js';
-import { Avatar } from './player/avatar.js';
+import { Avatar } from './player/body.js';
 import { Player } from './player/player.js';
 import { FollowCamera } from './player/camera.js';
 import { DEFAULT_APPEARANCE, normalizeAppearance, randomAppearance, isLocked, shopClothes, OPTIONS } from './player/appearance.js';
@@ -127,6 +127,7 @@ export class Game {
     this.inventory = createInventory();
     this.coins = 0;
     this.unlocks = new Set();
+    this.looks = []; // tenues enregistrées (créateur, onglet « Mes tenues »)
     this.knownLoves = new Set();
     this.progress = new Progress(this);
     this.resources = new Resources(this);
@@ -184,6 +185,7 @@ export class Game {
 
     if (this.save) this.restore(this.save);
     else this.house.restore(null);
+    this.keepAdventurerLook();
     this.world.village.setPlayerName(this.character.appearance.name);
     this.audio.musicOn = this.settings.musicOn;
     document.querySelector('#btn-music')?.classList.toggle('off', !this.audio.musicOn);
@@ -337,6 +339,8 @@ export class Game {
     this.audio.ensure();
     this.titleScene.stop();
     const a = { ...randomAppearance(), name: '' };
+    // Aventurier : on commence avec son allure d'origine (accessoires au choix ensuite).
+    if (this.character.isModel) Object.assign(a, { hat: 'aucun', glasses: 'aucune', back: 'aucun' });
     this.setAppearance(a);
     this.inventory = createInventory();
     this.inventory.baie = 3;
@@ -398,7 +402,7 @@ export class Game {
 
   /** Point dehors qui représente l'intérieur (porte de la maison visitée). */
   indoorAnchor() {
-    return this.world.village.doorFront(this.visits.active ? this.visits.active.def.house : 0, 1.6);
+    return this.world.village.doorFront(this.visits.active ? this.visits.active.house : 0, 1.6);
   }
 
   get busy() {
@@ -490,6 +494,22 @@ export class Game {
   setAppearance(a, rebuild = true) {
     if (rebuild) this.character.setAppearance(normalizeAppearance(a));
     else this.character.appearance = { ...this.character.appearance, name: a.name };
+  }
+
+  /**
+   * Sauvegardes d'avant la v0.19 : les accessoires ne se voyaient pas sur les aventuriers.
+   * Pour ne pas les leur mettre d'un coup, ils partent dans « Mes tenues » (un clic pour les
+   * porter) et l'aventurier garde son allure.
+   */
+  keepAdventurerLook() {
+    const old = this.save?.appearance;
+    if (!old || old.modelColors !== undefined || !this.character.isModel) return;
+    const a = this.character.appearance;
+    if (a.hat === 'aucun' && a.glasses === 'aucune' && a.back === 'aucun') return;
+    const { name, ...look } = a;
+    void name;
+    if (this.looks.length < 6) this.looks.push({ name: 'Mes accessoires', look });
+    this.setAppearance({ ...a, hat: 'aucun', glasses: 'aucune', back: 'aucun' });
   }
 
   isLocked(key, id) {
@@ -1163,16 +1183,22 @@ export class Game {
     }
     if (this.visits.nearExit()) {
       const e = this.visits.entryPoint;
-      this.ui.setPrompt({ pos: new THREE.Vector3(e.x, 2.6, e.z + 0.8), title: '🚪 Porte', sub: `Chez ${this.visits.active.def.name}`, actions: [{ key: 'E', label: 'Sortir' }] });
+      this.ui.setPrompt({ pos: new THREE.Vector3(e.x, 2.6, e.z + 0.8), title: '🚪 Porte', sub: this.visits.label, actions: [{ key: 'E', label: 'Sortir' }] });
       if (input.hit('KeyE')) this.visits.exit();
+      return;
+    }
+    // Lieux publics : vitrines, bassins, véhicules exposés.
+    const look = this.visits.nearSpot();
+    if (look) {
+      this.ui.setPrompt({ pos: new THREE.Vector3(look.x, 2.4, look.z), title: look.title, sub: look.sub, actions: [{ key: 'E', label: look.label }] });
+      if (input.hit('KeyE')) look.act();
       return;
     }
     const vdoor = !this.indoors && !this.vehicles.riding ? this.visits.nearestDoor() : null;
     if (vdoor) {
-      const { v, door: dp } = vdoor;
-      const open = this.visits.canVisit();
-      this.ui.setPrompt({ pos: new THREE.Vector3(dp.x, this.player.pos.y + 2.6, dp.z), title: `🚪 Maison de ${v.met ? v.def.name : '???'}`, sub: open ? 'Tu peux rendre visite' : `${v.def.name} dort (visites de 6 h à 22 h)`, actions: [{ key: 'E', label: open ? 'Frapper à la porte' : 'Frapper doucement', dim: !open }] });
-      if (input.hit('KeyE')) this.visits.enter(v);
+      const dp = vdoor.door;
+      this.ui.setPrompt({ pos: new THREE.Vector3(dp.x, this.player.pos.y + 2.6, dp.z), ...this.visits.doorPrompt(vdoor) });
+      if (input.hit('KeyE')) this.visits.enter(vdoor);
       return;
     }
     if (this.house.nearDoorInside()) {
@@ -1549,7 +1575,7 @@ export class Game {
     this.world.sky.updateEnvironment(this.renderer);
     this.audio.setRain(this.state === 'play' && !this.indoors ? this.world.weather.rainAmt : 0);
     this.world.weather.indoors = this.indoors;
-    this.visits.update(this.camera);
+    this.visits.update(this.camera, dt);
     this.animals.update(sdt, this.world.sky.isNight);
     this.villagers.update(sdt);
     this.resources.update(sdt);
@@ -1580,12 +1606,15 @@ export class Game {
       else if (!this.fishing.active) this.ui.setPrompt(null);
       this.quests.update();
       const z = this.indoors ? null : zoneAt(this.player.pos.x, this.player.pos.z);
-      if (z !== this.zone) {
+      // Intérieur : le nom affiché suit la pièce (d'une visite à l'autre sans zone entre deux).
+      const room = this.house.inside ? 'maison' : this.visits.active ? this.visits.label : '';
+      if (z !== this.zone || room !== this.roomLabel) {
+        this.roomLabel = room;
         if (z) {
           this.ui.zoneBanner(z);
           this.emit('zone', { zone: z.id });
           if (z.id === 'bourg' || z.id === 'port') setTimeout(() => this.tips.show(z.id), 2500);
-        } else this.ui.setZoneLabel(this.house.inside ? { emoji: '🏡', name: 'Ta maison' } : this.visits.active ? { emoji: '🚪', name: `Chez ${this.visits.active.def.name}` } : null);
+        } else this.ui.setZoneLabel(this.house.inside ? { emoji: '🏡', name: 'Ta maison' } : this.visits.active ? { emoji: this.visits.emoji, name: this.visits.label } : null);
         this.zone = z;
       }
       if (this.lastDay !== this.world.sky.day) {
@@ -1771,6 +1800,7 @@ export class Game {
     if (this.player.vehicle && this.player.vehicle.def.mode !== 'ground') pos = this.vehicles.findLand(this.player.pos, 40, 0.2) || this.world.village.doorFront(0, 1.6);
     writeSave({
       appearance: this.character.appearance,
+      looks: this.looks,
       player: { x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), rotY: +this.player.rotY.toFixed(2) },
       time: { hour: +sky.hour.toFixed(3), day: sky.day },
       inventory: this.inventory,
@@ -1811,6 +1841,7 @@ export class Game {
     if (s.inventory) for (const [k, n] of Object.entries(s.inventory)) if (k in this.inventory) this.inventory[k] = n;
     this.coins = s.coins ?? (s.version === 1 ? 150 : 0);
     this.unlocks = new Set(s.unlocks || []);
+    this.looks = Array.isArray(s.looks) ? s.looks.filter((l) => l && l.look).slice(0, 6) : [];
     this.knownLoves = new Set(s.knownLoves || []);
     this.animals.restore(s.animals);
     this.villagers.restore(s.villagers);
