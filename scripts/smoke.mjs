@@ -62,6 +62,24 @@ try {
     await page.goto(url, { waitUntil: 'load' });
     await page.waitForFunction(() => window.game && window.game.state === 'title', null, { timeout: 180000 });
     await page.waitForSelector('#btn-new', { state: 'visible', timeout: 30000 });
+    // Écran « Douce brise » : visite en cartes postales, poteau indicateur, personnage caché.
+    const t = await page.evaluate(() => {
+      const g = window.game;
+      const ts = g.titleScene;
+      const out = [];
+      if (!ts?.active || !ts.shot) out.push('pas de visite de l\'archipel');
+      if (g.cam.mode !== 'cine') out.push(`caméra ${g.cam.mode}`);
+      if (g.character.root.visible) out.push('personnage visible pendant le titre');
+      if (!document.querySelector('.title-postcard b')?.textContent) out.push('pas de légende de carte postale');
+      if (document.querySelectorAll('.logo.brise .lt').length !== 10) out.push('lettres du logo');
+      if (!document.querySelector('.signpost #btn-new')) out.push('menu hors du poteau indicateur');
+      if (!document.querySelector('.sp-mascot')?.src.startsWith('data:image/png')) out.push('pas de chat sur le poteau');
+      const first = ts?.shot?.id;
+      ts?.next();
+      if (ts?.shot?.id === first) out.push('les cartes postales ne changent pas');
+      return out.join(' ; ');
+    });
+    if (t) throw new Error(t);
     await page.screenshot({ path: `${OUT}/1-titre.png` });
   });
   await step('Nouvelle partie', async () => {
@@ -72,6 +90,8 @@ try {
     await page.waitForFunction(() => window.game.state === 'play', null, { timeout: 60000 });
     await page.waitForTimeout(3000);
     await settle();
+    const back = await page.evaluate(() => (window.game.titleScene.active || !window.game.character.root.visible ? 'visite du titre pas arrêtée' : ''));
+    if (back) throw new Error(back);
     await page.screenshot({ path: `${OUT}/2-jeu.png` });
   });
   await step('Fenêtres (carte, journal, sac, aide, pause, paramètres)', async () => {

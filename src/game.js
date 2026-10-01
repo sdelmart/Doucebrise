@@ -45,6 +45,7 @@ import { PetsPanel } from './ui/pets.js';
 import { Dialogue } from './ui/dialogue.js';
 import { Shop } from './ui/shop.js';
 import { Adoption } from './ui/adoption.js';
+import { TitleScene } from './ui/titleScene.js';
 import { OUTFIT_SLOTS, OUTFIT_ITEMS } from './animals/outfits.js';
 import { Journal } from './ui/journal.js';
 import { PhotoMode } from './ui/photo.js';
@@ -152,6 +153,7 @@ export class Game {
     this.dialogue = new Dialogue(this);
     this.shop = new Shop(this);
     this.adoption = new Adoption(this);
+    this.titleScene = new TitleScene(this);
     this.journal = new Journal(this);
     this.decor = new DecorMode(this);
     this.photo = new PhotoMode(this);
@@ -221,6 +223,7 @@ export class Game {
     this.renderer.setAnimationLoop((t) => this.frame(t));
     this.ui.hideLoading();
     this.ui.showTitle();
+    this.titleScene.start();
     // Démarrage automatique après un changement de profil ou une nouvelle partie.
     let auto = null;
     try {
@@ -332,6 +335,7 @@ export class Game {
       return;
     }
     this.audio.ensure();
+    this.titleScene.stop();
     const a = { ...randomAppearance(), name: '' };
     this.setAppearance(a);
     this.inventory = createInventory();
@@ -351,6 +355,7 @@ export class Game {
 
   continueGame() {
     this.audio.ensure();
+    this.titleScene.stop();
     // Remet l'heure sauvegardée après l'animation de l'écran titre.
     if (this.savedTime) this.world.sky.hour = this.savedTime.hour;
     this.ui.hideTitle();
@@ -1531,7 +1536,10 @@ export class Game {
     this.player.update(dt, this.input, this.cam.yaw);
     this.player.frozen = frozen;
     this.footsteps.update(dt);
-    if (this.state === 'title') this.world.sky.hour = 10 + Math.sin(this.elapsed * 0.02) * 0.5;
+    if (this.state === 'title') {
+      this.titleScene.update(dt);
+      this.world.sky.hour = this.titleHour ?? 10 + Math.sin(this.elapsed * 0.02) * 0.5;
+    }
 
     // En pause (menu Échap, paramètres en cours de partie), le temps s'arrête.
     const paused = playing && (this.panel === 'pause' || this.panel === 'settings');

@@ -1028,3 +1028,126 @@ body.photo-mode .morning { display: none; }
 .snow-splat.on { animation: snowSplat 1s ease-out forwards; }
 @keyframes snowSplat { 0% { opacity: 1; } 60% { opacity: 0.7; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .snow-splat.on { animation-duration: 0.4s; } }
+
+/* ======================= Écran titre « Douce brise » ======================= */
+/* L'archipel en cartes postales derrière, la brise (canvas) devant, le menu en poteau
+   indicateur en bois, à droite ; le nom flotte dans le vent en haut à gauche. */
+.title { display: block; background: none; overflow: hidden; }
+.title-veil { position: absolute; inset: 0; z-index: 0; background: #fff8ee; opacity: 0; transition: opacity 0.75s ease; pointer-events: none; }
+.title-veil.on { opacity: 1; }
+.title-breeze { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.title-card.title-main-view { position: absolute; inset: 0; z-index: 2; max-width: none; padding: 0; text-align: left; pointer-events: none; }
+.title-main-view > * { pointer-events: auto; }
+.title-main-view::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 50% 42% at 20% 16%, rgba(255, 250, 242, 0.6), rgba(255, 250, 242, 0) 72%),
+    linear-gradient(90deg, rgba(60, 40, 30, 0) 58%, rgba(60, 40, 30, 0.16));
+}
+
+/* Le nom, lettre par lettre, et le souffle qui le traverse. */
+.title-logo-wrap { position: absolute; left: clamp(20px, 5vw, 84px); top: clamp(16px, 6vh, 72px); }
+.logo.brise { margin: 0; display: flex; animation: none; transform: rotate(-4deg); transform-origin: 0 100%; }
+.logo.brise .lt { display: inline-block; position: relative; will-change: transform; }
+.i-dot {
+  position: absolute; left: 50%; top: 0.52em; font-size: 0.34em; line-height: 1; transform: translateX(-50%);
+  -webkit-text-stroke: 0; text-shadow: none; filter: drop-shadow(0 2px 0 #fff) drop-shadow(0 0 2px #fff);
+  animation: dot-spin 7s linear infinite;
+}
+@keyframes dot-spin { to { transform: translateX(-50%) rotate(360deg); } }
+.brise-swirl { display: block; width: min(430px, 62vw); height: auto; margin: -4px 0 0 26px; overflow: visible; }
+.brise-swirl path {
+  fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 760; stroke-dashoffset: 760;
+  filter: drop-shadow(0 2px 2px rgba(239, 111, 148, 0.45)); animation: swirl 7s ease-in-out infinite;
+}
+@keyframes swirl { 0% { stroke-dashoffset: 760; opacity: 1; } 42%, 62% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: -760; opacity: 0; } }
+.title-logo-wrap .tagline { margin: 0 0 0 34px; text-align: left; font-size: 20px; }
+
+/* Poteau indicateur. */
+.signpost { position: absolute; right: clamp(16px, 7vw, 130px); top: clamp(8px, 9vh, 90px); bottom: 0; width: 330px; display: flex; flex-direction: column; align-items: center; }
+.sp-top { position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; margin-bottom: -14px; }
+.sp-mascot { width: 150px; height: 150px; filter: drop-shadow(0 7px 6px rgba(60, 40, 30, 0.35)); transform-origin: 50% 88%; animation: breathe 3.8s ease-in-out infinite; }
+@keyframes breathe { 50% { transform: scale(1.035, 0.975); } }
+.sp-tag {
+  margin-top: -12px; background: #fffaf2; border: 2px solid #e2c49c; border-radius: 99px; padding: 3px 12px;
+  font-weight: 900; font-size: 13px; color: #6b4a2e; box-shadow: 0 3px 0 rgba(91, 70, 54, 0.12); white-space: nowrap;
+}
+.sp-pole {
+  position: absolute; top: 132px; bottom: 0; left: 50%; width: 24px; transform: translateX(-50%); border-radius: 9px 9px 0 0;
+  background: repeating-linear-gradient(0deg, rgba(90, 55, 25, 0.12) 0 3px, transparent 3px 14px), linear-gradient(90deg, #7d5236, #c9935f 38%, #b07a4c 70%, #6f4830);
+  box-shadow: 5px 0 12px rgba(40, 25, 15, 0.22);
+}
+.sp-grass { position: absolute; bottom: -6px; left: 50%; width: 120px; height: 26px; transform: translateX(-50%); background: radial-gradient(ellipse at 50% 100%, #6fbf5a 0 55%, transparent 56%); }
+.sp-planks { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 28px; filter: drop-shadow(0 9px 10px rgba(50, 30, 15, 0.25)); }
+.plank {
+  --r: -2deg; --wood-a: #e4b078; --wood-b: #c98b52; --edge: #8f5c34;
+  position: relative; z-index: 0; min-width: 250px; padding: 12px 30px; border: none; border-radius: 7px; cursor: pointer;
+  font: inherit; font-weight: 900; font-size: 19px; color: #5b3a22; text-shadow: 0 1px 0 rgba(255, 236, 205, 0.65);
+  background: repeating-linear-gradient(0deg, rgba(120, 70, 30, 0.1) 0 2px, transparent 2px 9px), linear-gradient(var(--wood-a), var(--wood-b));
+  box-shadow: 0 4px 0 var(--edge); rotate: var(--r); transition: scale 0.18s, filter 0.18s;
+}
+/* (Planches immobiles : un bouton qui bouge sans cesse se clique mal.) */
+.plank:nth-child(2) { --r: 1.8deg; }
+.plank:nth-child(3) { --r: -1.2deg; }
+/* Pointe de flèche (un carré tourné, de la même planche). */
+.plank.to-right::after, .plank.to-left::after {
+  content: ''; position: absolute; z-index: -1; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 3px;
+  background: linear-gradient(135deg, var(--wood-a), var(--wood-b)); box-shadow: 2.8px 2.8px 0 var(--edge); transform: rotate(45deg);
+}
+.plank.to-right { padding-right: 40px; }
+.plank.to-right::after { right: -16px; }
+.plank.to-left { padding-left: 40px; }
+.plank.to-left::after { left: -16px; }
+.plank.primary { --wood-a: #ff9db6; --wood-b: #ef6f94; --edge: #c94f74; color: #fff; text-shadow: 0 2px 0 rgba(150, 40, 80, 0.45); }
+.plank:hover, .plank.nav-focus, .plank:focus-visible { scale: 1.05; filter: brightness(1.07); }
+.plank.title-main { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 300px; }
+.plank.title-main small { font-size: 12.5px; font-weight: 800; opacity: 0.95; }
+.plank-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.plank.small { min-width: 0; font-size: 14px; padding: 8px 14px; --r: 0deg; }
+
+/* Légende de la carte postale en cours. */
+.title-postcard {
+  position: absolute; left: clamp(16px, 4vw, 60px); bottom: clamp(44px, 9vh, 70px); z-index: 2;
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 10px; border-radius: 6px;
+  background: #fffaf2; border: 1px solid #ecdcc4; color: var(--ink); box-shadow: 0 10px 22px rgba(60, 40, 30, 0.25);
+  opacity: 0; transform: rotate(-2.5deg) translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; pointer-events: none;
+}
+.title-postcard.on { opacity: 1; transform: rotate(-2.5deg) translateY(0); }
+.tp-stamp { width: 48px; height: 56px; display: grid; place-items: center; font-size: 26px; background: #ffe3eb; border: 3px dotted #fff; outline: 2px solid #f0b6c5; border-radius: 3px; }
+.title-postcard b { display: block; font-size: 17px; font-weight: 900; }
+.title-postcard small { font-size: 12px; font-weight: 800; color: var(--ink-soft); }
+.tp-mark { width: 44px; height: 44px; margin-left: 4px; border-radius: 50%; border: 2px solid rgba(91, 70, 54, 0.3); background: repeating-linear-gradient(0deg, transparent 0 7px, rgba(91, 70, 54, 0.25) 7px 9px); }
+
+.title-foot { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); text-align: center; width: max-content; max-width: 46vw; }
+.title-foot .hint { margin-top: 6px; font-size: 13px; }
+
+/* Choix du profil : une fiche épinglée. */
+.title-card.title-board {
+  position: absolute; right: clamp(16px, 6vw, 110px); top: 50%; z-index: 2; width: min(470px, 92vw); max-height: 90vh; overflow-y: auto;
+  transform: translateY(-50%) rotate(-1deg); background: #fffaf2; border: 2px solid #ecdcc4; border-radius: 16px; padding: 22px 22px 18px;
+  box-shadow: 0 16px 34px rgba(60, 40, 30, 0.3);
+}
+.title-card.title-board::before { content: ''; position: absolute; top: -10px; left: 50%; width: 110px; height: 26px; transform: translateX(-50%) rotate(2deg); background: rgba(255, 214, 229, 0.85); border-radius: 3px; }
+.title-board .logo.small { animation: none; transform: rotate(-3deg); }
+
+@media (max-width: 720px) {
+  .title-logo-wrap { left: 50%; top: 14px; transform: translateX(-50%); }
+  .logo.brise { font-size: clamp(44px, 14vw, 72px); transform: rotate(-3deg); }
+  .brise-swirl { width: 70vw; }
+  .title-logo-wrap .tagline { font-size: 15px; margin-left: 10px; }
+  .signpost { left: 50%; right: auto; top: auto; height: 62vh; width: 100%; transform: translateX(-50%); }
+  .sp-mascot { width: 104px; height: 104px; }
+  .sp-pole { top: 92px; }
+  .plank { min-width: 220px; font-size: 17px; }
+  .plank.title-main { min-width: 250px; }
+  .title-postcard, .title-foot .hint { display: none; }
+  .title-card.title-board { right: 50%; transform: translate(50%, -50%) rotate(-1deg); }
+}
+@media (max-height: 560px) and (min-width: 721px) {
+  .sp-mascot { width: 110px; height: 110px; }
+  .sp-pole { top: 98px; }
+  .sp-planks { gap: 10px; margin-top: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-mascot, .i-dot, .brise-swirl path { animation: none; }
+  .brise-swirl path { stroke-dashoffset: 0; }
+}

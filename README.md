@@ -59,6 +59,8 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 
 ## Interface épurée
 
+**Écran titre « Douce brise »** : l'archipel défile en cartes postales — Café des Chats, vieux phare au coucher du soleil, place illuminée le soir, colline du moulin au matin, Bourg-Sapin, lagon de Port-Corail, plage au ponton — chacune à sa plus belle heure, avec sa légende ; quand une partie existe, la première carte est **« Chez toi »**, ta maison et tes compagnons dans le jardin. Les lettres de « Doucebrise » ondulent dans la brise (le point du *i* est une fleur), et une brise traverse l'écran : pétales au printemps, pétales et petites tranches de pastèque en été, feuilles en automne, flocons en hiver ; **bouger la souris (ou le doigt) la fait souffler**. Le menu est un **poteau indicateur en bois** ; tout en haut se tient ton premier compagnon, dans sa tenue (« Mochi t'attend ! »), ou un chat du café en casque pastèque pour une nouvelle partie. Mouvement réduit respecté (le système le demande : plans fixes, sans pétales).
+
 L'écran reste dégagé pour profiter de l'île (Paramètres → Affichage → Interface : **Complète**, **Épurée** par défaut, **Minimale**).
 - **En haut à gauche** : une seule petite carte avec l'heure, la saison, le jour et les pièces, et en dessous l'objectif de la quête en cours, sur une ligne. L'ampoule 💡 ne s'allume que si la quête n'avance plus depuis quelques minutes.
 - **En haut à droite** : la mini-carte et un bouton ☰ (`Tab`) qui déplie les **menus rapides**, avec leur nom et leur touche. Décorer n'y apparaît qu'à la maison ou au jardin, les véhicules seulement quand on en a un.

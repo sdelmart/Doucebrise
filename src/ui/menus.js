@@ -6,6 +6,7 @@ import { escapeHtml } from './ui.js';
 import { VERSION, checkForUpdate } from '../core/updates.js';
 import { MUSIC_MOODS } from '../core/music.js';
 import { modelStatus } from '../core/models.js';
+import { petPortrait } from './petPortrait.js';
 
 // Menus : écran titre (3 profils), menu pause (Échap), paramètres complets
 // (graphismes, affichage, contrôles, audio, jeu) et crédits.
@@ -71,24 +72,50 @@ export class TitleMenu {
     const slots = slotSummaries();
     const active = slots.find((s) => s.slot === getSlot());
     if (this.view === 'main') {
+      card.className = 'title-card title-main-view';
       const cont = active && !active.empty
-        ? `<button id="btn-continue" class="btn big primary title-main"><span>▶ Continuer</span><small>${escapeHtml(active.name)} · ${SEASONS[active.season].emoji} jour ${active.day} · profil ${active.slot}</small></button>`
-        : '<button id="btn-continue" class="btn big primary hidden">Continuer</button>';
-      card.innerHTML = `<div class="logo">Doucebrise</div>
-        <p class="tagline">L'archipel des cœurs doux · animaux, amitiés et aventures</p>
-        <div class="title-buttons">
-          ${cont}
-          <button id="btn-new" class="btn big${active && !active.empty ? '' : ' primary'}">✨ Nouvelle partie</button>
-          <button id="btn-profiles" class="btn">👥 Profils</button>
-          <div class="title-row">
-            <button id="btn-title-settings" class="btn">⚙️ Paramètres</button>
-            <button id="btn-credits" class="btn">📜 Crédits</button>
-            ${isDesktop() ? '<button id="btn-quit" class="btn">🚪 Quitter</button>' : ''}
-          </div>
+        ? `<button id="btn-continue" class="plank to-right primary title-main"><span>▶ Continuer</span><small>${escapeHtml(active.name)} · ${SEASONS[active.season].emoji} jour ${active.day} · profil ${active.slot}</small></button>`
+        : '<button id="btn-continue" class="plank hidden">Continuer</button>';
+      // Les lettres du nom flottent dans la brise ; le point du « i » est une fleur.
+      const letters = [...'Doucebrise'].map((ch, i) => `<span class="lt" style="--i:${i}">${ch === 'i' ? 'i<span class="i-dot" aria-hidden="true">🌸</span>' : ch}</span>`).join('');
+      // Sur le poteau : ton premier compagnon (dans sa tenue), sinon un chat du café en casque pastèque.
+      const pet = g.animals?.companions()[0];
+      const mascot = pet ? { species: pet.species, variant: pet.variant, outfit: pet.outfit } : { species: 'chat', variant: 0, outfit: { tete: { id: 'pasteque' }, cou: { id: 'noeudpap', color: '#ff6f91' } } };
+      let pic = '';
+      try {
+        pic = petPortrait(g.renderer, mascot.species, mascot.variant, mascot.outfit, 150);
+      } catch {
+        pic = '';
+      }
+      const tag = pet ? `${escapeHtml(pet.name || pet.sp.label)} t'attend !` : 'Miaou, bienvenue !';
+      card.innerHTML = `<div class="title-logo-wrap">
+          <h1 class="logo brise" aria-label="Doucebrise">${letters}</h1>
+          <svg class="brise-swirl" viewBox="0 0 420 60" aria-hidden="true"><path d="M6 40 C 70 10, 120 58, 190 34 S 300 6, 330 28 C 352 44, 384 40, 392 24 C 398 12, 384 4, 374 12 C 366 20, 376 30, 386 26" /></svg>
+          <p class="tagline">L'archipel des cœurs doux</p>
         </div>
-        ${this.update ? `<a class="update-link" href="${escapeHtml(this.update.url)}" target="_blank" rel="noopener">✨ La version ${escapeHtml(this.update.version)} est disponible — la télécharger</a>` : ''}
-        <p class="hint">Clavier + souris ou manette · Sauvegarde automatique · v${VERSION}</p>
-        ${modelStatus.loaded < modelStatus.wanted ? `<p class="hint model-warn">⚠️ Modèles 3D chargés : ${modelStatus.loaded}/${modelStatus.wanted}${modelStatus.errors[0] ? ` — ${escapeHtml(modelStatus.errors[0])}` : ''}</p>` : ''}`;
+        <nav class="signpost" aria-label="Menu principal">
+          <div class="sp-top">
+            ${pic ? `<img class="sp-mascot" alt="" src="${pic}" />` : ''}
+            <span class="sp-tag">${tag}</span>
+          </div>
+          <div class="sp-pole" aria-hidden="true"></div>
+          <div class="sp-planks">
+            ${cont}
+            <button id="btn-new" class="plank to-left${active && !active.empty ? '' : ' primary'}">✨ Nouvelle partie</button>
+            <button id="btn-profiles" class="plank to-right">👥 Profils</button>
+            <div class="plank-row">
+              <button id="btn-title-settings" class="plank small">⚙️ Paramètres</button>
+              <button id="btn-credits" class="plank small">📜 Crédits</button>
+              ${isDesktop() ? '<button id="btn-quit" class="plank small">🚪 Quitter</button>' : ''}
+            </div>
+          </div>
+          <div class="sp-grass" aria-hidden="true"></div>
+        </nav>
+        <div class="title-foot">
+          ${this.update ? `<a class="update-link" href="${escapeHtml(this.update.url)}" target="_blank" rel="noopener">✨ La version ${escapeHtml(this.update.version)} est disponible — la télécharger</a>` : ''}
+          <p class="hint">Bouge la souris : la brise souffle 🌬️ · Clavier + souris ou manette · v${VERSION}</p>
+          ${modelStatus.loaded < modelStatus.wanted ? `<p class="hint model-warn">⚠️ Modèles 3D chargés : ${modelStatus.loaded}/${modelStatus.wanted}${modelStatus.errors[0] ? ` — ${escapeHtml(modelStatus.errors[0])}` : ''}</p>` : ''}
+        </div>`;
       card.querySelector('#btn-continue').onclick = () => g.continueGame();
       card.querySelector('#btn-new').onclick = () => {
         if (!active || active.empty) g.newGame();
@@ -128,6 +155,7 @@ export class TitleMenu {
           <button class="btn small${confirmDel ? ' danger' : ''}" data-del="${s.slot}" title="Supprimer">${confirmDel ? 'Supprimer ?' : '🗑️'}</button>
         </div></div>`;
     }).join('');
+    card.className = 'title-card title-board';
     card.innerHTML = `<div class="logo small">Doucebrise</div>
       <h2 class="title-sub">${this.mode === 'new' ? '✨ Où commencer ta nouvelle partie ?' : '👥 Choisis ton profil'}</h2>
       <div class="pslots">${rows}</div>

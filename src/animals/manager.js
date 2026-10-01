@@ -197,7 +197,7 @@ export class AnimalManager {
     const ctx = {
       player,
       night,
-      hold: !!player.vehicle && player.vehicle.def.mode !== 'ground',
+      hold: (!!player.vehicle && player.vehicle.def.mode !== 'ground') || this.game.state === 'title',
       followIndex: 0,
       defer: true,
       onStartle: (a) => this.game.particles.emit('alert', a.headPosition(), { count: 1, size: 0.4 }),
