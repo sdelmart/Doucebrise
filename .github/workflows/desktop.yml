@@ -2,7 +2,7 @@ name: Applications Windows et macOS
 
 on:
   push:
-    branches: ['main', 'claude/**']
+    branches: ['**']
     tags: ['v*']
   workflow_dispatch:
 

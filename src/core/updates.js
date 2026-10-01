@@ -4,7 +4,7 @@
 /* global __APP_VERSION__ */
 export const VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0';
 
-const REPO = 'sdelmart/testjeu3d';
+const REPO = 'sdelmart/Doucebrise';
 const CACHE_KEY = 'doucebrise-update';
 const CACHE_MS = 6 * 3600 * 1000;
 

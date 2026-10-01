@@ -691,7 +691,6 @@ export class Credits {
         <p><b>Technologies</b><br>Three.js (moteur 3D) · Vite · Electron (applications Windows et macOS)</p>
         <p><b>Police</b><br>Nunito — SIL Open Font License</p>
         ${game.music.tracks.some((t) => t.source === 'bundled') ? `<p><b>Musiques choisies avec amour</b><br>${[...new Set(game.music.tracks.filter((t) => t.source === 'bundled').map((t) => t.name))].map(escapeHtml).join('<br>')}</p>` : ''}
-        <p><b>Développé avec l'aide de Claude</b></p>
         <p class="note">Version ${VERSION}</p>
         <p class="note">Merci d'avoir joué ! 🌸🐱🌊</p>
       </div></div>`;
