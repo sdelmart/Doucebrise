@@ -605,14 +605,19 @@ try {
         return '';
       }, id);
       if (t) throw new Error(t);
-      await page.waitForFunction(() => !!window.game.visits.active, null, { timeout: 30000 });
+      // Première image d'un intérieur : longue sur les machines de test sans carte graphique.
+      await page.waitForFunction(() => !!window.game.visits.active, null, { timeout: 120000, polling: 250 }).catch(() => {
+        throw new Error(`${id} : on n'entre pas`);
+      });
       const bad = await page.evaluate(([pid, test]) => {
         const v = window.game.visits;
         return new Function('v', `return (${test})(v)`)(v) ? '' : `${pid} : intérieur incomplet`;
       }, [id, want[id].toString()]);
       if (bad) throw new Error(bad);
       await page.evaluate(() => window.game.visits.exit());
-      await page.waitForFunction(() => !window.game.visits.active, null, { timeout: 30000 });
+      await page.waitForFunction(() => !window.game.visits.active, null, { timeout: 120000, polling: 250 }).catch(() => {
+        throw new Error(`${id} : on ne ressort pas`);
+      });
       const left = await page.evaluate(() => window.game.animals.animals.filter((a) => a.room).length);
       if (left) throw new Error(`${left} chat(s) restés enfermés après ${id}`);
     }
@@ -651,7 +656,7 @@ try {
       g.player.teleport(4, 6, 0);
       q.check();
     });
-    await page.waitForSelector('#chapter:not(.hidden) .chap-end', { timeout: 90000 });
+    await page.waitForSelector('#chapter:not(.hidden) .chap-end', { timeout: 180000 });
     const card = await page.evaluate(() => {
       const g = window.game;
       const el = document.querySelector('#chapter .chap-end');
@@ -665,8 +670,8 @@ try {
       return out.join(' ; ');
     });
     if (card) throw new Error(card);
-    await page.waitForFunction(() => !window.game.quests.pendingBeat, null, { timeout: 30000 });
-    await page.waitForSelector('#chapter:not(.hidden) [data-chap-ok]', { timeout: 30000 }).catch(() => {});
+    await page.waitForFunction(() => !window.game.quests.pendingBeat, null, { timeout: 120000, polling: 250 });
+    await page.waitForSelector('#chapter:not(.hidden) [data-chap-ok]', { timeout: 60000 }).catch(() => {});
     await page.evaluate(() => document.querySelector('#chapter:not(.hidden) [data-chap-ok]')?.click());
     const pg = await page.evaluate(async () => {
       const g = window.game;
