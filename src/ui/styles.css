@@ -253,6 +253,28 @@ kbd, .key {
 .pet-sub { font-weight: 700; font-size: 12px; color: var(--ink-soft); }
 .pet-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .pet-actions .btn { padding: 6px 12px; font-size: 13px; }
+.pet-pic { width: 64px; height: 64px; border-radius: 16px; background: radial-gradient(circle at 50% 40%, #fff, #ffe9f0); border: 2px solid var(--line); object-fit: cover; flex: none; }
+.pet-pic.big { width: 96px; height: 96px; border-radius: 22px; }
+/* Garde-robe des animaux */
+.dress-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.dress-slots { padding: 0; margin: 4px 0 10px; flex-wrap: wrap; }
+.dress-slots .dot { color: var(--pink-d); font-size: 10px; vertical-align: middle; }
+.dress-items { margin-bottom: 12px; }
+.chip.locked { opacity: 0.6; }
+.chip small { font-weight: 900; color: var(--ink-soft); }
+.dress-colors { margin-bottom: 12px; }
+/* Adoption au Café des Chats */
+.adopt-card { width: min(780px, 100%); }
+.adopt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; margin-top: 12px; }
+.adopt-item { background: var(--card); border: 2px solid var(--line); border-radius: 18px; padding: 10px; display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; }
+.adopt-pic { width: 128px; height: 128px; border-radius: 18px; background: radial-gradient(circle at 50% 40%, #fff, #ffe9f0); }
+.adopt-breed { font-weight: 900; font-size: 15px; }
+.adopt-trait { font-weight: 700; font-size: 12px; color: var(--ink-soft); min-height: 32px; }
+.adopt-name { font-weight: 800; font-size: 12px; display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.adopt-name input { font: inherit; font-weight: 900; font-size: 15px; text-align: center; border: 2px solid var(--line); border-radius: 10px; padding: 4px 6px; background: #fff; color: var(--ink); user-select: text; }
+.adopt-done { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; background: #fff4d4; border: 2px solid #f2c14e; border-radius: 18px; padding: 10px 12px; }
+.adopt-done img { width: 72px; height: 72px; border-radius: 14px; background: #fff; }
+.adopt-done > div { flex: 1; font-weight: 700; }
 .empty-state { text-align: center; padding: 24px 10px; font-weight: 700; color: var(--ink-soft); }
 .empty-state .big { font-size: 46px; }
 

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { buildAnimal, buildAccessory, SPECIES } from './species.js';
+import { buildAnimal, SPECIES } from './species.js';
+import { buildOutfit, cleanOutfit, outfitFromAccessory } from './outfits.js';
 import { damp, lerpAngle, clamp } from '../core/math.js';
 import { vertexColorToon, withOutline } from '../core/materials.js';
 
@@ -30,15 +31,16 @@ export class Animal {
     this.petCooldown = 0;
     this.sleeping = false;
     this.swimming = false;
-    this.accessoryMesh = null;
+    this.outfitMeshes = [];
+    // Pose (garde-robe) : l'animal reste sur place, tourné vers ce point.
+    this.posing = null;
 
     // Données sauvegardées.
     this.trust = 0;
     this.adopted = false;
     this.name = '';
     this.follow = false;
-    this.accessory = 'aucun';
-    this.accessoryColor = '#ff6f91';
+    this.outfit = {};
     this.petToday = 0;
     this.lastPetDay = 0;
     this.sync();
@@ -60,8 +62,7 @@ export class Animal {
       adopted: this.adopted,
       name: this.name,
       follow: this.follow,
-      accessory: this.accessory,
-      accessoryColor: this.accessoryColor,
+      outfit: Object.keys(this.outfit).length ? this.outfit : undefined,
       petToday: this.petToday,
       lastPetDay: this.lastPetDay,
       x: this.adopted ? +this.pos.x.toFixed(1) : undefined,
@@ -75,37 +76,35 @@ export class Animal {
     this.adopted = !!data.adopted;
     this.name = data.name || '';
     this.follow = !!data.follow;
-    this.accessory = data.accessory || 'aucun';
-    this.accessoryColor = data.accessoryColor || '#ff6f91';
+    // Avant la garde-robe (v0.16) : un seul accessoire.
+    const outfit = data.outfit || outfitFromAccessory(data.accessory, data.accessoryColor);
     this.petToday = data.petToday || 0;
     this.lastPetDay = data.lastPetDay || 0;
     if (this.adopted) {
       this.home = { ...yard };
       if (typeof data.x === 'number') this.teleport(data.x, data.z);
     }
-    this.setAccessory(this.accessory, this.accessoryColor);
+    this.setOutfit(outfit);
   }
 
-  setAccessory(id, color) {
-    this.accessory = id;
-    this.accessoryColor = color;
-    if (this.accessoryMesh) {
-      this.accessoryMesh.removeFromParent();
-      this.accessoryMesh.geometry.dispose();
-      this.accessoryMesh = null;
+  /** Habille l'animal : { tete, yeux, cou, corps } → { id, color }. */
+  setOutfit(outfit) {
+    this.outfit = cleanOutfit(outfit);
+    for (const m of this.outfitMeshes) {
+      m.removeFromParent();
+      m.geometry.dispose();
     }
-    const acc = buildAccessory(this.model, id, color);
-    if (!acc) return;
-    const mesh = new THREE.Mesh(acc.geo, vertexColorToon());
-    mesh.castShadow = true;
-    withOutline(mesh, 0.01);
-    if (acc.parent === 'head') {
-      // Les ancres « top » sont exprimées dans le repère de la tête.
-      this.model.head.add(mesh);
-    } else {
-      this.model.body.add(mesh);
+    this.outfitMeshes = [];
+    const parts = buildOutfit(this.model, this.outfit);
+    for (const [where, geo] of [['head', parts.head], ['body', parts.body]]) {
+      if (!geo) continue;
+      const mesh = new THREE.Mesh(geo, vertexColorToon());
+      mesh.castShadow = true;
+      withOutline(mesh, 0.01);
+      // Repères de la tête et des yeux : dans le repère de la tête ; cou et torse : du corps.
+      (where === 'head' ? this.model.head : this.model.body).add(mesh);
+      this.outfitMeshes.push(mesh);
     }
-    this.accessoryMesh = mesh;
   }
 
   teleport(x, z) {
@@ -166,7 +165,12 @@ export class Animal {
     this.stateT -= dt;
     const following = this.adopted && this.follow && !ctx.hold;
 
-    if (following) {
+    if (this.posing) {
+      // Garde-robe : immobile, tourné vers la caméra.
+      this.sleeping = false;
+      this.state = 'idle';
+      this.lookAt(this.posing.x, this.posing.z, dt, 6);
+    } else if (following) {
       this.sleeping = false;
       // Place derrière le joueur, décalée selon l'ordre du compagnon.
       const back = ctx.player.rotY + Math.PI + (ctx.followIndex - 1) * 0.7;
@@ -328,9 +332,10 @@ export class Animal {
 
     // Tête : hoche en marchant, regarde autour à l'arrêt, se pose en dormant.
     const headBase = m.head.userData.base || (m.head.userData.base = m.head.position.clone());
-    const look = !moving && this.state !== 'sleep' ? Math.sin(this.t * 0.7) * 0.4 : 0;
+    // (En pose pour la garde-robe : tête levée vers la caméra, sans regarder ailleurs.)
+    const look = this.posing ? 0 : !moving && this.state !== 'sleep' ? Math.sin(this.t * 0.7) * 0.4 : 0;
     m.head.rotation.y = damp(m.head.rotation.y, look, 4, dt);
-    m.head.rotation.x = damp(m.head.rotation.x, this.state === 'sleep' ? 0.35 : moving ? Math.sin(this.phase * 2) * 0.05 : Math.sin(this.t * 1.1) * 0.05, 8, dt);
+    m.head.rotation.x = damp(m.head.rotation.x, this.posing ? -0.18 : this.state === 'sleep' ? 0.35 : moving ? Math.sin(this.phase * 2) * 0.05 : Math.sin(this.t * 1.1) * 0.05, 8, dt);
     m.head.rotation.z = damp(m.head.rotation.z, this.state === 'happy' ? Math.sin(this.t * 8) * 0.2 : 0, 8, dt);
     m.head.position.y = headBase.y + (this.state === 'sleep' ? -0.06 : 0);
 

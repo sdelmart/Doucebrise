@@ -479,6 +479,71 @@ try {
     }
     if (out.length) throw new Error(out.join(' ; '));
   });
+  await step('Chats du café et pastèques (adoption, garde-robe, collection pastèque)', async () => {
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const out = [];
+      // Adoption chez Mimi : le choix est là, la fenêtre s'ouvre, le chat rejoint la famille.
+      const mimi = g.villagers.get('mimi');
+      g.dialogue.start(mimi);
+      const choice = [...g.dialogue.el.querySelectorAll('.d-choice')].find((b) => /Adopter un chat/.test(b.textContent));
+      if (!choice) out.push('pas de choix « Adopter un chat » chez Mimi');
+      choice?.click();
+      if (!g.adoption.isOpen) out.push('la fenêtre d\'adoption ne s\'ouvre pas');
+      const before = g.animals.adoptable().length;
+      if (before < 1) out.push('aucun chat à adopter au café');
+      if (!document.querySelector('#adoption .adopt-pic')?.src.startsWith('data:image/png')) out.push('pas de portrait des chats');
+      document.querySelector('#adoption .adopt-item .btn.primary')?.click();
+      const cat = g.animals.companions().find((a) => a.cafeOrigin);
+      if (!cat) out.push('le chat choisi n\'est pas adopté');
+      if (g.animals.adoptable().length !== before - 1) out.push('le chat adopté est encore proposé');
+      g.adoption.close();
+      // Le lendemain, un nouveau pensionnaire arrive (et il est sauvegardé).
+      const n = g.animals.onNewDay(g.world.sky.day + 1);
+      if (n !== 1 || g.animals.adoptable().length !== before) out.push(`pas de nouveau pensionnaire (${n})`);
+      const saved = JSON.parse(JSON.stringify(g.animals.serialize()));
+      if (!saved.cafe?.arrivals?.length) out.push('nouveaux pensionnaires non sauvegardés');
+      if (cat) {
+        // Garde-robe : quatre pièces, posées sur le modèle, gardées dans la sauvegarde.
+        const outfit = { tete: { id: 'pasteque' }, yeux: { id: 'rondes', color: '#2e2e3a' }, cou: { id: 'noeudpap', color: '#e5484d' }, corps: { id: 'pull', color: '#6fcf97' } };
+        cat.setOutfit(outfit);
+        if (cat.outfitMeshes.length !== 2) out.push(`tenue : ${cat.outfitMeshes.length} pièces 3D au lieu de 2`);
+        const data = JSON.parse(JSON.stringify(cat.serialize()));
+        cat.setOutfit({});
+        cat.restore(data, g.animals.yard);
+        if (Object.keys(cat.outfit).length !== 4) out.push('tenue perdue à la reprise');
+        // Ancienne sauvegarde (un seul accessoire) reprise dans la garde-robe.
+        cat.restore({ ...data, outfit: undefined, accessory: 'collier', accessoryColor: '#ffd84d' }, g.animals.yard);
+        if (cat.outfit.cou?.id !== 'collier') out.push('ancien accessoire non repris');
+        // Aperçu : l'animal pose devant la caméra, puis reprend sa vie.
+        g.openPanel('pets');
+        g.pets.dress(cat);
+        if (g.cam.mode !== 'pet' || !cat.posing) out.push('pas de gros plan pour habiller');
+        g.closePanels();
+        if (g.cam.mode === 'pet' || cat.posing || !g.input.enabled) out.push('la garde-robe ne se referme pas proprement');
+      }
+      // Collection pastèque : meubles (toutes les couleurs de chair), papier peint, sol, potager, recettes.
+      const ids = ['pouf-pasteque', 'canape-pasteque', 'tapis-pasteque', 'lampe-pasteque', 'table-pasteque', 'lit-pasteque', 'peluche-pasteque', 'horloge-pasteque', 'guirlande-pasteque', 'panier-pasteque', 'maison-chat-pasteque', 'parasol-pasteque', 'bouee-pasteque', 'pasteque-geante'];
+      for (const id of ids) {
+        for (const c of ['#ff5a6e', '#ffd166', '#ff9fb5']) {
+          try {
+            const o = g.house.buildObject(id, c);
+            const pos = o.userData.body.geometry.attributes.position;
+            if (!pos?.count || [...pos.array.slice(0, 300)].some((v) => !Number.isFinite(v))) out.push(`${id} vide ou abîmé`);
+          } catch (e) { out.push(`${id} : ${e.message}`); }
+        }
+      }
+      const tabs = g.shopTabs('menuiserie');
+      const melonTab = tabs.find((t) => /Pastèque/.test(t.label));
+      if (!melonTab || melonTab.items().length !== ids.length) out.push('rayon pastèque de Bruno incomplet');
+      if (!tabs.find((t) => t.id === 'murs').items().some((x) => x.id === 'mur:pasteque')) out.push('pas de papier peint pastèque');
+      if (!g.shopTabs('graines')[0].items().some((x) => x.id === 'sem-pasteque')) out.push('pas de semis de pastèque chez Mamie Rose');
+      if (!g.shopTabs('cafe').find((t) => t.id === 'garde-robe')?.items().some((x) => x.id === 'pet:tete:pasteque')) out.push('pas de casque pastèque au café');
+      if (!g.cooking.known.has('jus-pasteque')) out.push('recette du jus de pastèque inconnue');
+      return out.join(' ; ');
+    });
+    if (r) throw new Error(r);
+  });
   await step('Course de luge', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;

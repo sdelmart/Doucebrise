@@ -61,6 +61,9 @@ export class Morning {
     const dry = planted.filter((p) => !gd.ripe(p) && !gd.watered(p)).length;
     if (ripe) out.push(['🥕', `${plural(ripe, 'plante')} ${ripe > 1 ? 'sont prêtes' : 'est prête'} à cueillir au potager`]);
     if (dry) out.push(['💧', `${plural(dry, 'plante')} ${dry > 1 ? 'ont' : 'a'} soif`]);
+    // Café des Chats : nouveaux pensionnaires.
+    const arr = g.animals.arrivals;
+    if (arr?.day === day) out.push(['🐱', arr.n > 1 ? `${arr.n} nouveaux chats attendent une famille au Café des Chats` : 'Un nouveau chat attend une famille au Café des Chats']);
     // Courrier.
     const letters = cal.letters.length;
     if (letters) out.push(['📬', `${plural(letters, 'lettre')} dans ta boîte aux lettres`]);

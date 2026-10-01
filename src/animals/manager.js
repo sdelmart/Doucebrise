@@ -62,6 +62,8 @@ const TRUST_PET_DAILY = 35;
 const TRUST_FOOD = 12;
 const TRUST_FAV = 28;
 export const MAX_FOLLOWERS = 3;
+// Pensionnaires du Café des Chats (adoptables chez Mimi).
+const CAFE_CATS = 5;
 
 export class AnimalManager {
   constructor(game) {
@@ -75,8 +77,15 @@ export class AnimalManager {
     let n = 0;
     // Colonie de chats devant le Café des Chats (ajoutée après les autres : les identifiants restent stables).
     const cafe = this.world.village.cafe;
-    const spawns = [...SPAWNS, ['chat', 5, cafe.x + cafe.fwd[0] * 6, cafe.z + cafe.fwd[1] * 6, 6], ...ISLAND_SPAWNS];
-    for (const [species, count, cx, cz, r] of spawns) {
+    this.cafeHome = { x: cafe.x + cafe.fwd[0] * 6, z: cafe.z + cafe.fwd[1] * 6, r: 6 };
+    const cafeSpawn = ['chat', CAFE_CATS, this.cafeHome.x, this.cafeHome.z, 6];
+    const spawns = [...SPAWNS, cafeSpawn, ...ISLAND_SPAWNS];
+    // Pensionnaires du café : la colonie de départ, puis les nouveaux venus (après chaque
+    // adoption, un chat arrive le lendemain).
+    this.cafeIds = [];
+    this.cafe = { arrivals: [], next: 1, waiting: 0 };
+    for (const spawn of spawns) {
+      const [species, count, cx, cz, r] = spawn;
       for (let i = 0; i < count; i++) {
         const pos = this.findSpot(rng, cx, cz, r, species);
         const variantCount = SPECIES[species].variants.length;
@@ -86,8 +95,59 @@ export class AnimalManager {
         a.wildHome = { ...a.home };
         this.animals.push(a);
         this.group.add(a.root);
+        if (spawn === cafeSpawn) this.cafeIds.push(a.id);
       }
     }
+  }
+
+  // --- Adoption au Café des Chats --------------------------------------------
+
+  /** Chats du café qui attendent une famille. */
+  adoptable() {
+    return this.cafeIds.map((id) => this.byId(id)).filter((a) => a && !a.adopted);
+  }
+
+  byId(id) {
+    return this.animals.find((a) => a.id === id) || null;
+  }
+
+  /** Nouveau pensionnaire au café (variante donnée), avec un identifiant à lui. */
+  addCafeCat(id, variant) {
+    const rng = createRng(this.cafe.next * 131 + 7);
+    const pos = this.findSpot(rng, this.cafeHome.x, this.cafeHome.z, this.cafeHome.r, 'chat');
+    const a = new Animal({ id, species: 'chat', variant, x: pos.x, z: pos.z, r: this.cafeHome.r }, this.world, createRng(this.cafe.next * 977 + 3));
+    a.home = { ...this.cafeHome };
+    a.wildHome = { ...a.home };
+    this.animals.push(a);
+    this.group.add(a.root);
+    this.cafeIds.push(id);
+    return a;
+  }
+
+  /** Adoption directe chez Mimi : le chat rejoint la famille, un autre arrivera demain. */
+  adoptFromCafe(a, name) {
+    if (!a || a.adopted) return;
+    this.discover(a);
+    this.cafe.waiting++;
+    this.adopt(a, name);
+    a.cafeOrigin = true;
+  }
+
+  /** Au lever du jour : les nouveaux pensionnaires arrivent au café. */
+  onNewDay(day) {
+    let n = 0;
+    while (this.cafe.waiting > 0) {
+      this.cafe.waiting--;
+      const rng = createRng(day * 53 + this.cafe.next * 17);
+      const variants = SPECIES.chat.variants.length;
+      const variant = rng.int(0, variants - 1);
+      const id = `chat-cafe-${this.cafe.next++}`;
+      this.cafe.arrivals.push({ id, variant });
+      this.addCafeCat(id, variant);
+      n++;
+    }
+    if (n) this.arrivals = { day, n };
+    return n;
   }
 
   findSpot(rng, cx, cz, r, species) {
@@ -389,12 +449,22 @@ export class AnimalManager {
     for (const a of this.animals) {
       if (a.trust > 0 || a.adopted) animals[a.id] = a.serialize();
     }
-    return { animals, discovered: this.discovered };
+    return { animals, discovered: this.discovered, cafe: this.cafe };
   }
 
   restore(data) {
     if (!data) return;
     this.discovered = data.discovered || {};
+    // Pensionnaires arrivés au café depuis le début : recréés avant de reprendre leurs données.
+    const cafe = data.cafe;
+    if (cafe) {
+      this.cafe = { arrivals: [], next: cafe.next || 1, waiting: cafe.waiting || 0 };
+      for (const { id, variant } of cafe.arrivals || []) {
+        if (this.byId(id)) continue;
+        this.cafe.arrivals.push({ id, variant });
+        this.addCafeCat(id, variant);
+      }
+    }
     for (const a of this.animals) a.restore(data.animals?.[a.id], this.yard);
   }
 }

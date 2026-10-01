@@ -208,7 +208,7 @@ function eyes(headR, { az = 0.52, el = 0.12, size = 0.042, color = '#2b1d1d', sc
       pos: [pos[0] + p.dir[0] * size * 0.45 - side * size * 0.25, pos[1] + size * 0.4, pos[2] + p.dir[2] * size * 0.45],
     });
   }
-  return { geo: s.build(), center: [0, cy, cz] };
+  return { geo: s.build(), center: [0, cy, cz], dx: Math.abs(spots[0].pos[0]) };
 }
 
 function legGeo(len, r, main, paw) {
@@ -268,6 +268,23 @@ export function buildAnimal(speciesId, variantIndex) {
     pandaRoux: buildRedPanda, poule: buildHen, oiseau: buildBird, tortue: buildTurtle, ecureuil: buildSquirrel, chevre: buildGoat, loutre: buildOtter, perroquet: buildParrot,
   };
   builders[speciesId](m, v);
+  // Repères de la garde-robe : yeux, et torse (pièces posées directement sur le corps).
+  if (m.eyeAnchor) {
+    m.anchors.eyes = m.eyeAnchor;
+    m.anchors.headR = m.eyeAnchor.headR;
+  }
+  // Cou : sous le menton (le repère des fiches tombait souvent dans la tête, et le collier
+  // y disparaissait). Anneau incliné, plus bas devant.
+  const hr = m.anchors.headR || 0.2;
+  const hp = m.head.position;
+  m.anchors.neck = { pos: [hp.x, hp.y - hr * 0.8, hp.z - hr * 0.12], r: hr * 0.74, axis: [0, 0.94, 0.33] };
+  const box = new THREE.Box3();
+  for (const o of m.body.children) if (o.isMesh) box.union(o.geometry.boundingBox || (o.geometry.computeBoundingBox(), o.geometry.boundingBox));
+  if (!box.isEmpty()) {
+    const c = box.getCenter(new THREE.Vector3());
+    const h = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+    m.anchors.torso = { pos: c.toArray(), r: h.toArray() };
+  }
   const mat = vertexColorToon();
   const meshes = [];
   m.root.traverse((o) => {
@@ -305,6 +322,8 @@ function addEyes(m, headR, opts) {
   const e = eyes(headR, opts);
   m.eyes = mesh(e.geo, m.head, { outline: false });
   m.eyes.position.set(...e.center);
+  // Repère des lunettes (les fiches posent leurs propres repères après coup).
+  m.eyeAnchor = { pos: e.center, dx: e.dx, size: opts?.size || 0.042, headR };
 }
 
 function addTail(m, pos, shape) {
@@ -851,54 +870,4 @@ function s_add(shape, color, pos, dir) {
 
 function darken(hex) {
   return `#${new THREE.Color(hex).multiplyScalar(0.7).getHexString()}`;
-}
-
-// --- Accessoires des compagnons ---------------------------------------------
-
-export const PET_ACCESSORIES = [
-  { id: 'aucun', label: 'Aucun' },
-  { id: 'collier', label: 'Collier' },
-  { id: 'noeud', label: 'Nœud' },
-  { id: 'foulard', label: 'Foulard' },
-  { id: 'chapeau', label: 'Chapeau de fête' },
-  { id: 'couronne', label: 'Couronne de fleurs' },
-];
-
-export const PET_COLORS = ['#ff6f91', '#ffd84d', '#6fcf97', '#6fa8dc', '#b69cf0', '#e5484d', '#ffffff', '#2e2e3a'];
-
-export function buildAccessory(m, id, color) {
-  const s = new Shape();
-  const n = m.anchors.neck;
-  const t = m.anchors.top;
-  switch (id) {
-    case 'collier':
-      s.add(G.torus(n.r, 0.02, 6, 18), color, { pos: n.pos, rot: [Math.PI / 2 - 0.4, 0, 0] });
-      s.add(G.sphere(0.03, 8, 6), '#ffd84d', { pos: [n.pos[0], n.pos[1] - n.r * 0.35, n.pos[2] + n.r * 0.95] });
-      return { geo: s.build(), parent: 'body' };
-    case 'foulard':
-      s.add(G.torus(n.r, 0.025, 6, 18), color, { pos: n.pos, rot: [Math.PI / 2 - 0.4, 0, 0] });
-      s.add(G.cone(n.r * 0.8, n.r * 1.1, 3), color, { pos: [n.pos[0], n.pos[1] - n.r * 0.6, n.pos[2] + n.r * 0.85], rot: [Math.PI + 0.3, 0, 0], scale: [1, 1, 0.3] });
-      return { geo: s.build(), parent: 'body' };
-    case 'noeud':
-      s.add(G.sphere(0.05, 10, 8), color, { pos: [t.pos[0] + 0.1, t.pos[1] - 0.02, t.pos[2] + 0.02], scale: [1.4, 1, 0.5], rot: [0, 0, -0.4] });
-      s.add(G.sphere(0.05, 10, 8), color, { pos: [t.pos[0] + 0.02, t.pos[1] + 0.03, t.pos[2] + 0.02], scale: [1.4, 1, 0.5], rot: [0, 0, 0.8] });
-      s.add(G.sphere(0.025, 8, 6), color, { pos: [t.pos[0] + 0.06, t.pos[1], t.pos[2] + 0.03] });
-      return { geo: s.build(), parent: 'head' };
-    case 'chapeau':
-      s.add(G.cone(0.07, 0.16, 12), color, { pos: [t.pos[0], t.pos[1] + 0.06, t.pos[2]], rot: [0, 0, 0.2] });
-      s.add(G.sphere(0.025, 8, 6), '#ffffff', { pos: [t.pos[0] - 0.03, t.pos[1] + 0.14, t.pos[2]] });
-      s.add(G.torus(0.065, 0.012, 5, 14), '#ffffff', { pos: [t.pos[0] + 0.005, t.pos[1] - 0.01, t.pos[2]], rot: [Math.PI / 2, 0.2, 0] });
-      return { geo: s.build(), parent: 'head' };
-    case 'couronne': {
-      const cols = [color, '#ffffff', '#ffd84d'];
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        s.add(G.sphere(0.03, 8, 6), cols[i % 3], { pos: [t.pos[0] + Math.cos(a) * 0.09, t.pos[1] - 0.02, t.pos[2] + Math.sin(a) * 0.09] });
-      }
-      s.add(G.torus(0.09, 0.012, 5, 16), '#5fae55', { pos: [t.pos[0], t.pos[1] - 0.03, t.pos[2]], rot: [Math.PI / 2, 0, 0] });
-      return { geo: s.build(), parent: 'head' };
-    }
-    default:
-      return null;
-  }
 }

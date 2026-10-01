@@ -233,9 +233,17 @@ export class Dialogue {
     }
     list.push({ label: '💬 Discuter', action: () => this.render(v.line('chat')) });
     list.push({ label: v.giftDay === day ? '🎁 Déjà offert aujourd\'hui' : '🎁 Offrir un cadeau', disabled: v.giftDay === day, action: () => this.giftMenu() });
+    if (v.def.shop === 'cafe') list.push({ label: '🐱 Adopter un chat', action: () => this.openAdoption() });
     if (v.def.shop) list.push({ label: '🛍️ Boutique', action: () => this.openShop() });
     list.push({ label: '👋 Au revoir', leave: true, action: () => this.close() });
     return list;
+  }
+
+  openAdoption() {
+    const v = this.villager;
+    if (!v) return;
+    this.close();
+    this.game.adoption.open(v);
   }
 
   openShop() {

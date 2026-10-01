@@ -15,7 +15,7 @@ export const VEHICLES = {
   montgolfiere: { label: 'Montgolfière', emoji: '🎈', price: 15000, speed: 8, accel: 1.6, turn: 1.4, pose: 'balloon', seat: 0.14, radius: 0, mode: 'air', altitude: 26, desc: 'Survole toute l\'île… la plus belle vue de Doucebrise !' },
 };
 
-export const VEHICLE_COLORS = ['#ff8fab', '#8fd6e8', '#ffd84d', '#b5e48c', '#b69cf0', '#e5484d', '#fffaf2', '#ffb27a', '#6fa8dc', '#3d3744'];
+export const VEHICLE_COLORS = ['#ff8fab', '#8fd6e8', '#ffd84d', '#b5e48c', '#b69cf0', '#e5484d', '#fffaf2', '#ffb27a', '#6fa8dc', '#3d3744', '#3f9d4a', '#ff5a6e'];
 
 export class Vehicles {
   constructor(game) {

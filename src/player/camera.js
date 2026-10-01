@@ -23,6 +23,8 @@ export class FollowCamera {
     this.studio = { yaw: 0, dist: 3.3, height: 0.95 };
     this.shift = 0;
     this.shiftTarget = 0;
+    this.shiftY = 0;
+    this.shiftYTarget = 0;
     this.current = new THREE.Vector3(20, 20, 20);
     this.snap = true;
   }
@@ -38,15 +40,25 @@ export class FollowCamera {
     this.cine = { pos: pos.clone(), look: look.clone() };
   }
 
+  /** Gros plan sur un animal (garde-robe). */
+  setPetView(animal, dist = 1.7) {
+    this.mode = 'pet';
+    this.pet = { animal, yaw: 0.45, dist: dist * Math.max(0.7, animal.model.scale) };
+  }
+
   /** Vue plongeante sur une zone (décoration). */
   setOverview(target, dist = 12) {
     this.mode = 'overview';
     this.over = { target: target.clone(), dist, yaw: this.yaw };
   }
 
-  /** Décalage horizontal de l'image (fraction de largeur) pour laisser place à un panneau. */
-  setShift(f) {
+  /**
+   * Décalage de l'image (fraction de largeur, et de hauteur) pour laisser place à un
+   * panneau : à droite sur grand écran, en bas sur téléphone.
+   */
+  setShift(f, fy = 0) {
     this.shiftTarget = f;
+    this.shiftYTarget = fy;
   }
 
   update(dt, player, input, elapsed) {
@@ -66,6 +78,16 @@ export class FollowCamera {
       const ry = player.rotY + this.studio.yaw;
       look.copy(player.pos).add(new THREE.Vector3(0, this.studio.height * h, 0));
       desired.set(Math.sin(ry) * this.studio.dist, 0.25, Math.cos(ry) * this.studio.dist).add(look);
+    } else if (this.mode === 'pet' && this.pet) {
+      // Garde-robe : gros plan sur l'animal, qu'on fait tourner en glissant.
+      const pv = this.pet;
+      const a = pv.animal;
+      pv.yaw -= drag.dx * 0.01;
+      pv.dist = clamp(pv.dist + wheel * 0.18, 0.9, 4.5);
+      const h = a.model.height * a.model.scale;
+      look.set(a.pos.x, a.pos.y + h * 0.55, a.pos.z);
+      const ry = a.rotY + pv.yaw;
+      desired.set(Math.sin(ry) * pv.dist, h * 0.35 + pv.dist * 0.28, Math.cos(ry) * pv.dist).add(look);
     } else if (this.mode === 'cine') {
       desired.copy(this.cine.pos);
       look.copy(this.cine.look);
@@ -153,9 +175,10 @@ export class FollowCamera {
 
     // Décalage de l'image (le personnage glisse à gauche quand un panneau s'ouvre à droite).
     this.shift = damp(this.shift, this.shiftTarget, 8, dt);
+    this.shiftY = damp(this.shiftY, this.shiftYTarget, 8, dt);
     const w = window.innerWidth;
     const h = window.innerHeight;
-    if (Math.abs(this.shift) > 0.001) this.camera.setViewOffset(w, h, w * this.shift, 0, w, h);
+    if (Math.abs(this.shift) > 0.001 || Math.abs(this.shiftY) > 0.001) this.camera.setViewOffset(w, h, w * this.shift, h * this.shiftY, w, h);
     else if (this.camera.view?.enabled) this.camera.clearViewOffset();
   }
 }

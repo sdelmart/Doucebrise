@@ -18,6 +18,7 @@ export const ITEMS = {
   tomate: { label: 'Tomates', emoji: '🍅', cat: 'crop', price: 22, feed: true },
   mais: { label: 'Maïs', emoji: '🌽', cat: 'crop', price: 26, feed: true },
   citrouille: { label: 'Citrouilles', emoji: '🎃', cat: 'crop', price: 65, feed: true },
+  pasteque: { label: 'Pastèques', emoji: '🍉', cat: 'crop', price: 72, feed: true, desc: 'Juteuse et sucrée : les animaux en raffolent aussi.' },
 
   // Trouvailles
   champignon: { label: 'Champignons', emoji: '🍄', cat: 'forage', price: 16 },
@@ -41,6 +42,7 @@ export const ITEMS = {
   'sem-tomate': { label: 'Semis de tomates', emoji: '🌱', cat: 'seed', crop: 'tomate', buy: 14, price: 4 },
   'sem-mais': { label: 'Semis de maïs', emoji: '🌱', cat: 'seed', crop: 'mais', buy: 18, price: 5 },
   'sem-citrouille': { label: 'Semis de citrouille', emoji: '🌱', cat: 'seed', crop: 'citrouille', buy: 30, price: 8 },
+  'sem-pasteque': { label: 'Semis de pastèque', emoji: '🌱', cat: 'seed', crop: 'pasteque', buy: 32, price: 9 },
 
   // Plats cuisinés
   tarte: { label: 'Tarte aux pommes', emoji: '🥧', cat: 'dish', price: 85 },
@@ -62,6 +64,8 @@ export const ITEMS = {
   glace: { label: 'Glace', emoji: '🍦', cat: 'dish', price: 30 },
   cocktail: { label: 'Cocktail de fruits', emoji: '🍹', cat: 'dish', price: 40 },
   'tarte-citrouille': { label: 'Tarte à la citrouille', emoji: '🥧', cat: 'dish', price: 160 },
+  'jus-pasteque': { label: 'Jus de pastèque', emoji: '🥤', cat: 'dish', price: 120 },
+  'sorbet-pasteque': { label: 'Sorbet pastèque', emoji: '🍧', cat: 'dish', price: 170 },
 };
 
 export const CATEGORIES = [
@@ -96,6 +100,8 @@ export const RECIPES = [
   { id: 'brochette', needs: { poisson: 2, tomate: 1 }, known: false, from: 'Nérée' },
   { id: 'salade-tropicale', needs: { 'noix-coco': 1, pomme: 1, fraise: 1 }, known: false, from: 'Coralie' },
   { id: 'tarte-citrouille', needs: { citrouille: 1, pomme: 1, baie: 2 }, known: false, from: 'Mimi', how: 'concours de cuisine' },
+  { id: 'jus-pasteque', needs: { pasteque: 1, fraise: 1 }, known: true },
+  { id: 'sorbet-pasteque', needs: { pasteque: 1, baie: 2 }, known: false, from: 'Paco' },
 ];
 
 export function itemLabel(id, n = 1) {

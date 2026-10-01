@@ -1364,18 +1364,63 @@ def('statue-chat', {
   },
 });
 def('maison-chat', {
-  label: 'Maisonnette à chat', emoji: '🏡', price: 290, w: 0.8, d: 0.7, color: '#f7a8b8', cat: 'animaux', where: 'both', petBed: true,
+  label: 'Maisonnette à chat', emoji: '🐱', price: 290, w: 0.8, d: 0.7, color: '#f7a8b8', cat: 'animaux', where: 'both', petBed: true,
   build(c) {
-    const s = new Shape();
-    s.add(G.box(0.7, 0.55, 0.6), c, { pos: [0, 0.3, 0] });
-    for (const side of [-1, 1]) s.add(G.box(0.55, 0.05, 0.7), dark(c, 0.25), { pos: [side * 0.2, 0.72, 0], rot: [0, 0, -side * 0.7] });
-    const tri = new THREE.Shape([new THREE.Vector2(-0.35, 0), new THREE.Vector2(0.35, 0), new THREE.Vector2(0, 0.32)]);
-    s.add(new THREE.ExtrudeGeometry(tri, { depth: 0.6, bevelEnabled: false }), c, { pos: [0, 0.57, -0.3] });
-    s.add(G.cyl(0.16, 0.16, 0.02, 16), '#3b2a2a', { pos: [0, 0.3, 0.31], rot: [Math.PI / 2, 0, 0] });
-    s.add(G.cyl(0.24, 0.24, 0.04, 14), '#fffaf2', { pos: [0, 0.03, 0.4], scale: [1, 1, 0.5] });
-    return s.build();
+    return catHouse(c, { inner: '#ffd6e2', eye: '#3b2a2a' });
   },
 });
+
+/**
+ * Maisonnette en tête de chat : un dôme moelleux à oreilles, l'entrée ronde à la place de
+ * la bouche, yeux, nez, moustaches et une queue enroulée derrière.
+ */
+function catHouse(c, { inner, eye }) {
+  const s = new Shape();
+  // Sur une maisonnette sombre, des yeux jaunes (les noirs ne se verraient pas).
+  const col = new THREE.Color(c);
+  if (col.r * 0.3 + col.g * 0.59 + col.b * 0.11 < 0.3) eye = '#ffd84d';
+  const C = [0, 0.36, 0];
+  const R = [0.4, 0.36, 0.34];
+  const n = new THREE.Vector3();
+  const on = (x, y, lift = 0) => {
+    const zz = Math.sqrt(Math.max(0, 1 - (x / R[0]) ** 2 - ((y - C[1]) / R[1]) ** 2)) * R[2];
+    n.set(x / R[0] ** 2, (y - C[1]) / R[1] ** 2, zz / R[2] ** 2).normalize();
+    return { pos: [x + n.x * lift, y + n.y * lift, zz + n.z * lift], dir: [n.x, n.y, n.z] };
+  };
+  s.add(G.cyl(0.37, 0.39, 0.06, 22), dark(c, 0.18), { pos: [0, 0.03, 0], scale: [1, 1, 0.86] });
+  s.add(G.sphere(1, 24, 16), c, { pos: C, scale: R });
+  // Entrée ronde, bordée, avec un coussin.
+  s.add(G.cyl(0.15, 0.15, 0.05, 20), '#3b2a2a', { ...on(0, 0.22, -0.01), surf: 6 });
+  s.add(G.torus(0.155, 0.028, 6, 20), light(c, 0.45), { ...on(0, 0.22, 0.005) });
+  s.add(G.sphere(0.12, 10, 6), inner, { pos: [0, 0.12, 0.27], scale: [1.1, 0.35, 0.7] });
+  // Yeux, reflets, nez, joues.
+  for (const sx of [-1, 1]) {
+    s.add(G.sphere(0.05, 10, 8), eye, { ...on(sx * 0.15, 0.5, 0), scale: [0.8, 1.15, 0.4] });
+    s.add(G.sphere(0.017, 6, 4), '#ffffff', { ...on(sx * 0.15 - 0.015, 0.52, 0.02) });
+    s.add(G.sphere(0.04, 8, 6), '#ff9fb5', { ...on(sx * 0.25, 0.42, 0), scale: [1.3, 0.7, 0.3] });
+  }
+  s.add(G.sphere(0.03, 8, 6), '#ff7f9e', { ...on(0, 0.44, 0.01), scale: [1.3, 0.8, 0.6] });
+  // Moustaches.
+  for (const sx of [-1, 1]) {
+    const root = on(sx * 0.13, 0.41, 0).pos;
+    for (const up of [0.12, -0.05]) {
+      const d = new THREE.Vector3(sx, up, 0.35).normalize();
+      const g = G.cyl(0.005, 0.004, 0.2, 4);
+      g.rotateX(Math.PI / 2);
+      s.add(g, eye, { pos: [root[0] + d.x * 0.1, root[1] + d.y * 0.1, root[2] + d.z * 0.1], dir: [d.x, d.y, d.z] });
+    }
+  }
+  // Oreilles.
+  for (const sx of [-1, 1]) {
+    s.add(G.cone(0.15, 0.26, 4), c, { pos: [sx * 0.22, 0.7, -0.02], rot: [0, Math.PI / 4, -sx * 0.42], scale: [1, 1, 0.55] });
+    s.add(G.cone(0.09, 0.17, 4), '#ffb3c7', { pos: [sx * 0.215, 0.69, 0.03], rot: [0, Math.PI / 4, -sx * 0.42], scale: [1, 1, 0.35] });
+  }
+  // Queue enroulée derrière, qui remonte.
+  const tail = new THREE.CatmullRomCurve3([[0.12, 0.1, -0.28], [0.36, 0.12, -0.22], [0.45, 0.3, -0.1], [0.4, 0.48, -0.05], [0.3, 0.52, -0.08]].map((p) => new THREE.Vector3(...p)));
+  s.add(new THREE.TubeGeometry(tail, 20, 0.045, 8, false), c, {});
+  s.add(G.sphere(0.045, 8, 6), dark(c, 0.15), { pos: [0.3, 0.52, -0.08] });
+  return s.build();
+}
 
 // --- Nouveautés : jardin --------------------------------------------------------------
 def('parasol', {
@@ -1995,6 +2040,285 @@ def('coquillage-geant', {
   },
 });
 
+// --- Collection pastèque 🍉 ------------------------------------------------------------
+// Couleur au choix = la chair (rouge, jaune ou rose) ; l'écorce reste verte, rayée.
+const RIND = '#3f9d4a';
+const RIND_D = '#24693a';
+const PITH = '#f4f7e8';
+const SEED = '#2b2420';
+const MELON = ['#ff5a6e', '#ffd166', '#ff9fb5'];
+const melon = (o) => ({ cat: 'pasteque', colors: MELON, color: MELON[0], ...o });
+
+/** Pépins posés sur une face (liste de points), orientés vers `dir`. */
+function seedsAt(s, pts, dir = [0, 1, 0], size = 0.022) {
+  for (const p of pts) s.add(G.sphere(size, 6, 4), SEED, { pos: p, dir, scale: [0.6, 1.25, 0.35] });
+}
+
+/** Tranche (demi-disque) dressée, face vers +Z : chair, blanc, écorce, pépins. */
+function slice(s, c, x, y, z, r, depth, rot = 0) {
+  const g = (rad, col, d, dz) => {
+    const sh = new THREE.Shape();
+    sh.absarc(0, 0, rad, 0, Math.PI, false);
+    sh.lineTo(rad, 0);
+    const e = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: false, curveSegments: 18 });
+    e.translate(0, 0, -d / 2 + dz);
+    s.add(e, col, { pos: [x, y, z], rot: [0, 0, rot] });
+  };
+  g(r, RIND, depth, 0);
+  g(r * 0.9, PITH, depth + 0.012, 0);
+  g(r * 0.84, c, depth + 0.024, 0);
+  const dir = [0, 0, 1];
+  const pts = [];
+  for (const [a, k] of [[0.5, 0.55], [1.1, 0.62], [1.57, 0.45], [2.0, 0.62], [2.6, 0.55], [1.57, 0.7], [0.85, 0.35], [2.3, 0.35]]) {
+    const px = Math.cos(a + rot) * r * k;
+    const py = Math.sin(a + rot) * r * k;
+    pts.push([x + px, y + py, z + depth / 2 + 0.014]);
+  }
+  seedsAt(s, pts, dir, r * 0.045);
+}
+
+def('pouf-pasteque', melon({
+  label: 'Pouf pastèque', emoji: '🍉', price: 160, w: 0.7, d: 0.7, where: 'both', seats: [[0, 0, 0.44]],
+  build(c) {
+    const s = new Shape();
+    // Bol d'écorce (demi-sphère du bas), le dessus en chair.
+    s.add(new THREE.SphereGeometry(0.34, 24, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), RIND, { pos: [0, 0.42, 0], scale: [1, 1.15, 1] });
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      s.add(new THREE.SphereGeometry(0.344, 3, 12, a, 0.22, Math.PI / 2, Math.PI / 2), RIND_D, { pos: [0, 0.42, 0], scale: [1, 1.15, 1] });
+    }
+    s.add(G.cyl(0.33, 0.33, 0.05, 24), PITH, { pos: [0, 0.42, 0] });
+    s.add(G.sphere(0.32, 24, 10), c, { pos: [0, 0.44, 0], scale: [1, 0.16, 1] });
+    const pts = [];
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2;
+      const k = i % 2 ? 0.55 : 0.3;
+      pts.push([Math.cos(a) * 0.3 * k * 1.6, 0.495, Math.sin(a) * 0.3 * k * 1.6]);
+    }
+    seedsAt(s, pts, [0, 1, 0], 0.018);
+    return s.build();
+  },
+}));
+def('canape-pasteque', melon({
+  label: 'Canapé tranche de pastèque', emoji: '🛋️', price: 620, w: 2.0, d: 0.95, seats: [[-0.45, 0.12, 0.45], [0.45, 0.12, 0.45]],
+  build(c) {
+    const s = new Shape();
+    // Assise : écorce verte, coussin couleur chair.
+    s.add(G.box(1.9, 0.3, 0.85), RIND, { pos: [0, 0.22, 0.05] });
+    s.add(G.box(1.86, 0.06, 0.8), PITH, { pos: [0, 0.39, 0.06] });
+    for (const x of [-0.46, 0.46]) s.add(G.box(0.88, 0.14, 0.72), c, { pos: [x, 0.47, 0.1] });
+    // Dossier : une grande tranche dressée.
+    slice(s, c, 0, 0.36, -0.3, 0.98, 0.22, 0);
+    return s.build();
+  },
+}));
+def('tapis-pasteque', melon({
+  label: 'Tapis tranche', emoji: '🍉', price: 180, w: 2.2, d: 1.2, rug: true,
+  build(c) {
+    const s = new Shape();
+    const half = (rad, col, y) => s.add(new THREE.CylinderGeometry(rad, rad, 0.02, 32, 1, false, Math.PI / 2, Math.PI), col, { pos: [0, y, 0.55] });
+    half(1.08, RIND, 0.011);
+    half(0.97, PITH, 0.015);
+    half(0.9, c, 0.019);
+    const pts = [];
+    for (const [a, k] of [[0.5, 0.5], [1.0, 0.7], [1.57, 0.4], [2.1, 0.7], [2.6, 0.5], [1.3, 0.25], [1.85, 0.25], [1.57, 0.75]]) pts.push([Math.cos(a) * 0.9 * k, 0.032, 0.55 - Math.sin(a) * 0.9 * k]);
+    seedsAt(s, pts, [0, 1, 0], 0.035);
+    return s.build();
+  },
+}));
+def('lampe-pasteque', melon({
+  label: 'Lampe pastèque', emoji: '💡', price: 240, w: 0.5, d: 0.5, where: 'both',
+  light: { y: 0.9, color: '#ffb3a8', intensity: 4, dist: 6 },
+  build() {
+    const s = new Shape();
+    s.add(G.cyl(0.18, 0.21, 0.06, 16), RIND_D, { pos: [0, 0.03, 0] });
+    s.add(G.cyl(0.025, 0.025, 0.6, 6), PITH, { pos: [0, 0.34, 0] });
+    return s.build();
+  },
+  glow(c) {
+    // Abat-jour : pastèque entière qui laisse passer une lueur couleur chair par sa tranche.
+    const s = new Shape();
+    s.add(G.sphere(0.26, 20, 14), RIND, { pos: [0, 0.86, 0], scale: [1, 0.88, 1] });
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      s.add(new THREE.SphereGeometry(0.263, 3, 14, a, 0.2, 0, Math.PI), RIND_D, { pos: [0, 0.86, 0], scale: [1, 0.88, 1] });
+    }
+    s.add(G.cyl(0.2, 0.2, 0.03, 20), c, { pos: [0, 0.86, 0.24], rot: [Math.PI / 2, 0, 0] });
+    return s.build();
+  },
+}));
+def('table-pasteque', melon({
+  label: 'Table ronde pastèque', emoji: '🍉', price: 280, w: 1.1, d: 1.1, where: 'both',
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.55, 0.55, 0.06, 32), RIND, { pos: [0, 0.7, 0] });
+    s.add(G.cyl(0.5, 0.5, 0.065, 32), PITH, { pos: [0, 0.703, 0] });
+    s.add(G.cyl(0.46, 0.46, 0.07, 32), c, { pos: [0, 0.706, 0] });
+    const pts = [];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const k = i % 2 ? 0.62 : 0.32;
+      pts.push([Math.cos(a) * 0.46 * k, 0.745, Math.sin(a) * 0.46 * k]);
+    }
+    seedsAt(s, pts, [0, 1, 0], 0.026);
+    s.add(G.cyl(0.06, 0.08, 0.68, 10), RIND_D, { pos: [0, 0.34, 0] });
+    s.add(G.cyl(0.32, 0.36, 0.05, 20), RIND_D, { pos: [0, 0.025, 0] });
+    return s.build();
+  },
+}));
+def('lit-pasteque', melon({
+  label: 'Lit pastèque', emoji: '🛏️', price: 780, w: 1.3, d: 2.1, bed: true,
+  build(c) {
+    const s = new Shape();
+    s.add(G.box(1.3, 0.3, 2.1), RIND, { pos: [0, 0.25, 0] });
+    s.add(G.box(1.2, 0.2, 2.0), PITH, { pos: [0, 0.48, 0] });
+    s.add(G.box(1.26, 0.12, 1.35), c, { pos: [0, 0.6, 0.33] });
+    s.add(G.box(1.26, 0.3, 0.05), c, { pos: [0, 0.48, 1.02] });
+    const pts = [];
+    for (let i = 0; i < 10; i++) pts.push([-0.45 + (i % 5) * 0.22 + (i > 4 ? 0.1 : 0), 0.665, -0.15 + (i > 4 ? 0.55 : 0.2) + (i % 2) * 0.12]);
+    seedsAt(s, pts, [0, 1, 0], 0.03);
+    // Oreiller en tranche, tête de lit en demi-pastèque.
+    s.add(G.sphere(0.25, 12, 8), PITH, { pos: [0, 0.66, -0.7], scale: [1.6, 0.42, 0.9] });
+    slice(s, c, 0, 0.55, -1.02, 0.66, 0.12, 0);
+    return s.build();
+  },
+}));
+def('peluche-pasteque', melon({
+  label: 'Peluche pastèque', emoji: '🧸', price: 120, w: 0.5, d: 0.3, where: 'both',
+  build(c) {
+    const s = new Shape();
+    slice(s, c, 0, 0.06, 0, 0.3, 0.14, 0);
+    // Petit visage tout doux.
+    for (const x of [-0.08, 0.08]) {
+      s.add(G.sphere(0.022, 8, 6), SEED, { pos: [x, 0.2, 0.095], scale: [1, 1.2, 0.5] });
+      s.add(G.sphere(0.026, 8, 6), '#ffb3c7', { pos: [x * 1.7, 0.15, 0.095], scale: [1.3, 0.7, 0.3] });
+    }
+    s.add(G.torus(0.025, 0.007, 4, 8, Math.PI), SEED, { pos: [0, 0.165, 0.096], rot: [0, 0, Math.PI] });
+    return s.build();
+  },
+}));
+def('horloge-pasteque', melon({
+  label: 'Horloge pastèque', emoji: '🕰️', price: 190, w: 0.6, d: 0.1, wall: true, mountY: 2.0,
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.3, 0.3, 0.05, 28), RIND, { pos: [0, 0, 0.025], rot: [Math.PI / 2, 0, 0] });
+    s.add(G.cyl(0.27, 0.27, 0.055, 28), PITH, { pos: [0, 0, 0.03], rot: [Math.PI / 2, 0, 0] });
+    s.add(G.cyl(0.245, 0.245, 0.06, 28), c, { pos: [0, 0, 0.035], rot: [Math.PI / 2, 0, 0] });
+    const pts = [];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      pts.push([Math.cos(a) * 0.2, Math.sin(a) * 0.2, 0.068]);
+    }
+    seedsAt(s, pts, [0, 0, 1], 0.014);
+    s.add(G.box(0.02, 0.13, 0.01), SEED, { pos: [0, 0.055, 0.075] });
+    s.add(G.box(0.1, 0.02, 0.01), SEED, { pos: [0.045, 0, 0.078] });
+    s.add(G.sphere(0.02, 8, 6), RIND_D, { pos: [0, 0, 0.08] });
+    return s.build();
+  },
+}));
+def('guirlande-pasteque', melon({
+  label: 'Guirlande de pastèques', emoji: '🎏', price: 150, w: 2.0, d: 0.1, wall: true, mountY: 2.6,
+  build(c) {
+    const s = new Shape();
+    const curve = new THREE.CatmullRomCurve3([[-1, 0.1, 0.03], [-0.5, -0.12, 0.05], [0, -0.18, 0.06], [0.5, -0.12, 0.05], [1, 0.1, 0.03]].map((p) => new THREE.Vector3(...p)));
+    s.add(new THREE.TubeGeometry(curve, 30, 0.008, 4, false), '#fffaf2', {});
+    for (let i = 0; i < 7; i++) {
+      const p = curve.getPoint((i + 0.5) / 7);
+      slice(s, c, p.x, p.y - 0.01, p.z + 0.02, 0.1, 0.02, Math.PI);
+    }
+    return s.build();
+  },
+}));
+def('panier-pasteque', melon({
+  label: 'Couffin pastèque', emoji: '🧺', price: 220, w: 0.9, d: 0.75, where: 'both', petBed: true,
+  build(c) {
+    const s = new Shape();
+    // Demi-écorce creusée : les chats y dorment sur un coussin couleur chair.
+    const shell = new THREE.SphereGeometry(0.44, 24, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+    s.add(shell, RIND, { pos: [0, 0.3, 0], scale: [1, 0.68, 0.84] });
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      s.add(new THREE.SphereGeometry(0.444, 3, 12, a, 0.2, Math.PI / 2, Math.PI / 2), RIND_D, { pos: [0, 0.3, 0], scale: [1, 0.68, 0.84] });
+    }
+    s.add(G.torus(0.42, 0.035, 6, 28), PITH, { pos: [0, 0.3, 0], rot: [Math.PI / 2, 0, 0], scale: [1, 0.84, 1] });
+    s.add(G.cyl(0.38, 0.38, 0.1, 24), c, { pos: [0, 0.22, 0], scale: [1, 1, 0.82] });
+    return s.build();
+  },
+}));
+def('maison-chat-pasteque', melon({
+  label: 'Maisonnette pastèque', emoji: '🍉', price: 340, w: 0.9, d: 0.8, where: 'both', petBed: true,
+  build(c) {
+    const s = new Shape();
+    // Pastèque couchée, porte ronde découpée dans la chair, deux oreilles de chat.
+    s.add(G.sphere(0.42, 24, 16), RIND, { pos: [0, 0.38, 0], scale: [1.05, 0.9, 0.95] });
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      s.add(new THREE.SphereGeometry(0.424, 3, 16, a, 0.18, 0, Math.PI), RIND_D, { pos: [0, 0.38, 0], scale: [1.05, 0.9, 0.95] });
+    }
+    s.add(G.cyl(0.36, 0.36, 0.06, 24), PITH, { pos: [0, 0.38, 0.37], rot: [Math.PI / 2, 0, 0] });
+    s.add(G.cyl(0.33, 0.33, 0.07, 24), c, { pos: [0, 0.38, 0.38], rot: [Math.PI / 2, 0, 0] });
+    s.add(G.cyl(0.17, 0.17, 0.08, 20), '#3b2a2a', { pos: [0, 0.3, 0.39], rot: [Math.PI / 2, 0, 0] });
+    const pts = [[-0.2, 0.52, 0.425], [0.2, 0.52, 0.425], [0, 0.6, 0.425], [-0.25, 0.32, 0.425], [0.25, 0.32, 0.425]];
+    seedsAt(s, pts, [0, 0, 1], 0.02);
+    for (const sx of [-1, 1]) {
+      s.add(G.cone(0.13, 0.22, 4), RIND, { pos: [sx * 0.24, 0.76, 0], rot: [0, Math.PI / 4, -sx * 0.4], scale: [1, 1, 0.55] });
+      s.add(G.cone(0.08, 0.14, 4), c, { pos: [sx * 0.235, 0.75, 0.035], rot: [0, Math.PI / 4, -sx * 0.4], scale: [1, 1, 0.35] });
+    }
+    s.add(G.cyl(0.02, 0.025, 0.08, 6), '#8a6a3a', { pos: [0, 0.75, -0.1] });
+    return s.build();
+  },
+}));
+// Jardin.
+def('parasol-pasteque', melon({
+  label: 'Parasol pastèque', emoji: '⛱️', price: 320, w: 0.6, d: 0.6, where: 'out', doubleSide: true,
+  build(c) {
+    const s = new Shape();
+    s.add(G.cyl(0.22, 0.26, 0.1, 12), RIND_D, { pos: [0, 0.05, 0] });
+    s.add(G.cyl(0.03, 0.03, 2.3, 6), PITH, { pos: [0, 1.15, 0] });
+    // Toile : chair dessus, bordure blanche puis verte, pépins.
+    s.add(new THREE.ConeGeometry(1.4, 0.5, 24, 1, true), c, { pos: [0, 2.3, 0] });
+    s.add(new THREE.CylinderGeometry(1.42, 1.5, 0.08, 24, 1, true), PITH, { pos: [0, 2.03, 0] });
+    s.add(new THREE.CylinderGeometry(1.5, 1.56, 0.12, 24, 1, true), RIND, { pos: [0, 1.95, 0] });
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const k = i % 2 ? 0.75 : 0.45;
+      pts.push([Math.cos(a) * 1.4 * k, 2.55 - 0.5 * k + 0.035, Math.sin(a) * 1.4 * k]);
+    }
+    seedsAt(s, pts, [0, 1, 0], 0.05);
+    return s.build();
+  },
+}));
+def('bouee-pasteque', melon({
+  label: 'Bouée pastèque', emoji: '🛟', price: 210, w: 1.2, d: 1.2, where: 'out',
+  build(c) {
+    const s = new Shape();
+    s.add(G.torus(0.42, 0.17, 12, 28), RIND, { pos: [0, 0.17, 0], rot: [Math.PI / 2, 0, 0] });
+    s.add(G.torus(0.42, 0.172, 12, 28, Math.PI * 1.1), c, { pos: [0, 0.175, 0], rot: [Math.PI / 2, 0, 0.3] });
+    for (let i = 0; i < 6; i++) {
+      const a = 0.3 + (i / 6) * Math.PI * 1.1;
+      seedsAt(s, [[Math.cos(a) * 0.42, 0.34, -Math.sin(a) * 0.42]], [0, 1, 0], 0.03);
+    }
+    return s.build();
+  },
+}));
+def('pasteque-geante', melon({
+  label: 'Pastèque géante', emoji: '🍉', price: 380, w: 1.4, d: 1.2, where: 'out',
+  build(c) {
+    const s = new Shape();
+    // Une énorme pastèque posée dans l'herbe, une part déjà croquée.
+    s.add(G.sphere(0.62, 28, 18), RIND, { pos: [0, 0.5, 0], scale: [1.1, 0.82, 0.9] });
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      s.add(new THREE.SphereGeometry(0.625, 3, 18, a, 0.16, 0, Math.PI), RIND_D, { pos: [0, 0.5, 0], scale: [1.1, 0.82, 0.9] });
+    }
+    s.add(G.cyl(0.03, 0.04, 0.12, 6), '#8a6a3a', { pos: [0, 1.02, 0] });
+    // La part posée devant, face à toi.
+    slice(s, c, 0.1, 0.02, 0.72, 0.36, 0.14, 0);
+    return s.build();
+  },
+}));
+
 // Catégories des meubles historiques (les nouveaux la précisent eux-mêmes).
 const CATS = {
   chambre: ['lit', 'lit-double', 'table-chevet', 'commode', 'miroir', 'coffre'],
@@ -2015,6 +2339,7 @@ export const FURNITURE_CATS = [
   { id: 'deco', label: '🖼️ Déco' },
   { id: 'animaux', label: '🐾 Animaux' },
   { id: 'jardin', label: '🌳 Jardin' },
+  { id: 'pasteque', label: '🍉 Pastèque' },
 ];
 
 export const FURNITURE = F;
@@ -2038,6 +2363,7 @@ export const WALLPAPERS = [
   { id: 'lambris', label: 'Lambris bois', price: 260, draw: { base: '#e9c99a', accent: '#d9b27a', pattern: 'lambris' } },
   { id: 'lavande', label: 'Lavande', price: 160, draw: { base: '#ece3ff', accent: '#d9ccff', pattern: 'uni' } },
   { id: 'vichy', label: 'Vichy jaune', price: 200, draw: { base: '#fff6d6', accent: '#ffe08a', pattern: 'carreaux' } },
+  { id: 'pasteque', label: '🍉 Tranches de pastèque', price: 260, draw: { base: '#f1fae6', accent: '#ff5a6e', pattern: 'pasteque' } },
 ];
 
 export const FLOORS = [
@@ -2047,6 +2373,7 @@ export const FLOORS = [
   { id: 'tomettes', label: 'Tomettes', price: 220, draw: { base: '#d98a62', accent: '#c47450', pattern: 'hexa' } },
   { id: 'parquet-clair', label: 'Parquet clair', price: 180, draw: { base: '#f0d3a8', accent: '#e2bf8c', pattern: 'parquet' } },
   { id: 'nuage', label: 'Nuage bleu', price: 180, draw: { base: '#d6ecff', accent: '#c0dcf7', pattern: 'uni' } },
+  { id: 'pasteque', label: '🍉 Écorce de pastèque', price: 240, draw: { base: '#5fae55', accent: '#2f7d3c', pattern: 'ecorce' } },
 ];
 
 export function surfaceTexture({ base, accent, pattern }, repeat = [4, 2]) {
@@ -2123,6 +2450,41 @@ export function surfaceTexture({ base, accent, pattern }, repeat = [4, 2]) {
     case 'damier':
       ctx.fillRect(0, 0, S / 2, S / 2);
       ctx.fillRect(S / 2, S / 2, S / 2, S / 2);
+      break;
+    case 'pasteque':
+      // Petites tranches (chair = accent), écorce verte, pépins.
+      for (const [x, y, flip] of [[32, 40, false], [96, 104, true]]) {
+        const r = 22;
+        const arc = (rad, col) => {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.arc(x, y, rad, flip ? Math.PI : 0, flip ? Math.PI * 2 : Math.PI);
+          ctx.closePath();
+          ctx.fill();
+        };
+        arc(r, '#3f9d4a');
+        arc(r * 0.86, '#f4f7e8');
+        arc(r * 0.78, accent);
+        ctx.fillStyle = '#2b2420';
+        for (const [dx, dy] of [[-8, 6], [0, 11], [8, 6], [-3, 3], [4, 3]]) {
+          ctx.beginPath();
+          ctx.ellipse(x + dx, y + (flip ? -dy : dy), 1.6, 2.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+    case 'ecorce':
+      // Rayures ondulées de l'écorce.
+      ctx.lineWidth = 12;
+      for (let x = -16; x <= S + 16; x += 32) {
+        ctx.beginPath();
+        for (let y = 0; y <= S; y += 4) {
+          const xx = x + Math.sin((y / S) * Math.PI * 4) * 5;
+          if (y === 0) ctx.moveTo(xx, y);
+          else ctx.lineTo(xx, y);
+        }
+        ctx.stroke();
+      }
       break;
     case 'hexa':
       ctx.lineWidth = 3;

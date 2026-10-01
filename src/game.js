@@ -44,6 +44,8 @@ import { Creator } from './ui/creator.js';
 import { PetsPanel } from './ui/pets.js';
 import { Dialogue } from './ui/dialogue.js';
 import { Shop } from './ui/shop.js';
+import { Adoption } from './ui/adoption.js';
+import { OUTFIT_SLOTS, OUTFIT_ITEMS } from './animals/outfits.js';
 import { Journal } from './ui/journal.js';
 import { PhotoMode } from './ui/photo.js';
 import { BagPanel } from './ui/panels.js';
@@ -149,6 +151,7 @@ export class Game {
     this.pets = new PetsPanel(this);
     this.dialogue = new Dialogue(this);
     this.shop = new Shop(this);
+    this.adoption = new Adoption(this);
     this.journal = new Journal(this);
     this.decor = new DecorMode(this);
     this.photo = new PhotoMode(this);
@@ -394,7 +397,7 @@ export class Game {
   }
 
   get busy() {
-    return this.dialogue.open || this.shop.isOpen || this.cooking.isOpen || !!this.festivals.plating || !!this.festivals.snow?.building || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden');
+    return this.dialogue.open || this.shop.isOpen || this.adoption.isOpen || this.cooking.isOpen || !!this.festivals.plating || !!this.festivals.snow?.building || this.decor.active || this.photo.active || this.jobs.isOpen || this.vehicles.menuOpen || this.calendar.mailOpen || this.ui.chapterOpen || this.inFinale || this.archipelago.isOpen || this.archipelago.gazing || this.sled.active || !document.querySelector('#dialog').classList.contains('hidden');
   }
 
   openPanel(name) {
@@ -464,6 +467,8 @@ export class Game {
     if (ae && ae !== document.body && PANELS.some((id) => ae.closest(id))) ae.blur();
     for (const id of PANELS) document.querySelector(id)?.classList.add('hidden');
     const was = this.panel;
+    // Garde-robe en cours : l'animal reprend sa vie, la caméra revient.
+    this.pets?.endDress();
     this.panel = null;
     this.ui.openPanel = null;
     if (was === 'creator') {
@@ -788,6 +793,25 @@ export class Game {
         },
       })),
     });
+    // Articles de la garde-robe des animaux à acheter chez Mimi.
+    const petWardrobeItems = () => {
+      const out = [];
+      for (const { id: slot, label: where } of OUTFIT_SLOTS) {
+        for (const it of OUTFIT_ITEMS[slot]) {
+          if (!it.price) continue;
+          const key = `pet:${slot}:${it.id}`;
+          out.push({
+            id: key, label: it.label, emoji: it.emoji, price: it.price, desc: `Garde-robe des animaux · ${where}`,
+            owned: this.unlocks.has(key),
+            buy: () => {
+              this.unlocks.add(key);
+              setTimeout(() => this.ui.toast('👗 Essaie-le dans « Mes animaux » (P) → Habiller !', 3000), 600);
+            },
+          });
+        }
+      }
+      return out;
+    };
     const recipes = (ids) => ids.map((id) => ({
       id: `recette:${id}`, label: `Recette : ${ITEMS[id].label}`, emoji: ITEMS[id].emoji, price: 250 + ITEMS[id].price * 4,
       desc: `Ingrédients : ${Object.entries(RECIPE_BY_ID[id]?.needs || {}).map(([k, n]) => `${ITEMS[k].emoji}×${n}`).join(' ')}`,
@@ -803,7 +827,7 @@ export class Game {
       case 'marche':
         return [
           { id: 'vendre', label: '💰 Vendre' },
-          { id: 'acheter', label: '🧺 Acheter', items: () => [item('friandise', 60), item('baie', 14), item('pomme', 22), item('carotte', 26), item('graine', 10), item('poisson', 40), item('appat', 12)] },
+          { id: 'acheter', label: '🧺 Acheter', items: () => [item('friandise', 60), item('baie', 14), item('pomme', 22), item('carotte', 26), item('pasteque', 110), item('graine', 10), item('poisson', 40), item('appat', 12)] },
           { id: 'outils', label: '🧰 Outils', items: () => [
             unlock('tool:filet', 'Filet à papillons', '🥅', 200, 'Pour attraper les insectes (E).'),
             { id: 'rod:fibre', label: 'Canne en fibre', emoji: '🎣', price: 800, desc: 'Ça mord plus vite, ligne plus solide.', owned: ['fibre', 'doree'].includes(this.fishing.rod), buy: () => this.setRod('fibre') },
@@ -837,6 +861,7 @@ export class Game {
         }];
       case 'cafe':
         return [
+          { id: 'garde-robe', label: '🎀 Garde-robe des minous', items: () => petWardrobeItems() },
           { id: 'chats', label: '🐱 Pour les chats', items: () => [
             item('patee', 45), item('friandise', 60),
             unlock('tool:plumeau', 'Plumeau', '🪶', 250, 'Touche G près d\'un animal pour jouer avec lui !'),
@@ -885,10 +910,10 @@ export class Game {
         ];
       case 'paillote':
         return [
-          { id: 'boissons', label: '🍹 Rafraîchissements', items: () => [item('glace', 46), item('cocktail', 62), item('jus-coco', Math.round(ITEMS['jus-coco'].price * 1.6)), item('noix-coco', 36)] },
+          { id: 'boissons', label: '🍹 Rafraîchissements', items: () => [item('glace', 46), item('cocktail', 62), item('jus-coco', Math.round(ITEMS['jus-coco'].price * 1.6)), item('noix-coco', 36), item('sorbet-pasteque', Math.round(ITEMS['sorbet-pasteque'].price * 1.5))] },
           { id: 'plage', label: '🏖️ Esprit plage', items: shopFurn('paillote') },
           clothes('paillote'),
-          { id: 'recettes', label: '📖 Recettes', items: () => recipes(['jus-coco']) },
+          { id: 'recettes', label: '📖 Recettes', items: () => recipes(['jus-coco', 'sorbet-pasteque']) },
         ];
       default:
         return [{ id: 'rien', label: 'Boutique', items: () => [] }];
@@ -1481,7 +1506,10 @@ export class Game {
     if (limit && this.lastFrameAt !== undefined && time - this.lastFrameAt < 1000 / limit - 1) return;
     this.lastFrameAt = time;
     this.timer.update(time);
-    const rawDt = this.timer.getDelta();
+    // Jamais négatif : l'horloge peut reculer d'une image à l'autre (heures d'images et de
+    // la page qui ne coïncident pas, onglet revenu au premier plan) ; un pas négatif faisait
+    // tournoyer la tête des animaux pendant plusieurs secondes.
+    const rawDt = Math.max(this.timer.getDelta(), 0);
     const dt = Math.min(rawDt, 0.05);
     this.input.pollGamepad(dt, this.navigator.update(dt));
     this.elapsed += dt;
@@ -1557,6 +1585,7 @@ export class Game {
           this.quests.refreshRequests();
           this.progress.refreshDaily();
           this.jobs.refresh();
+          this.animals.onNewDay(this.world.sky.day);
           this.calendar.onNewDay();
           // Saison, fête, anniversaires, courrier… : un seul carnet, au lever du jour.
           this.morning.schedule();

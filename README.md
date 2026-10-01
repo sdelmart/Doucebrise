@@ -27,7 +27,7 @@ Version de production (fichiers statiques dans `dist/`, déployables sur n'impor
 
 ## Tests
 
-`npm run build && npm run test:smoke` lance le jeu dans Chromium sans écran : écran titre, nouvelle partie, fenêtres principales, déplacement, décor sans objets imbriqués (un banc, une table ou un tas de bois posé dans un étal, une maison ou une porte de la piste), course de luge, sauvegarde et reprise. Le test échoue à la moindre erreur JavaScript. Il tourne aussi sur GitHub à chaque envoi (workflow **Test du jeu**, captures d'écran en *Artifacts*).
+`npm run build && npm run test:smoke` lance le jeu dans Chromium sans écran : écran titre, nouvelle partie, fenêtres principales, déplacement, adoption au café et garde-robe des chats, collection pastèque, décor sans objets imbriqués (un banc, une table ou un tas de bois posé dans un étal, une maison ou une porte de la piste), course de luge, sauvegarde et reprise. Le test échoue à la moindre erreur JavaScript. Il tourne aussi sur GitHub à chaque envoi (workflow **Test du jeu**, captures d'écran en *Artifacts*).
 
 `npm run build && npm run test:quests` **joue toute l'histoire** (les 45 quêtes des 11 chapitres, avec les vraies actions du jeu : parler, planter, pêcher, cuisiner, acheter, décorer, adopter, cérémonies de nuit…), puis **les 58 quêtes des habitants** (proposition, objectifs, remise, récompenses), les **six petits boulots**, deux semaines de demandes et de défis (aucune répétition d'un jour à l'autre), et vérifie la cohérence des données (objets, meubles, recettes, habitants, prérequis) et la sauvegarde. Il tourne aussi sur GitHub à chaque envoi.
 
@@ -97,7 +97,10 @@ L'écran reste dégagé pour profiter de l'île (Paramètres → Affichage → I
 
 ### 🐾 Animaux
 - **16 espèces, 73 pelages** : chat (19 races), chien, lapin, renard, canard, mouton, faon, hérisson, panda roux, poule, oiseau, tortue, et sur les îles **écureuil**, **chèvre des neiges**, **loutre** (qui nage) et **perroquet**.
-- Confiance sur 5 cœurs, **adoption**, jusqu'à 3 compagnons qui te suivent, accessoires, carnet des espèces.
+- Confiance sur 5 cœurs, **adoption**, jusqu'à 3 compagnons qui te suivent, carnet des espèces.
+- **Adopter au Café des Chats** : chez Mimi, « 🐱 Adopter un chat » présente ses pensionnaires (portrait, race, caractère) ; on choisit un nom et le chat rentre avec toi. Après chaque adoption, un nouveau chat arrive au café le lendemain (le carnet du matin le signale).
+- **Garde-robe des compagnons** (Mes animaux → 👗 Habiller) : quatre emplacements — tête (nœud, chapeau de fête, couronne de fleurs, paille, bonnet, béret, oreilles de lapin, sorcière, haut-de-forme, couronne royale, casque pastèque), yeux (lunettes rondes, de soleil, cœur, pastèque), cou (collier à grelot, foulard, nœud papillon, écharpe, collerette, perles, collier pastèque), corps (pull, marinière, cape, tutu, pull pastèque) — et 12 couleurs. L'animal vient poser devant toi et la caméra le cadre de près (glisser pour le faire tourner) ; bouton « Surprise ! ». Les pièces de luxe s'achètent au café (rayon « Garde-robe des minous ») ; les anciens accessoires sont repris.
+- **Le Café des Chats** est maintenant un grand chat roux couché sur le toit (tête au-dessus de la porte, pattes qui dépassent, queue qui pend le long du mur) ; la **maisonnette à chat** est une tête de chat (oreilles, yeux, moustaches, queue).
 
 ### 🌦️ Ciel et météo
 - **Cycle jour/nuit** avec lever et coucher de soleil dorés, nuages qui dérivent, **étoiles scintillantes**, **Voie lactée**, **lune** avec ses phases.
@@ -212,7 +215,8 @@ assets/models/
 ### 🛋️ Maison et décoration
 - Maison agrandissable (2 agrandissements), façades, toits, couleurs et extras.
 - **Mode des îles** : bonnet à pompon et luge à porter dans le dos (atelier de Hugo), capeline et planche de surf (paillote), fleur d'hibiscus (club de plongée).
-- **Plus de 130 meubles** (dont meubles de chalet, déco marine, esprit plage, tableaux, aquariums), papiers peints et sols ; mode décoration (`B`).
+- **Plus de 140 meubles** (dont meubles de chalet, déco marine, esprit plage, tableaux, aquariums), papiers peints et sols ; mode décoration (`B`).
+- **🍉 Collection pastèque** (rayon « Pastèque » de Bruno ; chair rouge, jaune ou rose) : pouf, canapé tranche, tapis, lampe, table ronde, lit, peluche, horloge, guirlande, couffin et maisonnette pour les chats, et au jardin parasol, bouée et pastèque géante ; papier peint « Tranches de pastèque » et sol « Écorce de pastèque ». Aussi : **pastèques au potager** (semis chez Mamie Rose, en vente chez Pomme), jus de pastèque et sorbet (recette chez Paco), casque, lunettes, sac et motif pastèque (style Classique, chez Lila), tenue pastèque pour les animaux, deux peintures de véhicule, et le succès « Fan de pastèque » (titre « Cœur de pastèque »).
 
 ### 🚲 Véhicules
 - Trottinette, vélo, scooter, voiturette, petit bateau et montgolfière.

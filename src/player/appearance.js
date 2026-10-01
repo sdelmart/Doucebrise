@@ -33,7 +33,7 @@ export const OPTIONS = {
   mouth: [o('sourire', 'Sourire'), o('rire', 'Rire'), o('chat', 'Chaton'), o('o', 'Surpris'), o('langue', 'Espiègle'), o('neutre', 'Calme')],
   hair: [o('court', 'Court'), o('carre', 'Carré'), o('long', 'Long'), o('queue', 'Queue'), o('couettes', 'Couettes'), o('chignon', 'Chignon'), o('boucles', 'Bouclés'), o('herisse', 'Hérissé'), o('meche', 'Mèche'), o('rase', 'Ras')],
   top: [o('tshirt', 'T-shirt'), o('pull', 'Pull'), o('sweat', 'Sweat à capuche'), o('robe', 'Robe'), o('salopette', 'Salopette'), o('kimono', 'Kimono'), buy('veste', 'Veste', '🧥', 500)],
-  pattern: [o('uni', 'Uni'), o('rayures', 'Rayures'), o('pois', 'Pois'), o('carreaux', 'Vichy'), o('coeurs', 'Cœurs'), o('etoiles', 'Étoiles'), o('fleurs', 'Fleurs')],
+  pattern: [o('uni', 'Uni'), o('rayures', 'Rayures'), o('pois', 'Pois'), o('carreaux', 'Vichy'), o('coeurs', 'Cœurs'), o('etoiles', 'Étoiles'), o('fleurs', 'Fleurs'), o('pasteque', 'Pastèques')],
   bottom: [o('short', 'Short'), o('pantalon', 'Pantalon'), o('jupe', 'Jupe'), o('jupeLongue', 'Jupe longue')],
   shoes: [o('baskets', 'Baskets'), o('bottes', 'Bottes'), o('ballerines', 'Ballerines'), o('sabots', 'Sabots')],
   hat: [o('aucun', 'Aucun'), o('beret', 'Béret'), o('casquette', 'Casquette'), o('paille', 'Chapeau de paille'), o('bonnet', 'Bonnet'), o('chat', 'Oreilles de chat'), o('lapin', 'Oreilles de lapin'), o('fleurs', 'Couronne de fleurs'), o('noeud', 'Gros nœud'), o('grenouille', 'Chapeau grenouille'), o('sorciere', 'Chapeau de sorcière'),
@@ -43,15 +43,16 @@ export const OPTIONS = {
     buy('casque', 'Casque de vélo', '⛑️', 250), buy('bandeau', 'Bandeau à nœud', '🎀', 180),
     gift('aureole', 'Auréole', '😇', 'le carnet d\'étoiles'), gift('chatBonnet', 'Bonnet chat', '🐱', 'le carnet d\'étoiles'),
     gift('capitaine', 'Casquette de capitaine', '🧑‍✈️', 'Léo'), gift('tasse', 'Chapeau tasse de thé', '☕', 'Mimi'),
-    buy('pompon', 'Bonnet à pompon', '🧶', 380, 'atelier'), buy('capeline', 'Capeline de plage', '👒', 420, 'paillote'), buy('hibiscus', 'Couronne d\'hibiscus', '🌺', 360, 'plongee')],
+    buy('pompon', 'Bonnet à pompon', '🧶', 380, 'atelier'), buy('capeline', 'Capeline de plage', '👒', 420, 'paillote'), buy('hibiscus', 'Couronne d\'hibiscus', '🌺', 360, 'plongee'),
+    buy('pasteque', 'Casque pastèque', '🍉', 420)],
   glasses: [o('aucune', 'Aucunes'), o('rondes', 'Rondes'), o('carrees', 'Carrées'), o('soleil', 'Soleil'), o('coeur', 'Cœur'), buy('etoiles', 'Étoiles', '🤩', 250), buy('monocle', 'Monocle', '🧐', 200),
-    buy('aviateur', 'Aviateur', '🕶️', 300), gift('lune', 'Lunettes lune', '🌙', 'le carnet d\'étoiles'), gift('plongee', 'Masque de plongée', '🤿', 'Coralie')],
+    buy('aviateur', 'Aviateur', '🕶️', 300), gift('lune', 'Lunettes lune', '🌙', 'le carnet d\'étoiles'), gift('plongee', 'Masque de plongée', '🤿', 'Coralie'), buy('pasteque', 'Lunettes pastèque', '🍉', 260)],
   back: [o('aucun', 'Rien'), o('sac', 'Sac à dos'), o('ailes', 'Ailes de fée'), o('cape', 'Cape'), o('echarpe', 'Écharpe'), o('queueRenard', 'Queue de renard'),
     buy('guitare', 'Guitare', '🎸', 600), buy('papillon', 'Ailes de papillon', '🦋', 800),
     gift('panier', 'Panier à dos', '🧺', 'Pomme'), gift('nounours', 'Sac nounours', '🧸', 'Noé'),
     buy('sacChat', 'Sac chat', '🐈', 450), gift('ailesAnge', "Ailes d'ange", '🪽', 'le carnet d\'étoiles'),
     gift('ailesArcEnCiel', 'Ailes arc-en-ciel', '🌈', 'le carnet d\'étoiles'), gift('filet', 'Filet en bandoulière', '🎒', 'Noé'),
-    gift('sacRando', 'Sac de randonnée', '🎒', 'Sacha'), buy('surf', 'Planche de surf', '🏄', 650, 'paillote'), buy('luge', 'Petite luge', '🛷', 520, 'atelier')],
+    gift('sacRando', 'Sac de randonnée', '🎒', 'Sacha'), buy('surf', 'Planche de surf', '🏄', 650, 'paillote'), buy('luge', 'Petite luge', '🛷', 520, 'atelier'), buy('sacPasteque', 'Sac pastèque', '🍉', 480)],
 };
 
 export const DEFAULT_APPEARANCE = {

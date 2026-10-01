@@ -55,8 +55,8 @@ export const VILLAGERS = [
     shop: 'marche',
     job: 'Marchande',
     appearance: { skin: '#fbd5bd', height: 1.0, eyes: 'petillants', eyeColor: '#3d9970', brows: 'doux', mouth: 'rire', blush: true, freckles: true, lashes: true, hair: 'queue', hairColor: '#c8553a', hairTip: '#ffcf5c', top: 'salopette', topColor: '#ff8fab', topColor2: '#fff3d6', pattern: 'carreaux', bottom: 'short', shoes: 'bottes', shoesColor: '#ffd84d', hat: 'casquette', hatColor: '#ffd84d', glasses: 'aucune', back: 'aucun' },
-    loves: ['jus', 'fraise', 'popcorn'],
-    likes: ['pomme', 'tomate', 'mais', 'tarte', 'confiture'],
+    loves: ['jus', 'fraise', 'popcorn', 'pasteque'],
+    likes: ['pomme', 'tomate', 'mais', 'tarte', 'confiture', 'jus-pasteque'],
     dislikes: ['champignon'],
     rewards: { 40: { recipe: 'jus' }, 60: { furniture: 'caisse-fruits' }, 100: { clothing: 'back:panier' } },
     lines: {
@@ -225,7 +225,7 @@ export const VILLAGERS = [
       autumn: ['Les chats adorent jouer dans les feuilles mortes.'],
       evening: ['Le soir, je compte les chats. Il en manque toujours un !'],
       gift: { love: 'Kyaaa ! C\'est parfait ! Tu es adorable !', like: 'Oh, merci ! Les chats vont être jaloux !', neutral: 'Merci beaucoup !', dislike: 'Hmm… les chats n\'aiment pas trop ça, et moi non plus.' },
-      shop: 'Pâtée, jouets, paniers… Tout pour tes minous !',
+      shop: 'Pâtée, jouets, paniers, et toute une garde-robe… Tout pour tes minous !',
     },
   },
   {
@@ -452,8 +452,8 @@ export const VILLAGERS = [
     job: 'Patron de la paillote',
     work: { at: (w) => w.village.shopSpots.paillote, path: [[162, 76], [184, 86], [190, 94]] },
     appearance: { skin: '#c68a5e', height: 1.05, build: 1.1, eyes: 'rieurs', eyeColor: '#3b2519', brows: 'doux', mouth: 'rire', blush: true, lashes: false, hair: 'herisse', hairColor: '#2a1d17', hairTip: '#ffcf5c', top: 'tshirt', topColor: '#ffb27a', topColor2: '#6fcf97', pattern: 'fleurs', bottom: 'short', bottomColor: '#6fa8dc', shoes: 'sabots', shoesColor: '#ff6f91', hat: 'paille', hatColor: '#ff6f91', glasses: 'soleil', glassesColor: '#ff8fab', back: 'aucun' },
-    loves: ['jus-coco', 'popcorn', 'glace'],
-    likes: ['noix-coco', 'fraise', 'jus', 'hibiscus', 'mais'],
+    loves: ['jus-coco', 'popcorn', 'glace', 'sorbet-pasteque'],
+    likes: ['noix-coco', 'fraise', 'jus', 'hibiscus', 'mais', 'pasteque', 'jus-pasteque'],
     dislikes: ['soupe'],
     rewards: { 40: { recipe: 'jus-coco' }, 60: { furniture: 'bouee-licorne' }, 100: { furniture: 'bar-tiki' } },
     lines: {
@@ -1047,7 +1047,8 @@ export class Villager {
     const working = !!JOBS[this.def.id] && this.locName === 'work' && !this.path.length && !this.home && !this.loc?.sit && !this.loc?.fishing && !raining && !talking && playerDist >= 2.4;
     this.character.setWork?.(working ? this.def.id : null);
     const far = this.pos.distanceTo(player.pos) > 80;
-    this.root.visible = !this.home && !far;
+    // (Masqué le temps d'habiller un animal, s'il gênait la vue.)
+    this.root.visible = !this.home && !far && !this.screened;
     if (this.root.visible) {
       this.root.position.copy(this.pos);
       this.root.rotation.y = this.rotY;

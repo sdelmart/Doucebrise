@@ -1,4 +1,5 @@
 import { createRng } from '../core/math.js';
+import { FURNITURE } from '../house/furniture.js';
 import { ZONES } from '../world/layout.js';
 
 // Progression : métiers (XP et niveaux), défis du jour, succès, titres
@@ -85,6 +86,12 @@ export const ACHIEVEMENTS = [
   A('calin-100', 'Pluie de câlins', 'Caresser 100 fois des animaux.', (g, s) => s.pet >= 100, { coins: 300 }),
   A('adoption', 'Nouvelle famille', 'Adopter un animal.', (g) => g.animals.companions().length >= 1),
   A('adoption-5', 'Maison pleine', 'Adopter 5 animaux.', (g) => g.animals.companions().length >= 5, { coins: 500, title: 'Grande famille' }),
+  A('chat-habille', 'Petit mannequin', 'Habiller un compagnon de la tête aux pattes (4 pièces).', (g) => g.animals.companions().some((a) => Object.keys(a.outfit).length >= 4), { coins: 300 }),
+  A('pasteque-6', 'Fan de pastèque', 'Avoir 6 meubles ou décorations de la collection pastèque.', (g) => {
+    const h = g.house;
+    const ids = new Set([...Object.keys(h.storage).filter((id) => h.storage[id] > 0), ...h.placed.map((p) => p.id)]);
+    return [...ids].filter((id) => FURNITURE[id]?.cat === 'pasteque').length >= 6;
+  }, { title: 'Cœur de pastèque', coins: 600 }),
   A('chats-3', 'Reine des chats', 'Adopter 3 chats.', (g) => g.animals.companions().filter((a) => a.species === 'chat').length >= 3, { title: 'Reine des chats', furniture: { 'statue-chat': 1 } }),
   A('carnet-20', 'Naturaliste', 'Découvrir 20 pelages.', (g) => Object.values(g.animals.discovered).reduce((t, d) => t + d.variants.length, 0) >= 20, { coins: 400 }),
   A('carnet-40', 'Encyclopédie vivante', 'Découvrir 40 pelages.', (g) => Object.values(g.animals.discovered).reduce((t, d) => t + d.variants.length, 0) >= 40, { title: 'Naturaliste', coins: 800 }),

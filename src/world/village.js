@@ -617,7 +617,7 @@ export class Village {
   // --- Café des Chats, garage, tableau des petits boulots ------------------------
 
   /** Bâtiment tourné vers la place, avec son comptoir extérieur (point de boutique). */
-  addBuilding({ deg, r, geo, glass, w, d, id, label, counter, sign, signColors, reserve = 7 }) {
+  addBuilding({ deg, r, geo, glass, w, d, id, label, counter, sign, signColors, reserve = 7, camTop = 6.4 }) {
     const a = (deg * Math.PI) / 180;
     const x = Math.cos(a) * r;
     const z = Math.sin(a) * r;
@@ -626,7 +626,7 @@ export class Village {
     this.static.addRaw(place(geo, x, y, z, rot));
     if (glass) this.glassExtra.addRaw(place(glass, x, y, z, rot));
     this.world.colliders.addBox(x, z, w / 2 + 0.25, d / 2 + 0.25, rot);
-    this.world.addCamBlocker({ x, z, hw: w / 2 + 0.7, hd: d / 2 + 0.7, rot, top: y + 6.4 });
+    this.world.addCamBlocker({ x, z, hw: w / 2 + 0.7, hd: d / 2 + 0.7, rot, top: y + camTop });
     this.world.reserve(x, z, reserve);
     this.houses.push({ x, z, rot, d, w, player: false, id });
     const fwd = [Math.sin(rot), Math.cos(rot)];
@@ -661,25 +661,15 @@ export class Village {
     s.add(G.box(w, h, d), wall, { pos: [0, 0.5 + h / 2, 0], surf: SURF.plaster });
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) s.add(G.box(0.24, h, 0.24), trim, { pos: [sx * (w / 2), 0.5 + h / 2, sz * (d / 2)] });
     s.add(G.box(w + 0.12, 0.2, d + 0.12), trim, { pos: [0, top, 0] });
-    const rh = d * 0.42;
-    const tri = new THREE.Shape([new THREE.Vector2(-d / 2, 0), new THREE.Vector2(d / 2, 0), new THREE.Vector2(0, rh)]);
-    const gable = new THREE.ExtrudeGeometry(tri, { depth: w - 0.02, bevelEnabled: false });
-    gable.rotateY(Math.PI / 2);
-    s.add(gable, wall, { pos: [-(w - 0.02) / 2, top + 0.1, 0], surf: SURF.plaster });
-    const ang = Math.atan2(rh, d / 2);
-    const L = Math.hypot(d / 2, rh) + 0.7;
-    for (const side of [-1, 1]) s.add(G.box(w + 0.9, 0.3, L), roof, { pos: [0, top + 0.1 + rh / 2 + 0.2, side * (d / 4 + 0.12)], rot: [side * ang, 0, 0], surf: SURF.tiles });
-    s.add(G.cyl(0.24, 0.24, w + 1.0, 8), roof, { pos: [0, top + rh + 0.33, 0], rot: [0, 0, Math.PI / 2], surf: SURF.tiles });
-    // Oreilles de chat sur le toit !
-    for (const sx of [-1.3, 1.3]) {
-      s.add(G.cone(0.55, 0.9, 4), roof, { pos: [sx, top + rh + 0.75, 0], rot: [0, Math.PI / 4, sx > 0 ? -0.25 : 0.25], scale: [1, 1, 0.45], surf: SURF.tiles });
-      s.add(G.cone(0.32, 0.55, 4), '#ffb3c7', { pos: [sx, top + rh + 0.7, 0.12], rot: [0, Math.PI / 4, sx > 0 ? -0.25 : 0.25], scale: [1, 1, 0.35] });
-    }
+    // Le toit : un grand chat roux couché sur un coussin, la tête au-dessus de la façade.
+    roofCat(s, w, d, top);
     // Porte, grande vitrine, auvent rayé.
     const fz = d / 2;
     s.add(G.box(1.4, 2.3, 0.1), trim, { pos: [1.6, 0.5 + 1.15, fz + 0.02] });
     s.add(G.box(1.1, 2.05, 0.14), '#ff8fab', { pos: [1.6, 0.5 + 1.02, fz + 0.05] });
-    s.add(G.box(0.7, 0.7, 0.05), '#dff4ff', { pos: [1.6, 0.5 + 1.5, fz + 0.12] });
+    // Hublot de la porte en tête de chat.
+    s.add(G.cyl(0.3, 0.3, 0.05, 20), '#dff4ff', { pos: [1.6, 0.5 + 1.5, fz + 0.12], rot: [Math.PI / 2, 0, 0], surf: SURF.plain });
+    for (const sx of [-1, 1]) s.add(G.cone(0.13, 0.2, 3), '#dff4ff', { pos: [1.6 + sx * 0.2, 0.5 + 1.82, fz + 0.12], rot: [0, 0, -sx * 0.45], scale: [1, 1, 0.3], surf: SURF.plain });
     s.add(G.sphere(0.07, 8, 6), '#ffd166', { pos: [1.95, 0.5 + 0.95, fz + 0.15] });
     s.add(G.box(3.0, 1.9, 0.12), trim, { pos: [-1.3, 0.5 + 1.35, fz + 0.03] });
     s.add(G.box(3.2, 0.2, 0.4), trim, { pos: [-1.3, 0.5 + 0.35, fz + 0.2] });
@@ -731,12 +721,15 @@ export class Village {
     c.add(G.cyl(0.18, 0.2, 0.3, 12), '#b98457', { pos: [0.75, 1.1, 0.2] });
     const b = this.addBuilding({
       deg: 245, r: 24, geo: s.build(), glass: glass.build(), w, d, id: 'cafe', label: '☕ Café des Chats',
-      counter: { geo: c.build(), side: -2.9 }, sign: { x: -1.3, y: 3.05, w: 3.0 }, signColors: ['#fff3f7', '#c0584a'],
+      counter: { geo: c.build(), side: -2.9 }, sign: { x: -1.3, y: 3.05, w: 3.0 }, signColors: ['#fff3f7', '#c0584a'], camTop: 8.4,
     });
     for (const [tx, tz] of this.cafeTables) {
       const o = rotate2(tx, tz, b.rot);
       this.world.colliders.addCircle(b.x + o[0], b.z + o[1], 1.0);
     }
+    // Bout de la queue du chat, qui pend le long du mur de droite.
+    const tail = rotate2(w / 2 + 0.55, -1.35, b.rot);
+    this.world.colliders.addBox(b.x + tail[0], b.z + tail[1], 0.3, 0.75, b.rot);
     this.cafe = b;
   }
 
@@ -1253,6 +1246,112 @@ export class Village {
       pos.setXYZ(i, Math.cos(p.a) * r, Math.max(yy, 0.62), Math.sin(p.a) * r);
     }
     pos.needsUpdate = true;
+  }
+}
+
+/**
+ * Toit du Café des Chats : un grand chat roux couché en « pain » sur un coussin rose,
+ * tourné vers la place. La tête dépasse au-dessus de la façade, les pattes avant pendent
+ * au bord du toit, la queue tombe le long du mur de droite et se termine en crochet.
+ */
+function roofCat(s, w, d, top) {
+  const P = SURF.plain;
+  const fur = '#f5a55a';
+  const furD = '#df7a36';
+  const cream = '#fff1df';
+  const pink = '#ff9fb5';
+  const ink = '#4a3226';
+  const fz = d / 2;
+  const base = top + 0.44;
+  // Coussin à passepoil.
+  s.add(G.box(w + 0.4, 0.34, d + 0.4), '#ffc2d3', { pos: [0, top + 0.27, 0], surf: P });
+  for (const sz of [-1, 1]) s.add(G.cyl(0.13, 0.13, w + 0.4, 10), '#fffaf2', { pos: [0, top + 0.27, sz * (d / 2 + 0.2)], rot: [0, 0, Math.PI / 2], surf: P });
+  for (const sx of [-1, 1]) s.add(G.cyl(0.13, 0.13, d + 0.4, 10), '#fffaf2', { pos: [sx * (w / 2 + 0.2), top + 0.27, 0], rot: [Math.PI / 2, 0, 0], surf: P });
+  // Le chat est dessiné à part puis agrandi (plus grand que le toit n'est profond, il
+  // déborderait derrière).
+  const cat = new Shape();
+  // Corps couché, rayures qui épousent le dos.
+  const B = { x: 0.15, y: base + 0.95, z: -0.75, rx: 2.4, ry: 1.15, rz: 1.6 };
+  cat.add(G.sphere(1, 30, 20), fur, { pos: [B.x, B.y, B.z], scale: [B.rx, B.ry, B.rz], surf: P });
+  for (const dz of [-1.15, -0.55, 0.05]) {
+    const k = Math.sqrt(1 - (dz / B.rz) ** 2) * 1.03;
+    cat.add(G.sphere(1, 24, 14), furD, { pos: [B.x, B.y + 0.02, B.z + dz], scale: [B.rx * k, B.ry * k, 0.17], surf: P });
+  }
+  // Tête.
+  const H = { x: -0.15, y: base + 1.42, z: 1.05, r: 1.42, sx: 1.12, sy: 0.96 };
+  cat.add(G.sphere(1, 30, 22), fur, { pos: [H.x, H.y, H.z], scale: [H.r * H.sx, H.r * H.sy, H.r], surf: P });
+  const n = new THREE.Vector3();
+  // Point de la surface de la tête vu de face (dx, dy depuis le centre) et sa normale.
+  const onHead = (dx, dy, lift = 0) => {
+    const ax = H.r * H.sx;
+    const ay = H.r * H.sy;
+    const zz = Math.sqrt(Math.max(0, 1 - (dx / ax) ** 2 - (dy / ay) ** 2)) * H.r;
+    n.set(dx / (ax * ax), dy / (ay * ay), zz / (H.r * H.r)).normalize();
+    return { pos: [H.x + dx + n.x * lift, H.y + dy + n.y * lift, H.z + zz + n.z * lift], dir: [n.x, n.y, n.z] };
+  };
+  // Museau, menton, poitrail clairs.
+  for (const sx of [-1, 1]) cat.add(G.sphere(0.42, 16, 12), cream, { ...onHead(sx * 0.33, -0.42, -0.2), scale: [1, 0.78, 0.7], surf: P });
+  cat.add(G.sphere(0.3, 14, 10), cream, { ...onHead(0, -0.72, -0.16), scale: [1.1, 0.7, 0.7], surf: P });
+  cat.add(G.sphere(0.8, 18, 12), cream, { pos: [H.x, base + 0.5, H.z + 1.0], scale: [1.15, 0.75, 0.6], surf: P });
+  // Rayures du front.
+  for (const [dx, dy, a] of [[-0.3, 0.86, 0.25], [0, 0.95, 0], [0.3, 0.86, -0.25]]) {
+    const o = onHead(dx, dy, 0.01);
+    cat.add(G.sphere(1, 10, 8), furD, { pos: o.pos, rot: [-0.9, 0, a], scale: [0.08, 0.3, 0.05], surf: P });
+  }
+  // Yeux verts à pupille fendue, avec un reflet.
+  for (const sx of [-1, 1]) {
+    cat.add(G.sphere(0.27, 16, 12), '#9ccf5a', { ...onHead(sx * 0.56, 0.16, 0), scale: [0.9, 1.15, 0.35], surf: P });
+    cat.add(G.sphere(0.27, 14, 10), '#2b2420', { ...onHead(sx * 0.56, 0.16, 0.05), scale: [0.32, 1.0, 0.3], surf: P });
+    cat.add(G.sphere(0.07, 8, 6), '#ffffff', { ...onHead(sx * 0.56 - 0.08, 0.3, 0.1), scale: [1, 1, 0.5], surf: P });
+    // Joues roses.
+    cat.add(G.sphere(0.2, 12, 8), pink, { ...onHead(sx * 0.92, -0.28, 0), scale: [1.2, 0.65, 0.3], surf: P });
+  }
+  // Nez et bouche en « w ».
+  cat.add(G.sphere(0.13, 12, 8), '#ff7f9e', { ...onHead(0, -0.2, 0.06), scale: [1.35, 0.85, 0.7], surf: P });
+  for (const sx of [-1, 1]) {
+    const arc = new THREE.TorusGeometry(0.11, 0.025, 6, 12, Math.PI);
+    arc.rotateZ(Math.PI);
+    cat.add(arc, ink, { ...onHead(sx * 0.11, -0.4, 0.03), surf: P });
+  }
+  // Moustaches.
+  for (const sx of [-1, 1]) {
+    const root = onHead(sx * 0.62, -0.38, 0).pos;
+    for (const [up, fw] of [[0.16, 0.18], [0, 0.22], [-0.15, 0.25]]) {
+      const dir = new THREE.Vector3(sx, up, fw).normalize();
+      const len = 1.15;
+      const g = G.cyl(0.022, 0.012, len, 5);
+      g.rotateX(Math.PI / 2);
+      cat.add(g, ink, { pos: [root[0] + dir.x * len * 0.5, root[1] + dir.y * len * 0.5, root[2] + dir.z * len * 0.5], dir: [dir.x, dir.y, dir.z], surf: P });
+    }
+  }
+  // Oreilles.
+  for (const sx of [-1, 1]) {
+    cat.add(G.cone(0.55, 0.95, 4), fur, { pos: [H.x + sx * 0.88, H.y + 1.08, H.z - 0.2], rot: [0, Math.PI / 4, -sx * 0.38], scale: [1, 1, 0.55], surf: P });
+    cat.add(G.cone(0.33, 0.62, 4), pink, { pos: [H.x + sx * 0.86, H.y + 1.0, H.z - 0.02], rot: [0, Math.PI / 4, -sx * 0.38], scale: [1, 1, 0.35], surf: P });
+  }
+  // Pattes avant blanches qui dépassent du bord du toit.
+  for (const sx of [-1, 1]) {
+    cat.add(G.sphere(0.42, 16, 12), cream, { pos: [H.x + sx * 0.72, top + 0.62, fz + 0.05], scale: [0.78, 0.55, 1.3], surf: P });
+    for (const t of [-1, 0, 1]) cat.add(G.sphere(0.07, 8, 6), '#ffb3c7', { pos: [H.x + sx * 0.72 + t * 0.15, top + 0.5, fz + 0.6], scale: [1, 0.7, 0.6], surf: P });
+  }
+  const K = 1.18;
+  const g = cat.build();
+  g.translate(0, -base, 0);
+  g.scale(K, K, K);
+  g.translate(0, base, 0);
+  s.addRaw(g);
+  // Queue : du bas du dos, elle passe sur le côté et pend le long du mur, bout en crochet.
+  const pts = [[1.2, base + 0.55, -1.9], [3.0, base + 0.25, -2.25], [w / 2 + 0.5, top - 0.3, -1.95], [w / 2 + 0.55, 2.1, -1.65], [w / 2 + 0.55, 1.15, -1.3], [w / 2 + 0.55, 0.95, -0.85], [w / 2 + 0.55, 1.3, -0.62]];
+  const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)));
+  const head = new THREE.CatmullRomCurve3(curve.getPoints(40).slice(0, 31));
+  const tip = new THREE.CatmullRomCurve3(curve.getPoints(40).slice(30));
+  s.add(new THREE.TubeGeometry(head, 40, 0.3, 12, false), fur, { surf: P });
+  s.add(new THREE.TubeGeometry(tip, 12, 0.3, 12, false), furD, { surf: P });
+  s.add(G.sphere(0.3, 12, 8), furD, { pos: pts.at(-1), surf: P });
+  for (const t of [0.42, 0.55, 0.68]) {
+    const p = curve.getPoint(t);
+    const tg = curve.getTangent(t);
+    s.add(G.torus(0.3, 0.06, 6, 16), furD, { pos: [p.x, p.y, p.z], dir: [tg.x, tg.y, tg.z], surf: P });
   }
 }
 

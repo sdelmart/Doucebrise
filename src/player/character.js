@@ -720,6 +720,16 @@ export class Character {
         s.add(G.torus(0.27, 0.015, 4, 20), '#ffd84d', { pos: [0, 0.64, -0.02], rot: [Math.PI / 2 - 0.12, 0, 0] });
         s.add(G.sphere(0.045, 8, 6), '#ffd84d', { pos: [0, 0.68, 0.27], scale: [1, 1, 0.4] });
         break;
+      case 'pasteque': {
+        // Demi-écorce de pastèque en casque, bord blanc puis rouge, petite queue.
+        const dome = (r, col, a0, len, segs) => s.add(new THREE.SphereGeometry(r, segs, 12, a0, len, 0, Math.PI * 0.52), col, { pos: HC, rot: [-0.22, 0, 0], scale: HEAD_SCALE });
+        dome(R * 1.14, '#3f9d4a', 0, Math.PI * 2, 24);
+        for (let i = 0; i < 9; i++) dome(R * 1.152, '#24693a', (i / 9) * Math.PI * 2, 0.24, 3);
+        s.add(G.torus(R * 1.12, 0.04, 8, 28), '#f4f7e8', { pos: [0, 0.37, -0.03], rot: [Math.PI / 2 - 0.22, 0, 0], scale: [HEAD_SCALE[0], 1, 1] });
+        s.add(G.torus(R * 1.07, 0.03, 8, 28), '#ff5a6e', { pos: [0, 0.35, -0.03], rot: [Math.PI / 2 - 0.22, 0, 0], scale: [HEAD_SCALE[0], 1, 1] });
+        s.add(G.cyl(0.025, 0.035, 0.12, 6), '#8a6a3a', { pos: [0, 0.74, -0.12], rot: [-0.22, 0, 0.2] });
+        break;
+      }
       case 'tasse':
         s.add(G.cyl(0.26, 0.26, 0.025, 20), '#ffffff', { pos: [0.04, 0.64, -0.02], rot: [-0.1, 0, -0.15] });
         s.add(G.cyl(0.16, 0.12, 0.2, 18), c, { pos: [0.06, 0.76, -0.02], rot: [-0.1, 0, -0.15] });
@@ -788,6 +798,14 @@ export class Character {
           ms.absarc(0, 0, 0.085, 0.5, Math.PI * 2 - 0.5, false);
           ms.absarc(0.05, 0, 0.065, Math.PI * 2 - 0.9, 0.9, true);
           s.add(new THREE.ExtrudeGeometry(ms, { depth: 0.015, bevelEnabled: false, curveSegments: 10 }), '#ffd84d', { pos: [x, ey, ez - 0.01], rot: [0, side * 0.2, side < 0 ? Math.PI : 0] });
+          break;
+        }
+        case 'pasteque': {
+          // Verres en tranche de pastèque (écorce en bas), quelques pépins.
+          const o = { pos: [x, ey + 0.03, ez], rot: [0, side * 0.2, 0] };
+          s.add(new THREE.RingGeometry(0.078, 0.098, 18, 1, Math.PI, Math.PI), '#3f9d4a', o);
+          s.add(new THREE.CircleGeometry(0.078, 18, Math.PI, Math.PI), '#ff5a6e', { ...o, pos: [x, ey + 0.03, ez + 0.002] });
+          for (const [dx, dy] of [[-0.03, -0.03], [0, -0.05], [0.03, -0.03]]) s.add(G.sphere(0.007, 5, 4), '#2b2420', { pos: [x + dx, ey + 0.03 + dy, ez + 0.006], scale: [0.7, 1.2, 0.4] });
           break;
         }
         case 'monocle':
@@ -937,6 +955,28 @@ export class Character {
           m.castShadow = false;
           this.wings.push({ pivot, side });
         }
+        break;
+      }
+      case 'sacPasteque': {
+        // Sac à dos en tranche de pastèque (le côté plat en haut).
+        const s = new Shape();
+        const half = (r, col, d, z) => {
+          const sh = new THREE.Shape();
+          sh.absarc(0, 0, r, Math.PI, Math.PI * 2, false);
+          sh.lineTo(-r, 0);
+          const g = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: false, curveSegments: 16 });
+          g.translate(0, 0, -d / 2);
+          s.add(g, col, { pos: [0, 0.36, z] });
+        };
+        half(0.2, '#3f9d4a', 0.12, -0.26 * b);
+        half(0.18, '#f4f7e8', 0.13, -0.26 * b);
+        half(0.165, '#ff5a6e', 0.14, -0.26 * b);
+        for (const [x, y] of [[-0.08, -0.05], [0, -0.1], [0.08, -0.05], [-0.04, -0.02], [0.04, -0.02]]) s.add(G.sphere(0.012, 5, 4), '#2b2420', { pos: [x, 0.36 + y, -0.26 * b - 0.072], scale: [0.7, 1.2, 0.4] });
+        for (const x of [-0.1, 0.1]) {
+          s.add(G.box(0.035, 0.3, 0.02), '#24693a', { pos: [x, 0.24, 0.175 * b], rot: [-0.1, 0, 0] });
+          s.add(G.box(0.035, 0.03, 0.4 * b), '#24693a', { pos: [x, 0.39, 0] });
+        }
+        this.addPart(this.torso, s.build());
         break;
       }
       case 'sacChat': {

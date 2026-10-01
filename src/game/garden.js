@@ -11,6 +11,7 @@ export const CROPS = {
   tomate: { hours: 28, yield: [3, 5] },
   mais: { hours: 34, yield: [2, 4] },
   citrouille: { hours: 44, yield: [1, 2] },
+  pasteque: { hours: 40, yield: [1, 2] },
 };
 
 const LEAF = '#5fb04f';
@@ -83,6 +84,24 @@ function plantGeo(crop, stage) {
           s.add(G.sphere(r * 0.25, 6, 4), stage === 3 ? '#e57a20' : '#7fb44a', { pos: [Math.cos(a) * r * 1.05, r * 0.8, 0.05 + Math.sin(a) * r * 1.05], scale: [0.6, 3.2, 0.6] });
         }
         s.add(G.cyl(0.03, 0.04, 0.12, 5), '#6b8f3a', { pos: [0, r * 1.6, 0.05] });
+      }
+      break;
+    case 'pasteque':
+      // Tige rampante, grandes feuilles découpées, puis une pastèque rayée.
+      for (let i = 0; i < 5; i++) {
+        const a = i * 1.26 + 0.2;
+        s.add(G.sphere(0.17 * k, 7, 5), i % 2 ? LEAF : LEAF_D, { pos: [Math.cos(a) * 0.24 * k, 0.07, Math.sin(a) * 0.24 * k], scale: [1, 0.25, 0.8], rot: [0, -a, 0] });
+      }
+      s.add(G.torus(0.16 * k, 0.012, 4, 10, Math.PI * 1.4), LEAF_D, { pos: [0, 0.05, 0], rot: [Math.PI / 2, 0, 0.5] });
+      if (stage >= 2) {
+        const r = stage === 3 ? 0.27 : 0.12;
+        const z = 0.08;
+        s.add(G.sphere(r, 16, 12), stage === 3 ? '#3f9d4a' : '#8fc45a', { pos: [0.02, r * 0.78, z], scale: [1.2, 0.85, 0.95] });
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          s.add(new THREE.SphereGeometry(r * 1.012, 3, 12, a, 0.22, 0, Math.PI), stage === 3 ? '#24693a' : '#6fa84a', { pos: [0.02, r * 0.78, z], scale: [1.2, 0.85, 0.95] });
+        }
+        s.add(G.cyl(0.015, 0.02, 0.06, 5), '#8a6a3a', { pos: [0.02, r * 1.58, z] });
       }
       break;
     default:

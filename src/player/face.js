@@ -373,6 +373,24 @@ export function createPatternTexture(pattern, base, accent) {
         ctx.fillStyle = accent;
       }
       break;
+    case 'pasteque':
+      // Petites tranches de pastèque (rouge, blanc, vert, pépins) sur la couleur du haut.
+      for (const [x, y] of [[32, 38], [96, 102]]) {
+        for (const [r, col] of [[18, '#3f9d4a'], [15.5, '#f4f7e8'], [14, '#ff5a6e']]) {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.arc(x, y - 8, r, 0, Math.PI);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.fillStyle = '#2b2420';
+        for (const [dx, dy] of [[-6, 0], [0, 4], [6, 0]]) {
+          ctx.beginPath();
+          ctx.ellipse(x + dx, y - 8 + dy + 2, 1.4, 2.3, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
     default:
       break;
   }
