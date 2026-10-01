@@ -45,6 +45,7 @@ export class UI {
       zone: $('#zone-label'),
       banner: $('#zone-banner'),
       prompt: $('#prompt'),
+      pickCard: $('#pick-card'),
       toasts: $('#toasts'),
       inventory: $('#inventory'),
       followers: $('#followers'),
@@ -94,7 +95,10 @@ export class UI {
     $('#btn-music').addEventListener('click', () => this.game.toggleMusic());
     $('#btn-decor').addEventListener('click', () => this.game.startDecor());
     $('#btn-photo').addEventListener('click', () => this.game.startPhoto());
-    this.el.quest.addEventListener('click', () => this.game.openPanel('journal'));
+    this.el.quest.addEventListener('click', (e) => {
+      if (e.target.closest('.qt-more')) this.cycleFocus();
+      else this.game.openPanel('journal');
+    });
     // L'horloge rouvre le carnet du jour (fête, anniversaires, potager, courrier…).
     const clock = document.querySelector('.clock-card');
     clock.title = 'Le programme du jour';
@@ -157,7 +161,10 @@ export class UI {
     this.el.hud.classList.toggle('hidden', !on);
     if (!on) this.toggleTray(false);
     this.el.touch.classList.toggle('hidden', !(on && (this.game.input.isTouch || isTouchUI())));
-    if (!on) this.setPrompt(null);
+    if (!on) {
+      this.setPrompt(null);
+      this.setPickCard(null);
+    }
   }
 
   // --- Interface épurée ---------------------------------------------------------
@@ -296,36 +303,69 @@ export class UI {
     }
   }
 
-  refreshQuest() {
+  /** Objectifs en cours : histoire, mission, quête d'habitant suivie, page du carnet. */
+  objectives() {
     const g = this.game;
+    const out = [];
     const q = g.quests.current;
-    const el = this.el.quest;
-    let html = '';
-    if (!q) {
-      html = '<div class="qt-title">🌟 Histoire terminée</div><div class="qt-goal">Profite de l\'île !</div>';
-    } else {
+    if (q) {
       const qs = g.quests;
       const i = q.goals.findIndex((goal, k) => qs.goalProgress(q, k) < goal.count);
       const goal = q.goals[Math.max(i, 0)];
       const p = qs.goalProgress(q, Math.max(i, 0));
       const chap = CHAPTERS.find((c) => c.id === q.chapter);
       const inChap = qs.chapterQuests(q.chapter);
-      html = `<div class="qt-chap">${chap.emoji} ${chap.id === 'epilogue' ? 'Épilogue' : `Chapitre ${chap.n}`} · ${inChap.indexOf(q) + 1}/${inChap.length}</div>
-        <div class="qt-title">📜 ${escapeHtml(q.title)}</div><div class="qt-goal"><span class="qt-em">📜</span>${escapeHtml(goal.label)}${goal.count > 1 ? ` — ${p}/${goal.count}` : ''}</div>`;
+      out.push({
+        kind: 'story',
+        em: '📜',
+        text: `${goal.label}${goal.count > 1 ? ` — ${p}/${goal.count}` : ''}`,
+        head: `<div class="qt-chap">${chap.emoji} ${chap.id === 'epilogue' ? 'Épilogue' : `Chapitre ${chap.n}`} · ${inChap.indexOf(q) + 1}/${inChap.length}</div><div class="qt-title">📜 ${escapeHtml(q.title)}</div>`,
+        name: q.title,
+      });
     }
-    const page = q && q.id !== 'pages' ? g.carnet?.next() : null;
-    if (page) html += `<div class="qt-page" title="Carnet du gardien : page ${page.n}">📖 ${escapeHtml(page.riddle)}</div>`;
     const job = g.jobs?.active;
-    if (job) html += `<div class="qt-job">${JOB_TYPES[job.type].emoji} ${escapeHtml(g.jobs.progressText())}</div>`;
+    if (job) out.push({ kind: 'job', em: JOB_TYPES[job.type].emoji, text: g.jobs.progressText(), name: JOB_TYPES[job.type].label });
     const sq = g.sideQuests;
     const side = sq?.tracked && sq.get(sq.tracked);
     if (side && sq.active[side.id]) {
-      const ready = sq.isReady(side);
       const to = g.villagers.get(sq.turnInOf(side));
-      html += `<div class="qt-side">❗ ${escapeHtml(side.title)} — ${ready ? `retourne voir ${to.def.emoji} ${escapeHtml(to.def.name)}` : escapeHtml(sq.progressText(side))}</div>`;
+      out.push({ kind: 'side', em: '❗', text: `${side.title} — ${sq.isReady(side) ? `retourne voir ${to.def.name}` : sq.progressText(side)}`, name: side.title });
+    }
+    // Page du carnet : seulement si on a demandé à être guidé (sinon, journal → Carnet).
+    const page = q && q.id !== 'pages' && g.carnet?.tracked ? g.carnet.next() : null;
+    if (page) out.push({ kind: 'page', em: '📖', text: page.riddle, name: `Page ${page.n} du carnet` });
+    if (!out.length) out.push({ kind: 'story', em: '🌟', text: 'Histoire terminée : profite de l\'île !', name: 'Histoire' });
+    return out;
+  }
+
+  /** Passe à l'objectif suivant (le HUD, le repère et la flèche n'en montrent qu'un). */
+  cycleFocus() {
+    const list = this.objectives();
+    if (list.length < 2) return;
+    const i = list.findIndex((o) => o.kind === this.focusKind);
+    this.game.focus = list[(i + 1) % list.length].kind;
+    this.game.audio.play('ui');
+    this.refreshQuest();
+    this.game.guide.flash();
+  }
+
+  refreshQuest() {
+    const g = this.game;
+    const el = this.el.quest;
+    // Un seul objectif à la fois : celui qu'on suit. Les autres attendent derrière « ⇄ ».
+    const list = this.objectives();
+    const cur = list.find((o) => o.kind === g.focus) || list[0];
+    this.focusKind = cur.kind;
+    let html = cur.kind === 'story' && cur.head ? cur.head : '';
+    // Habitant à voir endormi : on le dit au lieu de laisser un repère seul devant sa porte.
+    const sleep = g.guide?.sleepNote;
+    html += `<div class="qt-goal qt-${cur.kind}"><span class="qt-em">${cur.em}</span>${escapeHtml(cur.text)}${sleep ? `<span class="qt-sleep"> — 💤 ${escapeHtml(sleep)}</span>` : ''}</div>`;
+    if (list.length > 1) {
+      const others = list.filter((o) => o !== cur).map((o) => `${o.em} ${o.name}`).join('\n');
+      html += `<button class="qt-more" title="Suivre un autre objectif :\n${escapeHtml(others)}">⇄ ${list.length - 1} autre${list.length > 2 ? 's' : ''}</button>`;
     }
     if (el.innerHTML !== html) el.innerHTML = html;
-    el.title = q ? `${q.title} — Journal (${actionKey('journal')})` : `Journal (${actionKey('journal')})`;
+    el.title = `${cur.name} — Journal (${actionKey('journal')})`;
     // La quête avance : l'interface revient un instant (et la quête s'affiche en mode minimal).
     const sig = html.replace(/<[^>]+>/g, '');
     if (this.questSig !== null && sig !== this.questSig) {
@@ -344,7 +384,7 @@ export class UI {
     const g = this.game;
     const el = $('#challenge-tracker');
     const list = g.progress.daily.list;
-    if (!list.length) {
+    if (!list.length || !g.features.unlocked('defis')) {
       el.classList.add('hidden');
       return;
     }
@@ -406,6 +446,7 @@ export class UI {
 
   /** Bulle de texte au-dessus d'un personnage (position donnée par une fonction). */
   bubble(posFn, text, ms = 2500) {
+    ms = readTime(text, ms, 12000);
     const el = document.createElement('div');
     el.className = 'speech';
     el.textContent = text;
@@ -526,6 +567,7 @@ export class UI {
   // --- Notifications ----------------------------------------------------------
 
   toast(msg, ms = 3200) {
+    ms = readTime(msg, ms, 12000);
     const box = this.el.toasts;
     // Même message déjà affiché : on le prolonge au lieu d'en empiler un second.
     let t = [...box.children].find((x) => x.textContent === msg && !x.classList.contains('out'));
@@ -649,31 +691,69 @@ export class UI {
       return;
     }
     const touch = isTouchUI();
-    const key = JSON.stringify([target.title, target.sub, target.hearts, target.actions, touch]);
+    // Bulle courte (habitants, animaux pas désignés) : juste la touche et l'action principale.
+    const brief = !!target.brief;
+    const key = JSON.stringify([target.title, target.sub, target.hearts, target.actions, touch, brief]);
     if (key !== this.promptKey) {
       this.promptKey = key;
-      let html = `<div class="p-title">${escapeHtml(target.title)}</div>`;
-      if (target.sub) html += `<div class="p-sub">${escapeHtml(target.sub)}</div>`;
-      if (target.hearts !== undefined) html += `<div class="hearts">${heartsString(target.hearts)}</div>`;
-      html += '<div class="actions">';
-      for (const a of target.actions) {
-        const icon = touch && touchIcon(a.key);
-        const k = touch ? (icon ? `<span class="key touch-icon">${icon}</span>` : '') : `<span class="key">${escapeHtml(promptKey(a.key))}</span>`;
-        html += `<div class="act${a.dim ? ' dim' : ''}">${k}${escapeHtml(a.label)}</div>`;
-      }
-      html += '</div>';
-      el.innerHTML = html;
+      el.classList.toggle('brief', brief);
+      el.innerHTML = brief ? this.briefHtml(target, touch) : this.cardHtml(target, touch);
     }
-    el.classList.remove('hidden');
-    _v.copy(target.pos).project(this.game.camera);
-    const x = (_v.x * 0.5 + 0.5) * window.innerWidth;
-    const y = (-_v.y * 0.5 + 0.5) * window.innerHeight;
+    this.place(el, target.pos);
+  }
+
+  /** Touche + action principale, précédées de l'emoji du titre (« 🐱 E Caresser »). */
+  briefHtml(target, touch) {
+    const a = target.actions[0];
+    const emoji = (target.title || '').split(' ')[0];
+    return `<div class="act">${emoji ? `<span class="b-em">${emoji}</span>` : ''}${a ? `${this.keyHtml(a.key, touch)}${escapeHtml(a.label)}` : ''}</div>`;
+  }
+
+  cardHtml(target, touch, note = '') {
+    let html = `<div class="p-title">${escapeHtml(target.title)}</div>`;
+    if (target.sub) html += `<div class="p-sub">${escapeHtml(target.sub)}</div>`;
+    if (target.hearts !== undefined) html += `<div class="hearts">${heartsString(target.hearts)}</div>`;
+    if (target.actions?.length) {
+      html += '<div class="actions">';
+      for (const a of target.actions) html += `<div class="act${a.dim ? ' dim' : ''}">${this.keyHtml(a.key, touch)}${escapeHtml(a.label)}</div>`;
+      html += '</div>';
+    }
+    if (note) html += `<div class="p-note">${escapeHtml(note)}</div>`;
+    return html;
+  }
+
+  keyHtml(code, touch) {
+    if (!touch) return `<span class="key">${escapeHtml(promptKey(code))}</span>`;
+    const icon = touchIcon(code);
+    return icon ? `<span class="key touch-icon">${icon}</span>` : '';
+  }
+
+  /** Place une bulle au-dessus d'un point de la scène (cachée s'il est derrière la caméra). */
+  place(el, pos) {
+    _v.copy(pos).project(this.game.camera);
     if (_v.z > 1) {
       el.classList.add('hidden');
       return;
     }
-    el.style.left = `${Math.round(x)}px`;
-    el.style.top = `${Math.round(y - 10)}px`;
+    el.classList.remove('hidden');
+    el.style.left = `${Math.round((_v.x * 0.5 + 0.5) * window.innerWidth)}px`;
+    el.style.top = `${Math.round((-_v.y * 0.5 + 0.5) * window.innerHeight - 10)}px`;
+  }
+
+  /** Fiche d'un habitant ou d'un animal désigné d'un clic, quand on n'est pas à côté. */
+  setPickCard(card) {
+    const el = this.el.pickCard;
+    if (!card) {
+      el.classList.add('hidden');
+      this.pickKey = '';
+      return;
+    }
+    const key = JSON.stringify([card.title, card.sub, card.hearts]);
+    if (key !== this.pickKey) {
+      this.pickKey = key;
+      el.innerHTML = this.cardHtml({ ...card, actions: [] }, false, 'Approche-toi pour interagir');
+    }
+    this.place(el, card.pos);
   }
 
   // --- HUD par frame ---------------------------------------------------------
@@ -1018,6 +1098,12 @@ export function heartsString(trust) {
   let s = '';
   for (let i = 0; i < 5; i++) s += i < full ? '💗' : i === full && half ? '💓' : '🤍';
   return s;
+}
+
+/** Temps pour lire un texte tranquillement (au moins `min` ms) : ~15 caractères par seconde. */
+export function readTime(text, min = 2500, max = 14000) {
+  const n = String(text || '').replace(/<[^>]+>/g, '').length;
+  return Math.min(max, Math.max(min, 1800 + n * 65));
 }
 
 export function escapeHtml(s) {

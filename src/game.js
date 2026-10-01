@@ -22,12 +22,13 @@ import { Garden } from './game/garden.js';
 import { Quests, STORY, CHAPTERS, chapterReward } from './game/quests.js';
 import { Cooking } from './game/cooking.js';
 import { Archipelago } from './game/travel.js';
-import { SideQuests, SIDE_QUESTS } from './game/sidequests.js';
+import { SideQuests, SIDE_QUESTS, questNeeds } from './game/sidequests.js';
 import { SledRace } from './game/sled.js';
 import { House } from './house/house.js';
 import { DecorMode } from './house/decor.js';
 import { Visits } from './house/visits.js';
 import { Carnet, PAGES } from './game/carnet.js';
+import { Features, FEATURES } from './game/features.js';
 import { FURNITURE, SHOP_FURNITURE, WALLPAPERS, FLOORS, FURNITURE_CATS, shopFurniture } from './house/furniture.js';
 import { HOME_SIZES, ROOF_STYLES, FACADES, HOME_EXTRAS } from './world/home.js';
 import { Input, initKeyboardLayout, logicalCode, isTyping } from './core/input.js';
@@ -167,6 +168,7 @@ export class Game {
     this.pauseMenu = new PauseMenu(this);
     this.credits = new Credits(this);
     this.tips = new Tips(this);
+    this.features = new Features(this);
     this.morning = new Morning(this);
     this.navigator = new UINavigator(this);
 
@@ -727,6 +729,10 @@ export class Game {
       this.ui.toast('Descends de ton véhicule pour décorer (V).');
       return;
     }
+    if (!this.features.unlocked('deco')) {
+      this.features.tellLocked('deco');
+      return;
+    }
     this.closePanels();
     this.standUp();
     if (this.decor.enter()) this.ui.showHUD(false);
@@ -1031,7 +1037,7 @@ export class Game {
       if (night) {
         if (sky.hour >= 18) sky.day += 1;
         sky.hour = 7;
-        this.ui.toast(`☀️ Bonjour ! Jour ${sky.day} — ${this.world.weather.season.emoji} ${this.world.weather.season.label}`, 3500);
+        // (Le carnet du matin dit bonjour : pas de message en plus.)
       } else {
         sky.hour = Math.min(sky.hour + 3, 20);
         this.ui.toast('😴 Petite sieste… Tu te sens en pleine forme !', 2500);
@@ -1071,9 +1077,93 @@ export class Game {
     }
   }
 
-  // --- Interactions ------------------------------------------------------------------
+  // --- Interactions (fiches au clic, bulles) ------------------------------------------
+
+  /** Habitant ou animal sous le clic (le plus proche du point visé, à l'écran). */
+  pickAt(x, y) {
+    const cam = this.camera;
+    const focal = window.innerHeight / (2 * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2));
+    const v = new THREE.Vector3();
+    let best = null;
+    let bestScore = 1.15;
+    const consider = (ref, kind, base, h) => {
+      const dist = cam.position.distanceTo(base);
+      if (dist > 40) return;
+      v.set(base.x, base.y + h * 0.5, base.z).project(cam);
+      if (v.z > 1) return;
+      const sx = (v.x * 0.5 + 0.5) * window.innerWidth;
+      const sy = (-v.y * 0.5 + 0.5) * window.innerHeight;
+      const radius = Math.max(22, (h * 0.62 * focal) / dist);
+      const score = Math.hypot(sx - x, sy - y) / radius;
+      if (score < bestScore) {
+        bestScore = score;
+        best = { kind, ref };
+      }
+    };
+    for (const vi of this.villagers.list) if (vi.root.visible && vi.interactable) consider(vi, 'v', vi.pos, 1.75);
+    for (const a of this.animals.animals) if (a.root.visible) consider(a, 'a', a.pos, Math.max(0.45, a.headPosition().y - a.pos.y + 0.25));
+    return best;
+  }
+
+  /** Clic : désigne (ou referme) la fiche d'un habitant / d'un animal. */
+  updatePick() {
+    const c = this.input.click;
+    if (c) {
+      const hit = this.pickAt(c.x, c.y);
+      this.picked = hit && this.picked?.ref !== hit.ref ? hit : null;
+    }
+    const p = this.picked;
+    if (!p) return null;
+    const r = p.ref;
+    const gone = !r.root.visible || (p.kind === 'v' && !r.interactable) || r.pos.distanceTo(this.player.pos) > 30;
+    if (gone) this.picked = null;
+    return this.picked;
+  }
+
+  villagerCard(v) {
+    const req = this.quests.requestFor(v.def.id);
+    const story = this.quests.current?.story?.villager === v.def.id;
+    const bday = this.calendar.isBirthday(v.def.id);
+    return {
+      pos: v.pos.clone().add(new THREE.Vector3(0, 2.4, 0)),
+      title: `${v.def.emoji} ${v.met ? v.def.name : '???'}${bday ? ' 🎂' : ''}`,
+      sub: `${v.def.job}${story ? ' · ✨ histoire' : ''}${{ ready: ' · ✅ quête à rendre', offer: ' · ❗ a une quête' }[this.sideQuests.markerFor(v.def.id)] || ''}${req && !req.done ? ' · a une demande' : ''}`,
+      hearts: v.friendship,
+      actions: [{ key: 'E', label: 'Parler' }],
+    };
+  }
+
+  animalCard(a) {
+    const food = this.animals.pickFood(a);
+    const favKnown = this.animals.discovered[a.species]?.fav;
+    let feedLabel = 'Donner à manger (sac vide)';
+    if (food) feedLabel = food === a.sp.fav ? `Donner ${ITEMS[food].emoji}${favKnown ? ' (préféré !)' : ''}` : `Donner ${ITEMS[food].emoji}`;
+    const actions = [
+      { key: 'E', label: a.state === 'sleep' ? 'Caresser (il dort…)' : 'Caresser' },
+      { key: 'F', label: feedLabel, dim: !food },
+    ];
+    if (this.unlocks.has('tool:plumeau')) actions.push({ key: 'G', label: 'Jouer 🪶' });
+    if (!a.adopted && a.trust >= 100) actions.push({ key: 'R', label: 'Adopter 💖' });
+    if (a.adopted) actions.push({ key: 'R', label: a.follow ? 'Attends-moi au jardin' : 'Suis-moi !' });
+    return {
+      pos: a.headPosition().add(new THREE.Vector3(0, 0.35, 0)),
+      title: `${a.sp.emoji} ${a.adopted ? a.name : a.sp.label}`,
+      sub: a.adopted ? `${a.sp.label} · ${a.variantName}` : a.variantName,
+      hearts: a.trust,
+      actions,
+    };
+  }
 
   updateInteractions() {
+    const pick = this.updatePick();
+    this.interact();
+    // Fiche de l'habitant / animal désigné, s'il n'est pas déjà celui de la bulle.
+    if (pick && pick.ref !== this.promptSubject) this.ui.setPickCard(pick.kind === 'v' ? this.villagerCard(pick.ref) : this.animalCard(pick.ref));
+    else this.ui.setPickCard(null);
+  }
+
+  interact() {
+    this.promptSubject = null;
     const input = this.input;
     const up = new THREE.Vector3(0, 2.3, 0);
     // Bataille de boules de neige : E lance une boule, rien d'autre.
@@ -1123,18 +1213,13 @@ export class Game {
       return;
     }
 
+    // Habitants et animaux : bulle courte ; la fiche complète (cœurs, quêtes, toutes les
+    // actions) s'ouvre d'un clic sur eux (ou toujours, selon les paramètres).
+    const full = (ref) => this.settings.cards === 'toujours' || this.picked?.ref === ref;
     const v = this.villagers.nearest();
     if (v) {
-      const req = this.quests.requestFor(v.def.id);
-      const story = this.quests.current?.story?.villager === v.def.id;
-      const bday = this.calendar.isBirthday(v.def.id);
-      this.ui.setPrompt({
-        pos: v.pos.clone().add(new THREE.Vector3(0, 2.4, 0)),
-        title: `${v.def.emoji} ${v.met ? v.def.name : '???'}${bday ? ' 🎂' : ''}`,
-        sub: `${v.def.job}${story ? ' · ✨ histoire' : ''}${{ ready: ' · ✅ quête à rendre', offer: ' · ❗ a une quête' }[this.sideQuests.markerFor(v.def.id)] || ''}${req && !req.done ? ' · a une demande' : ''}`,
-        hearts: v.friendship,
-        actions: [{ key: 'E', label: 'Parler' }],
-      });
+      this.promptSubject = v;
+      this.ui.setPrompt({ ...this.villagerCard(v), brief: !full(v) });
       if (input.hit('KeyE')) this.dialogue.start(v);
       return;
     }
@@ -1142,24 +1227,8 @@ export class Game {
     const animal = this.animals.nearest();
     if (animal) {
       const a = animal;
-      const food = this.animals.pickFood(a);
-      const favKnown = this.animals.discovered[a.species]?.fav;
-      let feedLabel = 'Donner à manger (sac vide)';
-      if (food) feedLabel = food === a.sp.fav ? `Donner ${ITEMS[food].emoji}${favKnown ? ' (préféré !)' : ''}` : `Donner ${ITEMS[food].emoji}`;
-      const actions = [
-        { key: 'E', label: a.state === 'sleep' ? 'Caresser (il dort…)' : 'Caresser' },
-        { key: 'F', label: feedLabel, dim: !food },
-      ];
-      if (this.unlocks.has('tool:plumeau')) actions.push({ key: 'G', label: 'Jouer 🪶' });
-      if (!a.adopted && a.trust >= 100) actions.push({ key: 'R', label: 'Adopter 💖' });
-      if (a.adopted) actions.push({ key: 'R', label: a.follow ? 'Attends-moi au jardin' : 'Suis-moi !' });
-      this.ui.setPrompt({
-        pos: a.headPosition().add(new THREE.Vector3(0, 0.35, 0)),
-        title: `${a.sp.emoji} ${a.adopted ? a.name : a.sp.label}`,
-        sub: a.adopted ? `${a.sp.label} · ${a.variantName}` : a.variantName,
-        hearts: a.trust,
-        actions,
-      });
+      this.promptSubject = a;
+      this.ui.setPrompt({ ...this.animalCard(a), brief: !full(a) });
       if (input.hit('KeyE')) this.animals.pet(a);
       if (input.hit('KeyF')) this.animals.feed(a);
       if (input.hit('KeyG')) this.animals.play(a);
@@ -1167,6 +1236,8 @@ export class Game {
         if (a.adopted) {
           this.animals.toggleFollow(a);
           this.ui.refreshFollowers();
+        } else if (a.trust >= 100 && !this.features.unlocked('adoption')) {
+          this.features.tellLocked('adoption');
         } else if (a.trust >= 100) {
           this.adoptDialog(a);
         } else {
@@ -1229,6 +1300,10 @@ export class Game {
     }
     const jb = vil.jobBoard;
     if (Math.hypot(jb.x - this.player.pos.x, jb.z - this.player.pos.z) < 1.8) {
+      if (!this.features.unlocked('boulots')) {
+        this.ui.setPrompt({ pos: new THREE.Vector3(jb.bx, 2.3 + 3.2, jb.bz), title: '📋 Petits boulots', sub: this.features.lockedNote('boulots'), actions: [] });
+        return;
+      }
       this.ui.setPrompt({ pos: new THREE.Vector3(jb.bx, 2.3 + 3.2, jb.bz), title: '📋 Petits boulots', sub: this.jobs.active ? 'Mission en cours' : 'Des missions payées chaque jour', actions: [{ key: 'E', label: 'Consulter' }] });
       if (input.hit('KeyE')) this.jobs.open();
       return;
@@ -1237,6 +1312,10 @@ export class Game {
     // Archipel : panneaux des voyages, longue-vue, source chaude.
     const arch = this.archipelago;
     const sign = !this.indoors && arch.nearestSign();
+    if (sign && !this.features.unlocked('voyages')) {
+      this.ui.setPrompt({ pos: new THREE.Vector3(sign.x - 1.2, this.player.pos.y + 3.4, sign.z - 1.2), title: '🧭 Voyages', sub: this.features.lockedNote('voyages'), actions: [] });
+      return;
+    }
     if (sign) {
       this.tips.show('voyage');
       this.ui.setPrompt({ pos: new THREE.Vector3(sign.x - 1.2, this.player.pos.y + 3.4, sign.z - 1.2), title: '🧭 Voyages', sub: 'Le bateau de Nérée relie les villages', actions: [{ key: 'E', label: 'Voyager' }] });
@@ -1279,6 +1358,8 @@ export class Game {
         const night = this.world.sky.hour >= 18 || this.world.sky.hour < 5;
         this.ui.setPrompt({ pos, title: `${f.emoji} ${f.label}`, actions: [{ key: 'E', label: night ? 'Dormir jusqu\'au matin' : 'Faire une sieste' }] });
         if (input.hit('KeyE')) this.sleep();
+      } else if (f.stove && !this.features.unlocked('cuisine')) {
+        this.ui.setPrompt({ pos, title: `${f.emoji} ${f.label}`, sub: this.features.lockedNote('cuisine'), actions: [] });
       } else if (f.stove) {
         this.ui.setPrompt({ pos, title: `${f.emoji} ${f.label}`, actions: [{ key: 'E', label: 'Cuisiner' }] });
         if (input.hit('KeyE')) this.cooking.open();
@@ -1296,6 +1377,10 @@ export class Game {
     }
 
     const plot = this.garden.nearest();
+    if (plot && !this.features.unlocked('potager')) {
+      this.ui.setPrompt({ pos: new THREE.Vector3(plot.x, plot.y + 1.3, plot.z), title: '🟫 Parcelle', sub: this.features.lockedNote('potager'), actions: [] });
+      return;
+    }
     if (plot) {
       this.ui.setPrompt(this.garden.prompt(plot));
       if (input.hit('KeyE')) this.garden.interact(plot);
@@ -1311,6 +1396,10 @@ export class Game {
     }
 
     const spot = this.fishing.nearestSpot();
+    if (spot && !this.features.unlocked('peche')) {
+      this.ui.setPrompt({ pos: new THREE.Vector3(spot.x, spot.y + 2.4, spot.z), title: '🎣 Coin de pêche', sub: this.features.lockedNote('peche'), actions: [] });
+      return;
+    }
     if (spot) {
       const contest = this.calendar.contestActive ? ' · 🏆 concours !' : '';
       this.ui.setPrompt({ pos: new THREE.Vector3(spot.x, spot.y + 2.4, spot.z), title: '🎣 Coin de pêche', sub: `${spot.name}${contest}`, actions: [{ key: 'E', label: 'Pêcher' }] });
@@ -1799,7 +1888,10 @@ export class Game {
 
     if (playing) {
       if (free) this.updateInteractions();
-      else if (!this.fishing.active) this.ui.setPrompt(null);
+      else {
+        if (!this.fishing.active) this.ui.setPrompt(null);
+        this.ui.setPickCard(null);
+      }
       this.quests.update();
       const z = this.indoors ? null : zoneAt(this.player.pos.x, this.player.pos.z);
       // Intérieur : le nom affiché suit la pièce (d'une visite à l'autre sans zone entre deux).
@@ -1827,6 +1919,7 @@ export class Game {
       }
       this.ui.update(dt);
       this.morning.update();
+      this.features.update(dt);
       this.saveT += dt;
       if ((this.dirty && this.saveT > 4) || this.saveT > 30) this.saveNow();
     }
@@ -1843,7 +1936,7 @@ export class Game {
 
   /** Données du jeu, pour les tests automatiques (scripts/quests-test.mjs). */
   debugData() {
-    return { STORY, CHAPTERS, SIDE_QUESTS, ZONES, LANDMARKS, ITEMS, RECIPES, FURNITURE, VEHICLES, FISH, INSECTS, PAGES, fishWhere };
+    return { STORY, CHAPTERS, SIDE_QUESTS, ZONES, LANDMARKS, ITEMS, RECIPES, FURNITURE, VEHICLES, FISH, INSECTS, PAGES, fishWhere, questNeeds, FEATURES };
   }
 
   /** Rapport de pixels utilisé (écran × netteté max × résolution de rendu). */
@@ -2022,6 +2115,7 @@ export class Game {
       visits: this.visits.serialize(),
       sideQuests: this.sideQuests.serialize(),
       carnet: this.carnet.serialize(),
+      features: this.features.serialize(),
       sled: this.sled.serialize(),
       festivals: this.festivals.serialize(),
       stats: { playtime: Math.round(this.playtime || 0) },
@@ -2063,6 +2157,7 @@ export class Game {
     this.carnet.sync();
     this.sled.restore(s.sled);
     this.festivals.restore(s.festivals);
+    this.features.restore(s.features);
     this.playtime = s.stats?.playtime || 0;
   }
 }

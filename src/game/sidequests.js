@@ -34,6 +34,26 @@ const lagoonFish = FISH.filter((f) => fishWhere(f).includes('lagon')).map((f) =>
 
 const S = (id, giver, title, o) => ({ id, giver, title, req: {}, ...o });
 
+// Activité qu'il faut avoir débloquée pour une quête (elle n'est proposée qu'ensuite) :
+// pêcher, cuisiner, rouler, attraper des insectes… selon ses objectifs.
+const EVENT_FEATURE = {
+  catch: 'peche', cook: 'cuisine', cookcontest: 'cuisine', ride: 'vehicules', job: 'boulots', insect: 'insectes',
+  place: 'deco', sell: 'marche', buy: 'marche', adopt: 'adoption', travel: 'voyages', request: 'demandes',
+  plant: 'potager', harvest: 'potager', water: 'potager',
+};
+export function questNeeds(q) {
+  const out = new Set(q.needs || []);
+  for (const goal of q.goals) {
+    if (goal.event && EVENT_FEATURE[goal.event]) out.add(EVENT_FEATURE[goal.event]);
+    if (goal.type !== 'have') continue;
+    const cat = ITEMS[goal.item]?.cat;
+    if (goal.item === 'poisson' || cat === 'fish') out.add('peche');
+    else if (cat === 'dish') out.add('cuisine');
+    else if (cat === 'crop') out.add('potager');
+  }
+  return [...out];
+}
+
 export const SIDE_QUESTS = [
   // --- Mamie Rose -------------------------------------------------------------------------
   S('rose-bouquet', 'rose', 'Un bouquet pour la place', {
@@ -109,6 +129,7 @@ export const SIDE_QUESTS = [
   }),
   S('bruno-deco', 'bruno', 'Une maison qui me ressemble', {
     req: { after: 'bruno-hugo', f: 40 },
+    needs: ['deco'],
     offer: ['Une maison, ce n\'est pas quatre murs. C\'est ce qu\'on met dedans.', 'Pose quatorze meubles chez toi ou dans ton jardin. Après, on en reparle.'],
     desc: 'Pose 14 meubles chez toi ou dans ton jardin (B pour décorer).',
     goals: [state((g) => g.house.placed.length, 14, 'Meubles posés')],
@@ -411,6 +432,7 @@ export const SIDE_QUESTS = [
   }),
   S('coralie-especes', 'coralie', 'Inventaire du lagon', {
     req: { after: 'coralie-tortues', f: 40 },
+    needs: ['peche'],
     offer: ['Mon grand projet : répertorier toutes les espèces du lagon !', 'Pêche quatre espèces différentes du Lagon Turquoise. Ton journal gardera la trace de tes prises.'],
     desc: 'Pêche 4 espèces différentes au Lagon Turquoise.',
     goals: [state((g) => lagoonFish.filter((id) => g.fishing.best[id]).length, 4, 'Espèces du lagon')],
@@ -569,6 +591,10 @@ export class SideQuests {
   isAvailable(q) {
     if (this.done.has(q.id) || this.active[q.id]) return false;
     const g = this.game;
+    // Les quêtes des habitants s'ouvrent au chapitre 3 (avant, l'histoire suffit).
+    if (g.features && !g.features.unlocked('quetes')) return false;
+    // … et seulement si on sait déjà faire ce qu'elles demandent.
+    if (g.features && questNeeds(q).some((id) => !g.features.unlocked(id))) return false;
     const r = q.req || {};
     if (r.after && !this.done.has(r.after)) return false;
     if (r.f && (g.villagers.get(q.giver)?.friendship || 0) < r.f) return false;
@@ -703,12 +729,17 @@ export class SideQuests {
         return;
       }
       dialogue.render(text, [
+        // Accepté (ou remis à plus tard) : la fenêtre se ferme, l'habitant remercie d'une bulle.
         { label: '🤝 J\'accepte !', primary: true, action: () => {
           this.accept(q);
           v.character.play('celebrate', 1.2);
-          dialogue.render(`Merci ! ${q.desc}`);
+          dialogue.close();
+          v.say(`Merci ! ${q.desc}`, 4000);
         } },
-        { label: '🙏 Plus tard', action: () => dialogue.render('Pas de souci, reviens quand tu veux !') },
+        { label: '🙏 Plus tard', action: () => {
+          dialogue.close();
+          v.say('Pas de souci, reviens quand tu veux !');
+        } },
       ]);
     };
     g.audio.play('ui');
@@ -720,6 +751,7 @@ export class SideQuests {
     this.active[q.id] = { p: q.goals.map(() => 0) };
     for (const [id, n] of Object.entries(q.accept?.items || {})) g.inventory[id] = (g.inventory[id] || 0) + n;
     if (!this.tracked || !this.active[this.tracked]) this.tracked = q.id;
+    if (this.tracked === q.id) g.focus = 'side';
     g.ui.toast(`📜 Nouvelle quête : ${q.title}`, 3500);
     g.audio.play('mail');
     g.ui.refreshInventory();

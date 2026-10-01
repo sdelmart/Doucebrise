@@ -1,4 +1,5 @@
 import { STORY, CHAPTERS } from '../game/quests.js';
+import { FEATURES } from '../game/features.js';
 import { ITEMS, RECIPES, countItem } from '../game/items.js';
 import { FISH, RARITY, WHERE_LABELS, fishWhere } from '../game/fish.js';
 import { INSECTS, INSECT_RARITY } from '../game/insects.js';
@@ -11,22 +12,21 @@ import { FURNITURE } from '../house/furniture.js';
 import { OPTIONS } from '../player/appearance.js';
 import { heartsString, escapeHtml } from './ui.js';
 
-// Journal (J) : histoire, demandes, défis, métiers, succès, étoiles, habitants,
-// collections et calendrier.
+// Journal (J), resserré sur l'essentiel : les quêtes en cours (histoire, habitants,
+// demandes), qui fait quoi dans l'archipel, le carnet du gardien, les habitants (et le
+// calendrier), la progression (étoiles, défis, métiers, succès) et les collections.
+// Les parties liées à une activité pas encore débloquée n'apparaissent pas.
 
 const TABS = [
-  { id: 'quetes', label: '📜 Histoire' },
-  { id: 'carnet', label: '📖 Carnet' },
-  { id: 'habquetes', label: '❗ Quêtes' },
-  { id: 'demandes', label: '📋 Demandes' },
-  { id: 'defis', label: '🎯 Défis' },
-  { id: 'metiers', label: '🛠️ Métiers' },
-  { id: 'succes', label: '🏅 Succès' },
-  { id: 'etoiles', label: '⭐ Étoiles' },
+  { id: 'quetes', label: '📜 Quêtes' },
+  { id: 'guide', label: '🧭 Qui fait quoi' },
+  { id: 'carnet', label: '📖 Carnet', show: (g) => g.carnet.count > 0 || g.carnet.available().length > 0 },
   { id: 'habitants', label: '💞 Habitants' },
+  { id: 'progres', label: '⭐ Progrès' },
   { id: 'collections', label: '📚 Collections' },
-  { id: 'calendrier', label: '📅 Calendrier' },
 ];
+// Anciens onglets → leur nouvelle place.
+const MOVED = { habquetes: 'quetes', demandes: 'quetes', defis: 'progres', metiers: 'progres', succes: 'progres', etoiles: 'progres', calendrier: 'habitants' };
 
 export class Journal {
   constructor(game) {
@@ -44,7 +44,10 @@ export class Journal {
   render() {
     const tabs = this.el.querySelector('#journal-tabs');
     tabs.innerHTML = '';
-    for (const t of TABS) {
+    this.tab = MOVED[this.tab] || this.tab;
+    const visible = TABS.filter((t) => !t.show || t.show(this.game));
+    if (!visible.some((t) => t.id === this.tab)) this.tab = 'quetes';
+    for (const t of visible) {
       const b = document.createElement('button');
       b.className = `tab${t.id === this.tab ? ' active' : ''}`;
       b.textContent = t.label;
@@ -71,6 +74,7 @@ export class Journal {
       b.onclick = () => {
         const sq = this.game.sideQuests;
         sq.tracked = b.dataset.track || null;
+        this.game.focus = sq.tracked ? 'side' : 'story';
         this.game.ui.refreshQuest();
         this.game.audio.play('ui');
         this.game.requestSave();
@@ -128,11 +132,45 @@ export class Journal {
   }
 
   quetes() {
+    const g = this.game;
+    let html = `<div class="field-title">📜 Histoire</div>${this.histoire()}`;
+    if (g.features.unlocked('quetes')) html += `<div class="field-title j-sec">❗ Quêtes des habitants</div>${this.habquetes()}`;
+    if (g.features.unlocked('demandes') || g.jobs.active) html += `<div class="field-title j-sec">📋 Demandes et petits boulots</div>${this.demandes()}`;
+    return html;
+  }
+
+  /** Qui fait quoi : chaque activité, l'habitant qui s'en occupe, et quand elle s'ouvre. */
+  guide() {
+    const g = this.game;
+    const F = g.features;
+    let html = '<p class="note">Les activités s\'ouvrent au fil de l\'histoire : chaque habitant t\'apprend la sienne.</p><div class="feat-list">';
+    for (const f of FEATURES) {
+      const open = F.unlocked(f.id);
+      const v = f.who && g.villagers.get(f.who);
+      const who = [v ? `${v.def.emoji} ${escapeHtml(v.met || open ? v.def.name : '???')}` : '', f.where && open ? escapeHtml(f.where) : ''].filter(Boolean).join(' · ');
+      html += open
+        ? `<div class="feat open"><span class="f-em">${f.emoji}</span><span class="f-body"><b>${escapeHtml(f.name)}</b>${who ? `<small>${who}</small>` : ''}<span>${escapeHtml(f.how)}</span></span></div>`
+        : `<div class="feat locked"><span class="f-em">🔒</span><span class="f-body"><b>${escapeHtml(f.name)}</b><small>${escapeHtml(F.lockedNote(f.id).replace('🔒 ', ''))}</small></span></div>`;
+    }
+    return `${html}</div>`;
+  }
+
+  /** Étoiles, défis du jour, métiers et succès. */
+  progres() {
+    const g = this.game;
+    const q = g.quests;
+    let html = `<div class="sparks-row" title="Étincelles du Cœur">🗼 Étincelles du Cœur : ${'✨'.repeat(q.sparks)}${'<span class="dim">✨</span>'.repeat(Math.max(0, 7 - q.sparks))} ${q.lighthouseLit ? '— le phare brille à nouveau ! 💛' : ''}</div>`;
+    html += this.etoiles();
+    if (g.features.unlocked('defis')) html += `<div class="field-title j-sec">🎯 Défis du jour</div>${this.defis()}`;
+    html += `<div class="field-title j-sec">🛠️ Métiers</div>${this.metiers()}`;
+    html += `<div class="field-title j-sec">🏅 Succès</div>${this.succes()}`;
+    return html;
+  }
+
+  histoire() {
     const q = this.game.quests;
     const cur = q.current;
-    let html = `<div class="sparks-row" title="Étincelles du Cœur">🗼 Étincelles du Cœur : ${'✨'.repeat(q.sparks)}${'<span class="dim">✨</span>'.repeat(Math.max(0, 7 - q.sparks))} ${q.lighthouseLit ? '— le phare brille à nouveau ! 💛' : ''}</div>`;
-    const cn = this.game.carnet;
-    html += `<div class="sparks-row">📖 Carnet du gardien : ${cn.count}/${cn.pages.length} pages${cn.available().length ? ` — <b>${cn.available().length} page${cn.available().length > 1 ? 's' : ''} à retrouver</b> (onglet Carnet)` : ''}</div>`;
+    let html = '';
     if (cur) {
       const chap = CHAPTERS.find((c) => c.id === cur.chapter);
       const giver = cur.giver ? this.game.villagers.get(cur.giver) : null;
@@ -148,22 +186,12 @@ export class Journal {
       });
       html += `<div class="q-reward">Récompense : ${this.rewardText(cur.reward)}</div>
         <button class="btn small primary" data-hint>💡 Que faire ?</button></div>`;
-      // Autres quêtes du chapitre.
       const list = q.chapterQuests(cur.chapter);
-      html += '<div class="field-title" style="margin-top:12px">Dans ce chapitre</div>';
-      for (const s of list) {
-        const done = q.completed.includes(s.id);
-        html += `<div class="q-done${s === cur ? ' now' : ''}">${done ? '✅' : s === cur ? '▶️' : '🔒'} ${done || s === cur ? escapeHtml(s.title) : '???'}</div>`;
-      }
+      const done = list.filter((s) => q.completed.includes(s.id)).length;
+      html += `<p class="note">Chapitre ${CHAPTERS.find((c) => c.id === cur.chapter).n} : ${done}/${list.length} quêtes · histoire : ${q.completed.length}/${STORY.length}</p>`;
     } else {
       html += '<div class="quest-card current"><div class="q-title">🌟 Histoire terminée !</div><p class="q-desc">Tu as rallumé le Cœur de Doucebrise et accompli l\'épilogue. Continue à cultiver, décorer, adopter et collectionner !</p></div>';
     }
-    html += `<div class="field-title" style="margin-top:14px">Chapitres</div>`;
-    const ci = q.chapterIndex;
-    CHAPTERS.forEach((c, i) => {
-      html += `<div class="q-done${i === ci ? ' now' : ''}">${i < ci ? '✅' : i === ci ? '▶️' : '🔒'} ${c.emoji} ${i <= ci ? escapeHtml(c.title) : '???'}</div>`;
-    });
-    html += `<p class="note">${q.completed.length}/${STORY.length} quêtes terminées.</p>`;
     return html;
   }
 
@@ -196,9 +224,8 @@ export class Journal {
     const g = this.game;
     const sq = g.sideQuests;
     const active = sq.activeList();
-    let html = `<p class="note">Les habitants avec un <b class="mk mk-offer">!</b> au-dessus de la tête ont une quête pour toi ; <b class="mk mk-ready">?</b> : une quête à rendre. ${sq.done.size}/${sq.total} quêtes terminées.</p>`;
-    html += `<div class="track-row">🧭 La flèche suit : <b>${sq.tracked ? escapeHtml(sq.get(sq.tracked).title) : 'l\'histoire'}</b>${sq.tracked ? ' <button class="btn small" data-track="">Suivre l\'histoire</button>' : ''}</div>`;
-    if (!active.length) html += '<div class="quest-card"><p class="q-desc">Aucune quête en cours. Va parler aux habitants qui ont un « ! » !</p></div>';
+    let html = `<p class="note"><b class="mk mk-offer">!</b> au-dessus d'un habitant : une quête pour toi ; <b class="mk mk-ready">?</b> : à rendre. ${sq.done.size}/${sq.total} terminées.</p>`;
+    if (!active.length) html += '<p class="note">Aucune quête en cours.</p>';
     for (const q of active) {
       const giver = g.villagers.get(q.giver);
       const to = g.villagers.get(sq.turnInOf(q));
@@ -230,14 +257,6 @@ export class Journal {
         html += `<div class="q-done">${v.def.emoji} ${escapeHtml(v.def.name)} — ${escapeHtml(q.title)}</div>`;
       }
     }
-    if (sq.done.size) {
-      html += '<div class="field-title" style="margin-top:12px">✅ Terminées</div>';
-      for (const id of sq.done) {
-        const q = sq.get(id);
-        const v = g.villagers.get(q.giver);
-        html += `<div class="q-done">✅ ${v.def.emoji} ${escapeHtml(q.title)}</div>`;
-      }
-    }
     return html;
   }
 
@@ -250,10 +269,9 @@ export class Journal {
       const t = JOB_TYPES[job.type];
       html += `<div class="quest-card current"><div class="q-title">${t.emoji} Petit boulot : ${t.label}</div><p class="q-desc">${escapeHtml(g.jobs.describe(job))}</p>
         <div class="q-goal"><span>${escapeHtml(g.jobs.progressText())}</span><span>🪙 ${job.reward}</span></div></div>`;
-    } else {
-      html += '<p class="note">📋 Le tableau des petits boulots, sur la place, propose des missions payées chaque jour.</p>';
     }
-    html += '<p class="note" style="font-weight:700">Chaque jour, trois habitants ont besoin d\'un coup de main. Parle-leur pour livrer.</p>';
+    if (!g.features.unlocked('demandes')) return html;
+    html += '<p class="note">Chaque jour, trois habitants ont besoin d\'un coup de main. Parle-leur pour livrer.</p>';
     for (const r of g.quests.requests) {
       const v = g.villagers.get(r.villager);
       const it = ITEMS[r.item];
@@ -329,7 +347,9 @@ export class Journal {
   habitants() {
     const g = this.game;
     let html = '';
-    for (const v of g.villagers.list) {
+    // Seulement les habitants rencontrés ; les autres, un simple compte.
+    const unmet = g.villagers.list.filter((v) => !v.met).length;
+    for (const v of g.villagers.list.filter((x) => x.met)) {
       const known = v.met;
       const loves = v.def.loves.filter((id) => g.knownLoves.has(`${v.def.id}:${id}`));
       const b = BIRTHDAYS[v.def.id];
@@ -339,7 +359,8 @@ export class Journal {
         <p class="q-desc">${known ? `Adore : ${loves.length ? loves.map((id) => ITEMS[id]?.emoji || '❔').join(' ') : '❔ (offre-lui des cadeaux pour découvrir)'}` : 'Pas encore rencontré.'}</p>
         ${known ? `<p class="q-desc">🎂 Anniversaire : ${bd} · 💬 Scènes : ${v.seenEvents.length}/2</p><p class="q-desc">${this.nextReward(v)}</p>` : ''}</div>`;
     }
-    return html;
+    if (unmet) html += `<p class="note">👋 Encore ${unmet} habitant${unmet > 1 ? 's' : ''} à rencontrer dans l'archipel.</p>`;
+    return `${html}<div class="field-title j-sec">📅 Calendrier</div>${this.calendrier()}`;
   }
 
   nextReward(v) {

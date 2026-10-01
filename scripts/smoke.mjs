@@ -94,6 +94,75 @@ try {
     if (back) throw new Error(back);
     await page.screenshot({ path: `${OUT}/2-jeu.png` });
   });
+  await step('Progression (activités à débloquer, qui fait quoi, bulles courtes, fiche au clic, un seul objectif)', async () => {
+    const out = [];
+    const until = (fn, arg, what) => page.waitForFunction(fn, arg, { timeout: 90000, polling: 250 }).catch(() => out.push(what));
+    if (await page.evaluate(() => ['boulots', 'peche', 'voyages'].some((id) => window.game.features.unlocked(id)))) out.push('activités ouvertes dès le début');
+    // Tableau des petits boulots : verrouillé, avec le nom de l'habitant et le chapitre.
+    await page.evaluate(() => {
+      const jb = window.game.world.village.jobBoard;
+      window.game.player.teleport(jb.x + 0.6, jb.z + 0.6, 0);
+    });
+    await until(() => /Léo/.test(document.querySelector('#prompt').innerText) && /chapitre 6/.test(document.querySelector('#prompt').innerText), null, 'tableau verrouillé sans explication');
+    // Pomme : bulle courte, fiche complète au clic.
+    await page.evaluate(() => {
+      const g = window.game;
+      g.world.sky.hour = 10;
+      g.villagers.list.forEach((v) => v.placeAt(v.scheduled(10)));
+      const v = g.villagers.get('pomme');
+      g.player.teleport(v.pos.x, v.pos.z + 1.6, Math.PI);
+    });
+    await until(() => document.querySelector('#prompt.brief') && /Parler/.test(document.querySelector('#prompt').innerText), null, 'bulle de l\'habitant pas courte');
+    await page.evaluate(() => (window.game.picked = { kind: 'v', ref: window.game.villagers.get('pomme') }));
+    await until(() => !document.querySelector('#prompt').classList.contains('brief') && document.querySelector('#prompt .hearts'), null, 'fiche complète absente après le clic');
+    const r = await page.evaluate(() => {
+      const g = window.game;
+      const F = g.features;
+      const res = [];
+      g.picked = null;
+      // Boutique de Pomme : fermée avant « Au marché ».
+      g.dialogue.start(g.villagers.get('pomme'));
+      g.dialogue.finishTyping();
+      if (!g.dialogue.el.innerText.includes('🔒 Boutique')) res.push('boutique ouverte avant le marché');
+      g.dialogue.close();
+      // Journal : peu d'onglets, « Qui fait quoi » avec les activités à venir.
+      g.journal.tab = 'guide';
+      g.openPanel('journal');
+      const tabs = document.querySelectorAll('#journal-tabs .tab').length;
+      if (tabs > 6) res.push(`${tabs} onglets dans le journal`);
+      if (!document.querySelector('#journal .feat.locked')) res.push('qui fait quoi : pas d\'activités à venir');
+      g.closePanels();
+      // L'histoire avance jusqu'aux petits boulots : ils s'ouvrent, avec une carte « Nouveau ! ».
+      const q = g.quests;
+      const i0 = q.index;
+      for (let i = 0; i < 80 && q.current?.id !== 'boulot'; i++) q.index = i;
+      g.tips.queue = [];
+      g.tips.current = null;
+      for (const id of ['potager', 'cafe', 'quetes', 'defis', 'marche', 'insectes', 'peche', 'cuisine', 'deco', 'vehicules']) F.known.add(id);
+      F.known.delete('boulots');
+      F.t = 0;
+      F.update(1);
+      if (!F.unlocked('boulots')) res.push('petits boulots pas débloqués');
+      const tip = document.querySelector('#tip:not(.hidden)');
+      if (!tip || !/Nouveau : Les petits boulots/.test(tip.innerText)) res.push(`pas de carte « Nouveau ! » (${tip?.innerText || 'aucune'})`);
+      g.tips.hide();
+      // Un seul objectif suivi : histoire + mission → une ligne et « ⇄ ».
+      g.jobs.refresh();
+      const o = g.jobs.offers.find((x) => !x.taken);
+      if (o) g.jobs.accept(o);
+      g.ui.refreshQuest();
+      if (document.querySelectorAll('#quest-tracker .qt-goal').length !== 1 || !document.querySelector('#quest-tracker .qt-more')) res.push('suivi des quêtes : plusieurs lignes ou pas de « ⇄ »');
+      g.jobs.cancel?.();
+      q.index = i0;
+      g.focus = 'story';
+      g.ui.refreshQuest();
+      // La suite du test se sert de tout.
+      F.all = true;
+      return res;
+    });
+    out.push(...r);
+    if (out.length) throw new Error(out.join(' ; '));
+  });
   await step('Fenêtres (carte, journal, sac, aide, pause, paramètres)', async () => {
     for (const panel of ['map', 'journal', 'bag', 'help', 'pause', 'settings']) {
       await settle();
@@ -145,7 +214,11 @@ try {
       g.morning.update();
       const txt = document.querySelector('#morning').innerText;
       if (!g.morning.open) out.push('pas de carnet du matin');
-      else if (!/Bonjour/.test(txt) || !/demain/.test(txt)) out.push(`carnet du matin incomplet : ${txt.slice(0, 80)}`);
+      else if (!/Bonjour/.test(txt)) out.push(`carnet du matin incomplet : ${txt.slice(0, 80)}`);
+      // Au réveil : l'essentiel (3 lignes au plus) ; le programme complet au clic sur l'horloge.
+      if (document.querySelectorAll('#morning li').length > 3) out.push('carnet du matin trop chargé au réveil');
+      g.morning.show();
+      if (!/demain/.test(document.querySelector('#morning').innerText)) out.push('programme complet sans la météo de demain');
       g.morning.hide();
       sky.day = day0;
       sky.hour = hour0;
@@ -278,14 +351,24 @@ try {
     if (!(r[0].ratio >= 1 && r[0].detail && r[0].ao)) throw new Error(`palier 0 incomplet : ${JSON.stringify(r[0])}`);
     if (!(last.ratio < 0.6 && !last.detail && !last.ao)) throw new Error(`palier 9 pas allégé : ${JSON.stringify(last)}`);
   });
-  await step('Paramètres : redémarrage proposé', async () => {
+  await step('Paramètres : simple / détaillé, redémarrage proposé', async () => {
     await settle();
     await page.evaluate(() => window.game.openPanel('settings'));
+    // Simple : les qualités (Basse… Ultra) et la qualité automatique seulement.
+    await page.waitForSelector('.presets [data-preset]', { state: 'visible', timeout: 10000 });
+    const simple = await page.evaluate(() => ({
+      auto: !!document.querySelector('[data-set="graphics.auto"]'),
+      rows: document.querySelectorAll('.settings-body .srow').length,
+      style: !!document.querySelector('[data-set="graphics.style"]'),
+    }));
+    if (!simple.auto || simple.style || simple.rows !== 1) throw new Error(`mode simple : ${JSON.stringify(simple)}`);
+    await page.evaluate(() => document.querySelector('[data-set="settingsView"][data-val="detail"]').click());
     await page.waitForSelector('[data-set="graphics.style"][data-val="cartoon"]', { state: 'visible', timeout: 10000 });
     await page.evaluate(() => document.querySelector('[data-set="graphics.style"][data-val="cartoon"]').click());
     await page.waitForSelector('.restart-bar [data-restart]', { state: 'visible', timeout: 5000 });
     await page.evaluate(() => document.querySelector('[data-set="graphics.style"][data-val="realiste"]').click());
     if (await page.$('.restart-bar')) throw new Error('le bandeau de redémarrage reste affiché');
+    await page.evaluate(() => document.querySelector('[data-set="settingsView"][data-val="simple"]').click());
     await page.evaluate(() => window.game.closePanels());
   });
   await step('Musique', async () => {

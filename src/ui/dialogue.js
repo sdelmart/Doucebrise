@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SHOP_FEATURE } from '../game/features.js';
 import { ITEMS, countItem, takeItem } from '../game/items.js';
 import { HEART_EVENTS } from '../npc/villagers.js';
 import { FISH } from '../game/fish.js';
@@ -251,7 +252,7 @@ export class Dialogue {
       ...tagged(g.festivals.dialogueChoices(v, this), 'Fête'),
     ];
     const c = g.calendar;
-    if (v.def.id === 'marin' && c.contestActive && c.contest && !c.contest.done) {
+    if (v.def.id === 'marin' && c.contestActive && c.contest && !c.contest.done && g.features.unlocked('peche')) {
       const f = c.contest.fish ? FISH.find((x) => x.id === c.contest.fish) : null;
       list.push({
         tag: 'Fête',
@@ -275,8 +276,13 @@ export class Dialogue {
     }
     list.push({ label: '💬 Discuter', action: () => this.render(v.line('chat')) });
     list.push({ label: v.giftDay === day ? '🎁 Déjà offert aujourd\'hui' : '🎁 Offrir un cadeau', disabled: v.giftDay === day, action: () => this.giftMenu() });
-    if (v.def.shop === 'cafe') list.push({ label: '🐱 Adopter un chat', action: () => this.openAdoption() });
-    if (v.def.shop) list.push({ label: '🛍️ Boutique', action: () => this.openShop() });
+    // Boutique et adoption : ouvertes avec l'histoire (avant, l'habitant dit quand).
+    const F = g.features;
+    const soon = (id) => () => this.render(F.sayLocked(id, v.def.id));
+    if (v.def.shop === 'cafe' && F.unlocked('adoption')) list.push({ label: '🐱 Adopter un chat', action: () => this.openAdoption() });
+    const shopF = SHOP_FEATURE[v.def.shop];
+    if (v.def.shop && shopF && !F.unlocked(shopF)) list.push({ label: '🔒 Boutique', action: soon(shopF) });
+    else if (v.def.shop) list.push({ label: '🛍️ Boutique', action: () => this.openShop() });
     list.push({ label: '👋 Au revoir', leave: true, action: () => this.close() });
     return list;
   }

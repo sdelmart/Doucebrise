@@ -75,10 +75,12 @@ export function defaultSettings() {
     fov: 50,
     uiScale: 1,
     hud: 'epure', // complet | epure | minimal
+    settingsView: 'simple', // Paramètres : simple (l'essentiel) | detail (tous les réglages)
     hudFade: true, // l'interface s'efface pendant qu'on se promène
     keyHints: 'auto', // auto (les premières minutes et au besoin) | always | never
     minimap: true,
     guideArrow: true,
+    cards: 'clic', // fiches des habitants et animaux : clic (au clic sur eux) | toujours
     zoneBanner: true,
     camSensitivity: 1,
     invertY: false,

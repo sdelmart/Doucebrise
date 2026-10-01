@@ -75,6 +75,7 @@ export class Input {
     this.held = new Map();
     this.drag = { active: false, dx: 0, dy: 0 };
     this.wheel = 0;
+    this.click = null; // clic ou toucher bref, sans glisser (pour désigner un animal, un habitant)
     this.enabled = true;
     this.joystick = { x: 0, y: 0, active: false };
     this.touchButtons = new Set();
@@ -126,9 +127,14 @@ export class Input {
 
     // Rotation caméra : glisser avec la souris (n'importe quel bouton) sur le canvas.
     let last = null;
+    let down = null;
+    const tapped = (x, y, start, slop) => {
+      if (start && Math.hypot(x - start.x, y - start.y) < slop && performance.now() - start.t < 450) this.click = { x, y };
+    };
     canvas.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'touch') return;
       last = { x: e.clientX, y: e.clientY };
+      down = e.button === 0 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null;
       this.drag.active = true;
       canvas.setPointerCapture?.(e.pointerId);
     });
@@ -140,9 +146,13 @@ export class Input {
     });
     const end = () => {
       last = null;
+      down = null;
       this.drag.active = false;
     };
-    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointerup', (e) => {
+      if (e.pointerType !== 'touch') tapped(e.clientX, e.clientY, down, 6);
+      end();
+    });
     canvas.addEventListener('pointercancel', end);
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     // Molette : un cran = un pas de zoom. Pavé tactile : le défilement à deux doigts arrive
@@ -167,7 +177,7 @@ export class Input {
     canvas.addEventListener(
       'touchstart',
       (e) => {
-        for (const t of e.changedTouches) touches.set(t.identifier, { x: t.clientX, y: t.clientY });
+        for (const t of e.changedTouches) touches.set(t.identifier, { x: t.clientX, y: t.clientY, sx: t.clientX, sy: t.clientY, t: performance.now() });
       },
       { passive: true },
     );
@@ -186,7 +196,11 @@ export class Input {
       { passive: true },
     );
     const tend = (e) => {
-      for (const t of e.changedTouches) touches.delete(t.identifier);
+      for (const t of e.changedTouches) {
+        const p = touches.get(t.identifier);
+        if (p && e.type === 'touchend') tapped(t.clientX, t.clientY, { x: p.sx, y: p.sy, t: p.t }, 12);
+        touches.delete(t.identifier);
+      }
     };
     canvas.addEventListener('touchend', tend, { passive: true });
     canvas.addEventListener('touchcancel', tend, { passive: true });
@@ -327,6 +341,7 @@ export class Input {
 
   endFrame() {
     this.pressed.clear();
+    this.click = null;
   }
 }
 

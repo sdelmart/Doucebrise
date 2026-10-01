@@ -177,9 +177,13 @@ export class Animal {
       this.lookAt(this.posing.x, this.posing.z, dt, 6);
     } else if (following) {
       this.sleeping = false;
-      // Place derrière le joueur, décalée selon l'ordre du compagnon.
-      const back = ctx.player.rotY + Math.PI + (ctx.followIndex - 1) * 0.7;
-      const d = 1.8 + ctx.followIndex * 0.5;
+      // Place derrière le joueur selon l'ordre du compagnon : rangs de trois
+      // (milieu, gauche, droite), le deuxième rang un peu plus loin.
+      const i = ctx.followIndex - 1;
+      const col = [0, -1, 1][i % 3];
+      const row = Math.floor(i / 3);
+      const back = ctx.player.rotY + Math.PI + col * (0.62 - row * 0.18);
+      const d = 2 + row * 1.5 + (col ? 0.25 : 0);
       const fx = p.x + Math.sin(back) * d;
       const fz = p.z + Math.cos(back) * d;
       const gap = Math.hypot(fx - this.pos.x, fz - this.pos.z);
@@ -187,8 +191,9 @@ export class Animal {
         this.teleport(fx, fz);
       } else if (gap > 0.6 && this.state !== 'happy') {
         goal = { x: fx, z: fz };
+        // Au pas du joueur, et un rattrapage tranquille quand il s'arrête.
         const pSpeed = ctx.player.speed;
-        moveSpeed = clamp(Math.max(pSpeed * 1.05, gap * 1.6), 0, 9.5);
+        moveSpeed = pSpeed > 0.5 ? clamp(pSpeed * 1.03 + gap * 0.25, 0, 9) : clamp(gap * 0.7, 0.9, 2.6);
         this.state = 'follow';
       } else if (this.state !== 'happy') {
         this.state = 'idle';
@@ -222,7 +227,7 @@ export class Animal {
       if (this.state === 'flee') {
         const len = Math.max(distP, 0.01);
         goal = { x: this.pos.x - (dx / len) * 4, z: this.pos.z - (dz / len) * 4 };
-        moveSpeed = this.sp.speed * 3.2;
+        moveSpeed = this.sp.speed * 2.2;
         if (this.stateT <= 0) {
           this.state = 'idle';
           this.stateT = this.rng.range(1, 2);
@@ -230,11 +235,12 @@ export class Animal {
       } else if (this.state === 'sleep') {
         // Réveil au matin (géré plus haut).
       } else if (this.state === 'wander') {
+        // Balade tranquille : bien plus lente qu'une course.
         goal = this.target;
-        moveSpeed = this.sp.speed;
+        moveSpeed = this.sp.speed * 0.6;
         if (!this.target || this.stateT <= 0) {
           this.state = 'idle';
-          this.stateT = this.rng.range(1.5, 5);
+          this.stateT = this.rng.range(3, 8);
         }
       } else {
         // idle : regarde le joueur s'il est proche et curieux.
@@ -242,7 +248,7 @@ export class Animal {
         if (this.stateT <= 0) {
           this.state = 'wander';
           this.target = this.pickWanderTarget();
-          this.stateT = 8;
+          this.stateT = 12;
         }
       }
     }
@@ -255,7 +261,7 @@ export class Animal {
       if (gd < 0.35) {
         if (this.state === 'wander') {
           this.state = 'idle';
-          this.stateT = this.rng.range(1.5, 5);
+          this.stateT = this.rng.range(3, 8);
         }
       } else {
         this.rotY = lerpAngle(this.rotY, Math.atan2(gx, gz), 1 - Math.exp(-8 * dt));

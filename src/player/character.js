@@ -23,7 +23,10 @@ const TORSO_PROFILE = [
 ];
 
 function lathe(profile, segments = 20) {
-  return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), segments);
+  // Un profil tracé de haut en bas tourne les faces vers l'intérieur : vue de dehors, la
+  // forme devenait transparente (jupes, robe). On le remet toujours de bas en haut.
+  const pts = profile[0][1] > profile[profile.length - 1][1] ? [...profile].reverse() : profile;
+  return new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), segments);
 }
 
 function lighten(hex, f) {

@@ -20,6 +20,11 @@ export const T = {
     if (!v) return null;
     if (v.home || !v.root.visible && v.pos.distanceTo(g.player.pos) > 70) {
       const d = g.world.village.doorFront(v.def.house, 1.2);
+      // La nuit, porte close : pas de repère seul devant chez lui, le suivi dit qu'il dort.
+      if (v.home && g.visits && !g.visits.canVisit()) {
+        const [open] = g.visits.hoursOf();
+        return { x: d.x, z: d.z, label: `💤 ${v.def.name}`, asleep: `${v.def.name} dort jusqu'à ${open} h` };
+      }
       return { x: d.x, z: d.z, label: `${v.def.emoji} ${v.def.name}${v.home ? ' (chez elle/lui)' : ''}` };
     }
     return { x: v.pos.x, z: v.pos.z, y: v.pos.y, label: `${v.def.emoji} ${v.def.name}` };
@@ -815,6 +820,8 @@ export class Quests {
   }
 
   requestFor(villagerId) {
+    // Demandes du jour : ouvertes avec la quête « Bon voisin ».
+    if (this.game.features && !this.game.features.unlocked('demandes')) return null;
     return this.requests.find((r) => r.villager === villagerId) || null;
   }
 

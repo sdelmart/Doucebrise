@@ -340,7 +340,7 @@ export class Progress {
   }
 
   onChallengeEvent(event, data) {
-    if (!this.daily.list.length) return;
+    if (!this.daily.list.length || (this.game.features && !this.game.features.unlocked('defis'))) return;
     let changed = false;
     for (const c of this.daily.list) {
       if (c.done) continue;

@@ -107,15 +107,23 @@ export class Guide {
     }
     // Page du carnet suivie (la page a déjà sa colonne de lumière : pas de balise).
     const page = playing ? this.resolve(g.carnet?.target()) : null;
-    this.targets = { story, job, side, page };
+    // Un seul objectif guidé à la fois : celui que suit le HUD (⇄ pour en changer).
+    const all = { story, job, side, page };
+    const focus = g.ui.focusKind || 'story';
+    this.targets = { [focus]: all[focus]?.asleep ? null : all[focus] || null };
     const p = g.player.pos;
     const near = (t) => t && Math.hypot(t.x - p.x, t.z - p.z) < 6;
-    this.beacons.story.set(story, this.t, near(story));
-    this.beacons.job.set(job, this.t, near(job));
-    this.beacons.side.set(side, this.t, near(side));
-    // La flèche suit la mission en cours en priorité (plus urgente), puis la quête
-    // d'habitant suivie, sinon l'histoire.
-    const main = job ? { ...job, kind: 'job' } : side ? { ...side, kind: 'side' } : page ? { ...page, kind: 'page' } : story ? { ...story, kind: 'story' } : null;
+    for (const kind of ['story', 'job', 'side']) {
+      const t = kind === focus && !all[kind]?.asleep ? all[kind] : null;
+      this.beacons[kind].set(t, this.t, near(t));
+    }
+    // L'habitant à voir dort : ni repère ni flèche, le suivi des quêtes le dit.
+    const sleep = all[focus]?.asleep || null;
+    if (sleep !== this.sleepNote) {
+      this.sleepNote = sleep;
+      g.ui.refreshQuest();
+    }
+    const main = all[focus] && !sleep ? { ...all[focus], kind: focus } : null;
     this.updateArrow(main);
   }
 

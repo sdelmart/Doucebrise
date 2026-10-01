@@ -159,6 +159,12 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .prompt .actions { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; align-items: center; }
 .prompt .act { font-weight: 800; font-size: 13px; white-space: nowrap; }
 .prompt .act.dim { opacity: 0.45; }
+/* Bulle courte : la touche et l'action, sans fiche (un clic sur l'habitant ou l'animal l'ouvre). */
+.prompt.brief { min-width: 0; padding: 5px 11px; border-radius: 14px; }
+.prompt.brief .act { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.prompt.brief .b-em { font-size: 16px; }
+.prompt .p-note { font-weight: 700; font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+.pick-card { z-index: 11; opacity: 0.96; }
 kbd, .key {
   display: inline-block; min-width: 22px; padding: 1px 6px; margin-right: 4px;
   border-radius: 7px; background: var(--ink); color: #fff; font-family: inherit; font-weight: 900; font-size: 12px;
@@ -882,6 +888,15 @@ body.touch-ui .kb-only, body.touch-ui .key-hint { display: none !important; }
 }
 body.tray-open .tray-btn { background: #fff6d6; border-color: #f5d77a; box-shadow: 0 3px 0 #f5d77a; }
 .qt-em { margin-right: 5px; }
+/* Un seul objectif affiché ; les autres derrière ce petit bouton. */
+.qt-more {
+  margin-top: 4px; border: 0; background: rgba(91, 70, 54, 0.08); color: var(--ink-soft);
+  font: inherit; font-weight: 800; font-size: 11px; border-radius: 99px; padding: 2px 9px; cursor: pointer; pointer-events: auto;
+}
+.qt-more:hover { background: rgba(91, 70, 54, 0.16); color: var(--ink); }
+.qt-goal.qt-job .qt-em, .qt-goal.qt-side .qt-em, .qt-goal.qt-page .qt-em { filter: saturate(1.3); }
+.qt-goal.qt-page { font-style: italic; }
+.qt-sleep { color: #6b6fb5; font-weight: 800; }
 body.hud-full .qt-em { display: none; }
 
 /* Apparitions sans fondu d'opacité : visibles dès la première image. */
@@ -1230,3 +1245,17 @@ body.letterbox .hud { opacity: 0.35; transition: opacity 0.4s; }
 @media (prefers-reduced-motion: reduce) {
   .parchment, .lh-dot.new { animation: none; }
 }
+
+/* Journal resserré : sections dans un même onglet, « Qui fait quoi ». */
+.field-title.j-sec { margin-top: 16px; padding-top: 10px; border-top: 2px dashed var(--line); }
+.feat-list { display: grid; gap: 8px; }
+.feat { display: flex; gap: 10px; align-items: flex-start; background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 9px 11px; }
+.feat .f-em { font-size: 22px; line-height: 1.1; }
+.feat .f-body { display: flex; flex-direction: column; gap: 2px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.feat .f-body b { font-weight: 900; font-size: 14px; }
+.feat .f-body small { color: var(--ink-soft); font-weight: 800; font-size: 12px; }
+.feat.locked { opacity: 0.6; background: transparent; border-style: dashed; }
+.tip.new { border-color: #f5c84a; box-shadow: 0 0 0 3px rgba(245, 200, 74, 0.35), var(--shadow); }
+/* Paramètres : Simple / Détaillé. */
+.view-switch { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.view-switch .chip { font-size: 12px; }

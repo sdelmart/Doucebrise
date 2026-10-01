@@ -232,7 +232,11 @@ export class Carnet {
 
   track(n) {
     this.tracked = n;
-    this.game.requestSave();
+    const g = this.game;
+    if (n) g.focus = 'page';
+    else if (g.focus === 'page') g.focus = 'story';
+    g.ui.refreshQuest?.();
+    g.requestSave();
   }
 
   /** Crée ou retire les pages posées dans le monde. */

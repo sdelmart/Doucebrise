@@ -139,6 +139,7 @@ await page.evaluate(() => {
     },
     /** Pêche un poisson (lancer, touche, ferrage dans la zone verte), comme la touche E. */
     async fish(habitat = null) {
+      if (!g.features.unlocked('peche')) throw new Error('pêche pas encore débloquée');
       await QT.settle();
       const spot = [...g.world.fishingSpots].find((s) => (habitat ? s.habitat === habitat : s.habitat !== 'falaise'));
       g.player.teleport(spot.x, spot.z, 0);
@@ -168,6 +169,7 @@ await page.evaluate(() => {
     },
     /** Pose un meuble du stock (mode décoration), comme un clic. */
     async place(id, area = 'interior') {
+      if (!g.features.unlocked('deco')) throw new Error('décoration pas encore débloquée');
       const h = g.house;
       const d = g.decor;
       d.area = area;
@@ -189,7 +191,7 @@ await page.evaluate(() => {
     /** Achète le meuble le moins cher posable dans la maison (menuiserie de Bruno). */
     async buyFurniture() {
       await QT.talk('bruno');
-      await QT.choose(/Boutique/);
+      await QT.choose(/🛍️ Boutique/);
       await frames(1);
       const el = g.shop.el;
       const F = window.__FURNITURE;
@@ -231,7 +233,7 @@ await page.evaluate(() => {
     /** Boutique d'un habitant : onglet puis bouton. */
     async shopClick(villager, tabRe, cardRe, btnRe = /Acheter/) {
       await QT.talk(villager);
-      await QT.choose(/Boutique/);
+      await QT.choose(/🛍️ Boutique/);
       await frames(1);
       const el = g.shop.el;
       const tab = [...el.querySelectorAll('#shop-tabs button')].find((b) => tabRe.test(b.textContent));
@@ -603,6 +605,38 @@ for (const id of storyIds) {
     fail(`Histoire : attendu « ${id} », quête en cours « ${cur} »`);
     break;
   }
+  // Ce que la quête demande (pêcher, cuisiner…) doit être débloqué quand elle commence.
+  const locked = await page.evaluate((qid) => {
+    const g = window.game;
+    const d = g.debugData();
+    const q = d.STORY.find((x) => x.id === qid);
+    const needs = new Set(d.questNeeds(q));
+    for (const it of Object.keys(q.story?.take || {})) {
+      const cat = d.ITEMS[it]?.cat;
+      if (cat === 'dish') needs.add('cuisine');
+      else if (cat === 'crop') needs.add('potager');
+      else if (it === 'poisson') needs.add('peche');
+    }
+    return [...needs].filter((f) => !g.features.unlocked(f));
+  }, id);
+  if (locked.length) fail(`Histoire « ${id} » : demande ${locked.join(', ')}, pas encore débloqué à ce moment`);
+  // Le guide sait où aller (de jour), sans erreur.
+  const guide = await page.evaluate((qid) => {
+    const g = window.game;
+    const q = g.debugData().STORY.find((x) => x.id === qid);
+    if (!q.target) return '';
+    const h0 = g.world.sky.hour;
+    g.world.sky.hour = 11;
+    try {
+      const t = q.target(g);
+      return t && Number.isFinite(t.x) && Number.isFinite(t.z) ? '' : 'pas de repère';
+    } catch (e) {
+      return `repère en erreur : ${e.message}`;
+    } finally {
+      g.world.sky.hour = h0;
+    }
+  }, id);
+  if (guide) fail(`Histoire « ${id} » : ${guide}`);
   const step = STEPS[id];
   if (!step) {
     fail(`Histoire : pas d'étape de test pour « ${id} »`);
@@ -632,6 +666,10 @@ const dataIssues = await page.evaluate(() => {
   const g = window.game;
   const d = g.debugData();
   const issues = [];
+  // Activités demandées par les quêtes : toutes connues (et donc débloquables).
+  const feats = new Set(d.FEATURES.map((f) => f.id));
+  for (const q of [...d.STORY, ...d.SIDE_QUESTS]) for (const f of d.questNeeds(q)) if (!feats.has(f)) issues.push(`${q.id} : activité inconnue « ${f} »`);
+  for (const f of d.FEATURES) if (!d.STORY.some((q) => q.id === f.at)) issues.push(`Activité ${f.id} : quête d'ouverture inconnue « ${f.at} »`);
   const villager = (id) => !!g.villagers.get(id);
   const zone = (id) => d.ZONES.some((z) => z.id === id);
   const checkReward = (where, r = {}) => {
@@ -726,8 +764,20 @@ const sideReport = await page.evaluate(async () => {
           await QT.frames(1);
           if (last) break;
         }
-        g.dialogue.close();
+        // Accepter ferme la fenêtre tout seul.
+        if (g.dialogue.open) throw new Error('le dialogue reste ouvert après avoir accepté');
         if (!sq.active[q.id]) throw new Error('acceptation sans effet');
+        // Le guide la suit (accepter la fait suivre) et sait où aller, sans erreur.
+        if (sq.tracked !== q.id && Object.keys(sq.active).length === 1) throw new Error('quête acceptée mais pas suivie');
+        const prevT = sq.tracked;
+        sq.tracked = q.id;
+        try {
+          const t = sq.target();
+          if (t && !(Number.isFinite(t.x) && Number.isFinite(t.z))) throw new Error('repère invalide');
+        } catch (e) {
+          throw new Error(`repère en erreur : ${e.message}`);
+        }
+        sq.tracked = prevT;
         // Objectifs.
         for (const goal of q.goals) {
           if (goal.talk) continue;

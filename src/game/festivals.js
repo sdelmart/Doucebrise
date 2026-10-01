@@ -585,7 +585,7 @@ export class Festivals {
       });
     }
     out.push(...this.snow.dialogueChoices(v, dialogue));
-    if (id === 'mimi' && this.contestOpen) {
+    if (id === 'mimi' && this.contestOpen && g.features.unlocked('cuisine')) {
       const has = this.dishes().length > 0;
       out.push({
         label: has ? '🏆 Concours de cuisine : présenter un plat' : '🏆 Concours de cuisine : les règles ?',

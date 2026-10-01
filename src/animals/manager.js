@@ -61,7 +61,7 @@ const TRUST_PET = 7;
 const TRUST_PET_DAILY = 35;
 const TRUST_FOOD = 12;
 const TRUST_FAV = 28;
-export const MAX_FOLLOWERS = 3;
+export const MAX_FOLLOWERS = 6;
 // Pensionnaires du Café des Chats (adoptables chez Mimi).
 const CAFE_CATS = 5;
 
@@ -415,7 +415,7 @@ export class AnimalManager {
     g.ui.toast(
       a.follow
         ? `🎉 ${a.name} fait maintenant partie de ta famille et te suit !`
-        : `🎉 ${a.name} est adopté ! Il t'attend dans ton jardin (3 compagnons max. à la fois).`,
+        : `🎉 ${a.name} est adopté ! Il t'attend dans ton jardin (${MAX_FOLLOWERS} compagnons max. à la fois).`,
     );
     g.emit('adopt', { animal: a });
     g.progress.addXp('soins', 50);

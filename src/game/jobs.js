@@ -216,6 +216,7 @@ export class Jobs {
     const g = this.game;
     o.taken = true;
     this.active = { ...o, stage: 0, day: g.world.sky.day };
+    g.focus = 'job';
     this.setup();
     g.audio.play('pick');
     g.ui.toast(`${JOB_TYPES[o.type].emoji} Mission acceptée : ${JOB_TYPES[o.type].label}. Suis la flèche bleue !`, 3500);
@@ -335,14 +336,10 @@ export class Jobs {
     const g = this.game;
     const a = this.active;
     if (!a) return null;
+    // Où trouver un habitant (devant chez lui s'il y est ; endormi : le suivi le dit).
     const villagerPos = (id) => {
-      const v = g.villagers.get(id);
-      if (!v) return null;
-      if (v.home) {
-        const d = g.world.village.doorFront(v.def.house, 1.2);
-        return { x: d.x, z: d.z };
-      }
-      return { x: v.pos.x, z: v.pos.z, y: v.pos.y };
+      const t = g.quests.targets.villager(id)(g);
+      return t ? { x: t.x, z: t.z, y: t.y, asleep: t.asleep } : null;
     };
     switch (a.type) {
       case 'livraison': {

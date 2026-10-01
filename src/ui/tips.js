@@ -1,5 +1,5 @@
 import { actionKey } from '../core/input.js';
-import { escapeHtml } from './ui.js';
+import { escapeHtml, readTime } from './ui.js';
 
 // Astuces de première fois : une petite carte explique une nouveauté la première
 // fois qu'on la croise (voyages, vœux, quêtes des habitants, source chaude…).
@@ -32,6 +32,13 @@ export class Tips {
     this.el.className = 'tip hidden';
     document.body.appendChild(this.el);
     this.el.addEventListener('click', () => this.hide());
+    // Survolée : elle reste le temps qu'on la lise.
+    this.el.addEventListener('mouseenter', () => clearTimeout(this.timer));
+    this.el.addEventListener('mouseleave', () => {
+      if (!this.current) return;
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.hide(), 5000);
+    });
   }
 
   /** Affiche l'astuce une seule fois par profil. */
@@ -43,6 +50,12 @@ export class Tips {
     if (!this.current) this.next();
   }
 
+  /** Carte ponctuelle (activité débloquée…), dans la même file que les astuces. */
+  announce(card) {
+    this.queue.push(card);
+    if (!this.current) this.next();
+  }
+
   next() {
     const id = this.queue.shift();
     this.current = id || null;
@@ -50,12 +63,14 @@ export class Tips {
       this.el.classList.add('hidden');
       return;
     }
-    const t = TIPS[id];
-    this.el.innerHTML = `<div class="tip-emoji">${t.emoji}</div><div class="tip-body"><b>${escapeHtml(t.title)}</b><p>${t.text()}</p></div><button class="tip-close" aria-label="Fermer">✕</button>`;
+    const t = typeof id === 'string' ? TIPS[id] : id;
+    const body = t.html ?? t.text();
+    this.el.classList.toggle('new', typeof id !== 'string');
+    this.el.innerHTML = `<div class="tip-emoji">${t.emoji}</div><div class="tip-body"><b>${escapeHtml(t.title)}</b><p>${body}</p></div><button class="tip-close" aria-label="Fermer">✕</button>`;
     this.el.classList.remove('hidden');
     this.game.audio.play('mail');
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.hide(), 11000);
+    this.timer = setTimeout(() => this.hide(), readTime(`${t.title} ${body}`, 12000, 30000));
   }
 
   hide() {

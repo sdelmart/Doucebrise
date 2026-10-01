@@ -389,12 +389,23 @@ export class SettingsPanel {
     return `<div class="range-row"><input type="range" class="range" data-set="${path}" min="${min}" max="${max}" step="${step}" value="${value}"/><span class="rval">${text}</span></div>`;
   }
 
+  /** Simple (l'essentiel) ou Détaillé (tous les réglages), en tête des onglets concernés. */
+  viewSwitch() {
+    return `<div class="view-switch">${this.chips('settingsView', [['simple', '✨ Simple'], ['detail', '🔧 Détaillé']], this.s.settingsView === 'detail' ? 'detail' : 'simple')}</div>`;
+  }
+
+  get detailed() {
+    return this.s.settingsView === 'detail';
+  }
+
   graphismes() {
     const s = this.s;
     const gs = s.graphics;
-    let html = `<div class="presets">${Object.entries(PRESETS).map(([id, p]) => `<button class="preset${s.preset === id ? ' active' : ''}" data-preset="${id}"><b>${p.label}</b><small>${p.desc}</small></button>`).join('')}
+    // Simple : la qualité (Basse… Ultra) et la qualité automatique, rien d'autre.
+    let html = `${this.viewSwitch()}<div class="presets">${Object.entries(PRESETS).map(([id, p]) => `<button class="preset${s.preset === id ? ' active' : ''}" data-preset="${id}"><b>${p.label}</b><small>${p.desc}</small></button>`).join('')}
       <button class="preset${s.preset === 'perso' ? ' active' : ''}" disabled><b>Perso</b><small>Réglages sur mesure</small></button></div>`;
     for (const [k, o] of Object.entries(GRAPHICS_OPTIONS)) {
+      if (!this.detailed && k !== 'auto') continue;
       const v = gs[k];
       let ctl;
       if (o.type === 'choice') ctl = this.chips(`graphics.${k}`, o.choices, v);
@@ -411,14 +422,24 @@ export class SettingsPanel {
       html = `<div class="restart-bar"><span>🔄 ${pending.map(([, o]) => o.label).join(', ')} : il faut redémarrer le jeu pour voir le changement.</span>
         <button class="btn small" data-restart>Redémarrer maintenant</button></div>${html}`;
     }
-    html += '<p class="note">Astuce : F3 affiche le compteur d\'images par seconde. Avec la qualité automatique, le jeu s\'allège tout seul s\'il saccade ; sinon, baisse d\'abord les ombres, la distance d\'affichage et la résolution de rendu.</p>';
+    html += this.detailed
+      ? '<p class="note">Astuce : F3 affiche le compteur d\'images par seconde. Avec la qualité automatique, le jeu s\'allège tout seul s\'il saccade ; sinon, baisse d\'abord les ombres, la distance d\'affichage et la résolution de rendu.</p>'
+      : '<p class="note">Choisis une qualité ; la qualité automatique allège le jeu tout seul s\'il saccade. Ombres, herbe, distance, résolution… : « 🔧 Détaillé ».</p>';
     return html;
   }
 
   affichage() {
     const s = this.s;
     const fs = isDesktop() ? !!this.game.fullscreen : !!document.fullscreenElement;
-    return [
+    // Simple : plein écran, interface et sa taille ; le reste en « Détaillé ».
+    if (!this.detailed) {
+      return this.viewSwitch() + [
+        this.row('Plein écran', this.toggle('fullscreen', fs), isDesktop() ? '' : 'F11 fonctionne aussi'),
+        this.row('Interface', this.chips('hud', [['complet', 'Complète'], ['epure', 'Épurée'], ['minimal', 'Minimale']], s.hud)),
+        this.row('Taille de l\'interface', this.range('uiScale', s.uiScale, 0.75, 1.35, 0.05, `${Math.round(s.uiScale * 100)} %`)),
+      ].join('');
+    }
+    return this.viewSwitch() + [
       this.row('Plein écran', this.toggle('fullscreen', fs), isDesktop() ? '' : 'F11 fonctionne aussi'),
       this.row('Compteur FPS', this.chips('showFps', [['off', 'Masqué'], ['fps', 'Simple'], ['detail', 'Détaillé']], s.showFps), `Touche ${keyLabel('F3')}`),
       this.row('Limite d\'images par seconde', this.chips('fpsLimit', FPS_LIMITS, s.fpsLimit)),
@@ -432,6 +453,7 @@ export class SettingsPanel {
       this.row('Taille de l\'interface', this.range('uiScale', s.uiScale, 0.75, 1.35, 0.05, `${Math.round(s.uiScale * 100)} %`)),
       this.row('Aide des touches (en bas)', this.chips('keyHints', [['auto', 'Au début'], ['always', 'Toujours'], ['never', 'Jamais']], s.keyHints), 'Au début : les premières minutes de jeu, puis seulement pour la pêche, les véhicules…'),
       this.row('Mini-carte', this.toggle('minimap', s.minimap)),
+      this.row('Fiches des habitants et animaux', this.chips('cards', [['clic', 'Au clic'], ['toujours', 'Toujours']], s.cards || 'clic'), s.cards === 'toujours' ? 'Nom, cœurs et toutes les actions dès qu\'on s\'approche' : 'Près d\'eux : juste la touche et l\'action. Clique (ou touche) un habitant ou un animal pour voir sa fiche'),
       this.row('Flèche du guide', this.toggle('guideArrow', s.guideArrow)),
       this.row('Nom des lieux à l\'écran', this.toggle('zoneBanner', s.zoneBanner)),
     ].join('');
