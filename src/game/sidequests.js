@@ -671,20 +671,20 @@ export class SideQuests {
     const out = [];
     const ready = this.readyFor(v.def.id);
     if (ready) {
-      out.push({ label: `✅ ${ready.title}`, primary: true, action: () => this.turnIn(ready, v, dialogue) });
+      out.push({ tag: 'Quête finie', label: `✅ ${ready.title}`, primary: true, action: () => this.turnIn(ready, v, dialogue) });
     }
     const offer = this.availableFor(v.def.id);
     if (offer) {
-      out.push({ label: `❗ ${offer.title}`, primary: true, action: () => this.propose(offer, v, dialogue) });
+      out.push({ tag: 'Nouvelle quête', label: `❗ ${offer.title}`, primary: true, action: () => this.propose(offer, v, dialogue) });
     }
     const act = this.activeFrom(v.def.id);
     if (act && act !== ready) {
-      out.push({ label: `📜 ${act.title} (en cours)`, action: () => dialogue.render(`${act.desc} ${this.progressText(act)}`) });
+      out.push({ tag: 'Quête en cours', label: `📜 ${act.title}`, action: () => dialogue.render(`${act.desc} ${this.progressText(act)}`) });
     }
     // Livraison : le destinataire reconnaît le colis.
     for (const q of this.activeList()) {
       if (q.turnIn === v.def.id && q !== ready && !this.isReady(q)) {
-        out.push({ label: `📦 ${q.title}`, action: () => dialogue.render(`Oh, c'est pour moi ? Il te manque encore quelque chose… ${this.progressText(q)}`) });
+        out.push({ tag: 'Livraison', label: `📦 ${q.title}`, action: () => dialogue.render(`Oh, c'est pour moi ? Il te manque encore quelque chose… ${this.progressText(q)}`) });
       }
     }
     void g;

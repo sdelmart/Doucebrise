@@ -17,11 +17,12 @@ export class Dialogue {
     document.body.appendChild(this.el);
     this.villager = null;
     this.typing = null;
+    this.openedAt = 0;
     window.addEventListener('keydown', (e) => {
       if (!this.villager) return;
       if (e.target && e.target.tagName === 'INPUT') return;
       const n = parseInt(e.key, 10);
-      const buttons = [...this.el.querySelectorAll('.d-choice')];
+      const buttons = [...this.el.querySelectorAll('.d-choice:not(.d-leave)')];
       if (n >= 1 && n <= buttons.length) {
         buttons[n - 1].click();
         e.preventDefault();
@@ -33,6 +34,23 @@ export class Dialogue {
         e.preventDefault();
       }
     });
+    // Partir en cliquant à côté de la fenêtre, sur la scène. Un simple clic (ou un toucher) :
+    // glisser pour tourner la caméra ne ferme rien.
+    let down = null;
+    // (Heures des événements eux-mêmes : une image lente entre l'appui et le relâchement ne
+    // change rien.)
+    window.addEventListener('pointerdown', (e) => {
+      down = this.villager && e.target?.id === 'game' ? { x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
+    }, true);
+    window.addEventListener('pointerup', (e) => {
+      if (!down) return;
+      const click = Math.hypot(e.clientX - down.x, e.clientY - down.y) < 10 && e.timeStamp - down.t < 1000;
+      down = null;
+      if (click && this.villager && e.timeStamp - this.openedAt > 300) {
+        this.game.audio.play('ui');
+        this.close();
+      }
+    }, true);
   }
 
   get open() {
@@ -42,6 +60,7 @@ export class Dialogue {
   start(v) {
     const g = this.game;
     this.villager = v;
+    this.openedAt = performance.now();
     g.input.enabled = false;
     g.player.face(v.pos.x, v.pos.z);
     v.rotY = Math.atan2(g.player.pos.x - v.pos.x, g.player.pos.z - v.pos.z);
@@ -78,12 +97,14 @@ export class Dialogue {
   /** Scène d'amitié : une confidence, puis un choix de réponse. */
   heartEvent(v, ev) {
     const g = this.game;
-    v.seenEvents.push(ev.at);
     v.character.play('think', 1.4);
     g.audio.play('chapter');
     const choices = ev.choices.map((c) => ({
       label: `💬 ${c.label}`,
       action: () => {
+        // Vue une fois la réponse choisie : partir avant (Échap, clic à côté) la garde pour
+        // la prochaine visite.
+        if (!v.seenEvents.includes(ev.at)) v.seenEvents.push(ev.at);
         this.addFriendship(v, c.gain);
         v.character.play(c.gain >= 8 ? 'celebrate' : 'clap', 1.3);
         if (c.gain >= 7) g.particles.emit('heart', v.pos.clone().setY(v.pos.y + 2.2), { count: 4 });
@@ -148,33 +169,50 @@ export class Dialogue {
     if (!v) return;
     this.el.classList.remove('hidden');
     if (!choices) this.el.classList.remove('heart-scene');
-    this.el.innerHTML = `${this.header(v)}<p class="d-text"></p><div class="d-choices"></div>`;
+    // ✕ en dernier dans la page (placé en haut à droite) : la manette commence par les choix.
+    this.el.innerHTML = `${this.header(v)}<p class="d-text"></p><div class="d-choices"></div><button type="button" class="d-close" title="Partir (Échap)" aria-label="Partir">✕</button>`;
+    this.el.querySelector('.d-close').onclick = () => {
+      g.audio.play('ui');
+      this.close();
+    };
     this.type(text);
     const box = this.el.querySelector('.d-choices');
     const list = choices || this.mainChoices();
-    list.forEach((c, i) => {
+    let n = 0;
+    for (const c of list) {
       const b = document.createElement('button');
-      b.className = `d-choice${c.primary ? ' primary' : ''}`;
-      b.innerHTML = `<span class="key">${i + 1}</span>${c.label}`;
+      // « À faire » (étiquette : quête, demande…) en pleine largeur, puis les actions
+      // simples, puis « Au revoir » à droite (touche Échap).
+      b.className = `d-choice${c.primary ? ' primary' : ''}${c.tag ? ' todo' : ''}${c.leave ? ' d-leave' : ''}`;
+      const tag = c.tag ? `<span class="d-tag">${c.tag}</span>` : '';
+      b.innerHTML = `<span class="key">${c.leave ? 'Échap' : ++n}</span>${tag}<span class="d-label">${c.label}</span>`;
       b.disabled = !!c.disabled;
       b.onclick = () => {
         g.audio.play('ui');
         c.action();
       };
       box.appendChild(b);
-    });
+    }
   }
 
   mainChoices() {
     const v = this.villager;
     const g = this.game;
     const day = g.world.sky.day;
-    const list = [...g.quests.dialogueChoices(v, this), ...g.sideQuests.dialogueChoices(v, this), ...g.jobs.dialogueChoices(v, this), ...g.festivals.dialogueChoices(v, this)];
-    list.push({ label: '💬 Discuter', action: () => this.render(v.line('chat')) });
+    // Ce qu'on a à faire avec cet habitant (avec une étiquette), puis les actions de tous
+    // les jours.
+    const tagged = (list, tag) => list.map((c) => ({ tag, ...c }));
+    const list = [
+      ...tagged(g.quests.dialogueChoices(v, this), 'Histoire'),
+      ...tagged(g.sideQuests.dialogueChoices(v, this), 'Quête'),
+      ...tagged(g.jobs.dialogueChoices(v, this), 'Petit boulot'),
+      ...tagged(g.festivals.dialogueChoices(v, this), 'Fête'),
+    ];
     const c = g.calendar;
     if (v.def.id === 'marin' && c.contestActive && c.contest && !c.contest.done) {
       const f = c.contest.fish ? FISH.find((x) => x.id === c.contest.fish) : null;
       list.push({
+        tag: 'Fête',
         label: f ? `🏆 Concours : présenter ${f.emoji} ${f.label} (${c.contest.best} cm)` : '🏆 Concours de pêche : les règles ?',
         primary: !!f,
         action: () => {
@@ -188,11 +226,15 @@ export class Dialogue {
         },
       });
     }
-    list.push({ label: v.giftDay === day ? '🎁 Déjà offert aujourd\'hui' : '🎁 Offrir un cadeau', disabled: v.giftDay === day, action: () => this.giftMenu() });
     const req = g.quests.requestFor(v.def.id);
-    if (req && !req.done) list.push({ label: `📋 Demande : ${ITEMS[req.item].emoji} ×${req.count}`, primary: true, action: () => this.requestMenu(req) });
-    if (v.def.shop) list.push({ label: '🛍️ Boutique', primary: true, action: () => this.openShop() });
-    list.push({ label: '👋 Au revoir', action: () => this.close() });
+    if (req && !req.done) {
+      const it = ITEMS[req.item];
+      list.push({ tag: 'Demande du jour', label: `📋 ${it.label} ${it.emoji} ×${req.count}`, primary: true, action: () => this.requestMenu(req) });
+    }
+    list.push({ label: '💬 Discuter', action: () => this.render(v.line('chat')) });
+    list.push({ label: v.giftDay === day ? '🎁 Déjà offert aujourd\'hui' : '🎁 Offrir un cadeau', disabled: v.giftDay === day, action: () => this.giftMenu() });
+    if (v.def.shop) list.push({ label: '🛍️ Boutique', action: () => this.openShop() });
+    list.push({ label: '👋 Au revoir', leave: true, action: () => this.close() });
     return list;
   }
 

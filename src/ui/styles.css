@@ -344,7 +344,7 @@ kbd, .key {
   width: min(640px, calc(100vw - 24px)); background: var(--cream); border: 3px solid var(--line); border-radius: 24px;
   box-shadow: var(--shadow); padding: 14px 18px 16px; animation: pop 0.2s ease-out;
 }
-.d-head { display: flex; align-items: center; gap: 12px; }
+.d-head { display: flex; align-items: center; gap: 12px; padding-right: 40px; }
 .d-avatar { font-size: 34px; width: 54px; height: 54px; display: grid; place-items: center; background: #fff; border: 2px solid var(--line); border-radius: 50%; }
 .d-name { font-weight: 900; font-size: 18px; }
 .d-job { font-weight: 800; font-size: 12px; color: var(--ink-soft); }
@@ -352,10 +352,34 @@ kbd, .key {
 .d-text { font-weight: 700; font-size: 16px; line-height: 1.45; min-height: 46px; margin: 10px 2px; }
 .d-choices { display: flex; flex-wrap: wrap; gap: 8px; }
 .d-choices.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); }
-.d-choice { border: 2px solid var(--line); background: var(--card); border-radius: 14px; padding: 8px 12px; font-weight: 800; font-size: 14px; }
+.d-choice {
+  display: inline-flex; align-items: center; gap: 7px; border: 2px solid var(--line); background: var(--card); border-radius: 14px;
+  padding: 8px 12px; font: inherit; font-weight: 800; font-size: 14px; color: var(--ink); cursor: pointer; text-align: left;
+}
+.d-choice .key { margin-right: 0; }
+.d-choice:not(:disabled):hover { background: #fff; border-color: #e3c6a6; }
 .d-choice.primary { background: #ffe3eb; border-color: var(--pink); }
-.d-choice:disabled { opacity: 0.5; }
-.d-choice .key { margin-right: 6px; }
+.d-choice:disabled { opacity: 0.5; cursor: default; }
+/* « À faire » avec cet habitant : quête, demande, petit boulot… une ligne chacun, en tête. */
+.d-choice.todo { flex: 1 1 100%; background: #fff4d4; border-color: #f2c14e; }
+.d-choice.todo:not(:disabled):hover { background: #ffefc2; border-color: #e6ac1f; }
+.d-choice.todo:not(.primary) { background: var(--card); border-style: dashed; }
+.d-choice.todo .d-label { flex: 1; }
+.d-choice.todo:not(:disabled)::after { content: '›'; font-size: 22px; line-height: 0.6; color: #d39a12; }
+.d-tag {
+  flex: none; padding: 2px 8px; border-radius: 99px; background: #f2c14e; color: #5b4636;
+  font-size: 11px; font-weight: 900; letter-spacing: 0.02em; white-space: nowrap;
+}
+.d-choice.todo:not(.primary) .d-tag { background: #fbe3a4; }
+/* Partir : discret, à droite. */
+.d-choice.d-leave { margin-left: auto; background: transparent; border-color: transparent; color: var(--ink-soft); }
+.d-choice.d-leave:hover { background: #fff; border-color: var(--line); color: var(--ink); }
+.d-close {
+  position: absolute; top: 10px; right: 12px; width: 34px; height: 34px; display: grid; place-items: center;
+  border: 2px solid var(--line); border-radius: 50%; background: var(--card); color: var(--ink-soft);
+  font: 900 15px/1 'Nunito', sans-serif; cursor: pointer;
+}
+.d-close:hover { background: #fff; color: var(--ink); border-color: #e3c6a6; }
 .d-item { border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 6px; font-size: 26px; position: relative; }
 .d-item small { position: absolute; right: 4px; bottom: 2px; font-size: 11px; font-weight: 900; }
 

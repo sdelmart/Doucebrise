@@ -560,9 +560,11 @@ export class Quests {
       return [{ label: `${q.story.label} (${need})`, disabled: true, action: () => {} }];
     }
     return [{ label: q.story.label, primary: true, story: true, action: () => {
-      for (const [id, n] of Object.entries(take)) takeItem(g.inventory, id, n);
-      if (Object.keys(take).length) g.ui.refreshInventory();
+      // Objets remis à la fin des répliques : partir avant (Échap, clic à côté) ne les perd
+      // pas, et l'on peut revenir écouter l'habitant.
       dialogue.sequence(q.story.lines, () => {
+        for (const [id, n] of Object.entries(take)) takeItem(g.inventory, id, n);
+        if (Object.keys(take).length) g.ui.refreshInventory();
         if (q.story.reward) g.grantReward(q.story.reward, v);
         g.emit('story', { id: q.id, villager: v });
       });

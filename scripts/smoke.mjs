@@ -438,6 +438,47 @@ try {
     });
     if (r) throw new Error(r);
   });
+  await step('Dialogues (à faire en tête, partir avec ✕ ou en cliquant à côté)', async () => {
+    const open = () => page.evaluate(async () => {
+      const g = window.game;
+      if (g.dialogue.open) g.dialogue.close();
+      const v = g.villagers.get('pomme');
+      g.player.teleport(v.pos.x + 1.4, v.pos.z + 1.4, 0);
+      await new Promise((r) => setTimeout(r, 150));
+      g.dialogue.start(v);
+      g.dialogue.finishTyping();
+      // Un point de la scène, hors de la fenêtre et des boutons.
+      let pt = null;
+      for (let y = 120; y < innerHeight - 40 && !pt; y += 40) for (let x = 60; x < innerWidth - 60 && !pt; x += 40) if (document.elementFromPoint(x, y)?.id === 'game') pt = [x, y];
+      const cls = [...g.dialogue.el.querySelectorAll('.d-choice')].map((b) => b.className);
+      const firstPlain = cls.findIndex((c) => !c.includes('todo'));
+      return {
+        pt,
+        order: cls.slice(firstPlain).some((c) => c.includes('todo')) ? 'quêtes mêlées aux actions' : '',
+        leave: cls.at(-1)?.includes('d-leave') ? '' : '« Au revoir » pas en dernier',
+        close: g.dialogue.el.querySelector('.d-close') ? '' : 'pas de ✕',
+      };
+    });
+    const isOpen = () => page.evaluate(() => window.game.dialogue.open);
+    const r = await open();
+    const out = [r.order, r.leave, r.close].filter(Boolean);
+    if (!r.pt) out.push('aucun point de la scène libre pour cliquer');
+    else {
+      await page.waitForTimeout(400);
+      await page.mouse.move(r.pt[0], r.pt[1]);
+      await page.mouse.down();
+      await page.mouse.move(r.pt[0] + 90, r.pt[1] + 20, { steps: 2 });
+      await page.mouse.up();
+      if (!(await isOpen())) out.push('glisser pour tourner la caméra ferme le dialogue');
+      await page.mouse.click(r.pt[0], r.pt[1]);
+      if (await isOpen()) out.push('un clic à côté ne ferme pas le dialogue');
+      if (!(await page.evaluate(() => window.game.input.enabled))) out.push('commandes bloquées après le clic à côté');
+      await open();
+      await page.evaluate(() => document.querySelector('#dialogue .d-close').click());
+      if (await isOpen()) out.push('le ✕ ne ferme pas le dialogue');
+    }
+    if (out.length) throw new Error(out.join(' ; '));
+  });
   await step('Course de luge', async () => {
     const r = await page.evaluate(() => {
       const g = window.game;

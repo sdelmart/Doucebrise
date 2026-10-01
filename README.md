@@ -67,6 +67,7 @@ L'écran reste dégagé pour profiter de l'île (Paramètres → Affichage → I
 - **Aide des touches** : une rangée pendant les 15 premières minutes, puis seulement dans les situations particulières (pêche au moulinet, véhicule, assis) ; ou toujours, ou jamais.
 - **Moins de messages** : le titre de la chanson s'affiche en petit en bas à droite, un message identique n'est plus empilé, trois au plus à la fois ; les conseils du début arrivent un par un sous forme de petites cartes.
 - **Carnet du matin** : au lever du jour, une carte résume la journée — nouvelle saison, fête du jour (ou de demain), anniversaires, plantes prêtes ou assoiffées au potager, courrier, demandes des habitants, défis du jour, météo et prévisions. Un clic sur l'horloge la rouvre à tout moment.
+- **Dialogues** : en tête, sur une ligne chacun et en doré, ce qu'il y a **à faire** avec l'habitant, avec une étiquette (Nouvelle quête, Quête en cours, Quête finie, Histoire, Demande du jour, Petit boulot, Fête…) ; en dessous, les actions de tous les jours (Discuter, Offrir un cadeau, Boutique) ; « Au revoir » discret à droite. Pour partir : ✕ en haut à droite, `Échap`, ou **un clic à côté de la fenêtre** (glisser pour tourner la caméra ne ferme rien). Partir au milieu d'une scène d'amitié ou des répliques de l'histoire ne perd rien : elles reprennent à la visite suivante.
 - **Minimale** : juste l'heure ; la quête, les pièces et les défis reviennent un instant quand ils changent, tout s'affiche quand les menus rapides sont ouverts.
 
 ## Contenu
