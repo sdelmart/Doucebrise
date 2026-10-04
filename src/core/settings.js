@@ -4,7 +4,7 @@
 const KEY = 'doucebrise-settings';
 
 export const PRESETS = {
-  basse: { label: 'Basse', desc: 'Pour les petits ordinateurs', style: 'cartoon', renderScale: 0.75, maxRatio: 1, auto: true, shadows: 'off', ao: false, ground: false, renderDistance: 160, grass: 0, aa: 'off', bloom: false, grading: false, water: 'simple', clouds: 'low' },
+  basse: { label: 'Basse', desc: 'Pour les petits ordinateurs et les téléphones', style: 'cartoon', renderScale: 1, maxRatio: 1.5, auto: true, shadows: 'off', ao: false, ground: false, renderDistance: 160, grass: 0, aa: 'off', bloom: false, grading: false, water: 'simple', clouds: 'low' },
   moyenne: { label: 'Moyenne', desc: 'Équilibrée', style: 'realiste', renderScale: 1, maxRatio: 1.25, auto: true, shadows: 'low', ao: false, ground: true, renderDistance: 220, grass: 45, aa: 'fxaa', bloom: true, grading: true, water: 'simple', clouds: 'medium' },
   haute: { label: 'Haute', desc: 'Recommandée', style: 'realiste', renderScale: 1, maxRatio: 2, auto: true, shadows: 'high', ao: true, ground: true, renderDistance: 300, grass: 80, aa: 'smaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
   ultra: { label: 'Ultra', desc: 'Pour les cartes graphiques puissantes', style: 'realiste', renderScale: 1, maxRatio: 2, auto: true, shadows: 'ultra', ao: true, ground: true, renderDistance: 420, grass: 110, aa: 'msaa', bloom: true, grading: true, water: 'reflets', clouds: 'high' },
@@ -63,14 +63,22 @@ export const DAY_SPEEDS = {
   rapide: { label: 'Rapide (~7 min)', k: 2 },
 };
 
+/** Téléphone ou tablette (l'iPad se présente comme un Mac, mais tactile). */
+export function isMobileDevice() {
+  if (typeof window === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return window.innerWidth < 720 || /Mobi|Android|iPhone|iPad/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+
 export function defaultSettings() {
-  const mobile = typeof window !== 'undefined' && (window.innerWidth < 720 || /Mobi|Android/i.test(navigator.userAgent));
+  const mobile = isMobileDevice();
   const preset = mobile ? 'basse' : 'haute';
   return {
-    v: 1,
+    v: 2,
     preset,
     graphics: { ...PRESETS[preset] },
-    fpsLimit: 0,
+    // Téléphones : 60 images/s au plus (les écrans à 120 Hz vident la batterie et chauffent).
+    fpsLimit: mobile ? 60 : 0,
     showFps: 'off', // off | fps | detail
     fov: 50,
     uiScale: 1,
@@ -119,6 +127,13 @@ export function loadSettings(legacy = null) {
     if (typeof stored.keyHints === 'boolean') stored.keyHints = stored.keyHints ? 'auto' : 'never';
     // Ancienne caméra qui suit (oui / non) : « normale » ou « non ».
     if (typeof stored.camAuto === 'boolean') stored.camAuto = stored.camAuto ? 'normale' : 'off';
+    // v2 : préréglage Basse plus net (la qualité automatique baisse la résolution s'il le
+    // faut), et 60 images/s au plus sur téléphone. Seulement si l'on n'y avait pas touché.
+    if ((stored.v || 1) < 2) {
+      if (stored.preset === 'basse' && graphics.renderScale === 0.75 && graphics.maxRatio === 1) Object.assign(graphics, { renderScale: 1, maxRatio: 1.5 });
+      if (isMobileDevice() && !stored.fpsLimit) stored.fpsLimit = 60;
+      stored.v = 2;
+    }
     return {
       ...base,
       ...stored,

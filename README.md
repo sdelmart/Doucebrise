@@ -57,6 +57,13 @@ Toutes les touches sont **réassignables** (Échap → Paramètres → Contrôle
 
 **Écran tactile** : joystick et boutons d'action à icônes (✋ interagir, 🍓 nourrir, 💞 adopter…) ; les bulles de touches du clavier disparaissent dès qu'on touche l'écran et reviennent au premier appui sur une touche.
 
+**Sur téléphone et tablette** (portrait ou paysage) :
+- **Image nette, batterie ménagée** : préréglage Basse plus net (résolution pleine, jusqu'à ×1,5 sur les écrans Retina), que la qualité automatique abaisse si le téléphone peine ; 60 images/s au plus (les écrans à 120 Hz vident la batterie) ; l'iPad est reconnu comme une tablette.
+- **Pincer** pour zoomer (caméra et grande carte), glisser pour tourner la vue.
+- **Écran dégagé** : messages en haut, sous l'interface (ils ne couvrent plus le joystick ni les dialogues), astuces au-dessus des commandes ; en paysage, joystick et boutons compacts dans les coins, mini-carte plus petite, cartes de chapitre qui tiennent à l'écran (et défilent au besoin). Pas de rechargement en tirant vers le bas, pas de zoom au double tap.
+- **Décoration au doigt** : toucher le sol (ou une table) montre l'objet à cet endroit, puis ✓ Poser ; boutons ↻ Tourner, 🎨 Couleur, 📦 Ranger ; la liste des meubles se replie pendant qu'on tient un objet.
+- **Partie à l'abri** : sauvegarde dès que le jeu passe en arrière-plan (autre application) ; si le téléphone reprend la mémoire de la 3D, « Reprendre » relance le jeu là où il en était.
+
 **Manette** : stick gauche pour bouger, stick droit pour la caméra, A interagir, X nourrir / vœu, Y sauter, B / Start menu, LB carte, RB journal, Select sac, gâchette gauche pour courir. **Tous les menus se pilotent à la manette** (croix ou stick pour choisir, A valider, B retour, LB / RB changer d'onglet) et aussi aux flèches du clavier + Entrée. Sur mobile, un joystick et des boutons tactiles apparaissent.
 
 ## Interface épurée

@@ -32,7 +32,7 @@ const fail = (msg) => {
 await page.goto(url, { waitUntil: 'load' });
 await page.evaluate(() => {
   localStorage.clear();
-  localStorage.setItem('doucebrise-settings', JSON.stringify({ preset: 'basse', graphics: {} }));
+  localStorage.setItem('doucebrise-settings', JSON.stringify({ v: 2, preset: 'basse', graphics: { renderScale: 0.75, maxRatio: 1 } }));
 });
 await page.reload({ waitUntil: 'load' });
 await page.waitForFunction(() => window.game && window.game.state === 'title', null, { timeout: 180000 });

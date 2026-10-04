@@ -181,17 +181,31 @@ export class Input {
       },
       { passive: true },
     );
+    // Deux doigts sur l'écran : pincer / écarter pour zoomer (comme la molette).
+    let pinch = 0;
+    const spread = () => {
+      const [a, b] = [...touches.values()];
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
     canvas.addEventListener(
       'touchmove',
       (e) => {
+        const two = touches.size >= 2;
         for (const t of e.changedTouches) {
           const p = touches.get(t.identifier);
           if (!p) continue;
-          this.drag.dx += (t.clientX - p.x) * 1.2;
-          this.drag.dy += (t.clientY - p.y) * 1.2;
+          if (!two) {
+            this.drag.dx += (t.clientX - p.x) * 1.2;
+            this.drag.dy += (t.clientY - p.y) * 1.2;
+          }
           p.x = t.clientX;
           p.y = t.clientY;
         }
+        if (two) {
+          const d = spread();
+          if (pinch) this.wheel -= (d - pinch) / 90;
+          pinch = d;
+        } else pinch = 0;
       },
       { passive: true },
     );

@@ -93,6 +93,31 @@ export class Game {
     this.renderer.shadowMap.autoUpdate = false;
     // PCFSoftShadowMap a été retiré de Three.js (r186) : PCF + rayon de flou (voir sky.js).
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    // Téléphone : le navigateur peut reprendre la mémoire de la 3D (application changée,
+    // mémoire pleine). La partie est sauvegardée et on propose de reprendre là où on était.
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      if (this.state === 'play') {
+        try {
+          this.saveNow();
+        } catch {
+          /* rien à sauver */
+        }
+      }
+      if (document.querySelector('.ctx-lost')) return;
+      const box = document.createElement('div');
+      box.className = 'ctx-lost';
+      box.innerHTML = '<div class="ctx-card"><b>😴 Le jeu s\'est endormi</b><p>Ton appareil a eu besoin de sa mémoire ailleurs. Ta partie est sauvegardée.</p><button class="btn primary">Reprendre</button></div>';
+      box.querySelector('button').onclick = () => {
+        try {
+          if (this.state !== 'title') sessionStorage.setItem('doucebrise-autostart', 'continue');
+        } catch {
+          /* stockage indisponible */
+        }
+        window.location.reload();
+      };
+      document.body.appendChild(box);
+    });
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 900);
 
@@ -224,6 +249,13 @@ export class Game {
     window.addEventListener('beforeunload', () => {
       if (this.state !== 'title') this.saveNow();
     });
+    // Téléphone : en passant à une autre application, la page peut être fermée sans
+    // « beforeunload » ; on sauvegarde dès que le jeu passe en arrière-plan.
+    const away = () => {
+      if (this.state !== 'title' && document.visibilityState === 'hidden') this.saveNow();
+    };
+    document.addEventListener('visibilitychange', away);
+    window.addEventListener('pagehide', () => this.state !== 'title' && this.saveNow());
 
     this.timer = new THREE.Timer();
     this.renderer.setAnimationLoop((t) => this.frame(t));

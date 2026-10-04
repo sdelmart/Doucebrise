@@ -840,11 +840,25 @@ export class UI {
       zoom(e.deltaY > 0 ? 1.18 : 1 / 1.18, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
     }, { passive: false });
     let drag = null;
+    // Doigts posés sur la carte : un doigt la déplace, deux la zooment (pincer / écarter).
+    const pts = new Map();
+    let pinch = 0;
     c.addEventListener('pointerdown', (e) => {
-      drag = { x: e.clientX, y: e.clientY };
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      drag = pts.size === 1 ? { x: e.clientX, y: e.clientY } : null;
+      pinch = 0;
       c.setPointerCapture(e.pointerId);
     });
     c.addEventListener('pointermove', (e) => {
+      if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size >= 2) {
+        const [p, q] = [...pts.values()];
+        const d = Math.hypot(p.x - q.x, p.y - q.y);
+        const r = c.getBoundingClientRect();
+        if (pinch && d > 0) zoom(pinch / d, ((p.x + q.x) / 2 - r.left) / r.width, ((p.y + q.y) / 2 - r.top) / r.height);
+        pinch = d;
+        return;
+      }
       if (!drag) return;
       const r = c.getBoundingClientRect();
       v.cx -= ((e.clientX - drag.x) / r.width) * 2 * v.half;
@@ -852,7 +866,12 @@ export class UI {
       drag = { x: e.clientX, y: e.clientY };
       clampView();
     });
-    const end = () => (drag = null);
+    const end = (e) => {
+      pts.delete(e.pointerId);
+      pinch = 0;
+      const rest = [...pts.values()][0];
+      drag = rest ? { x: rest.x, y: rest.y } : null;
+    };
     c.addEventListener('pointerup', end);
     c.addEventListener('pointercancel', end);
     document.querySelectorAll('[data-mapzoom]').forEach((b) => {

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { FURNITURE, WALLPAPERS, FLOORS, PALETTE, FURNITURE_CATS } from './furniture.js';
 import { HOME_COLORS, ROOF_STYLES, FACADES, HOME_EXTRAS } from '../world/home.js';
 import { ROOM } from './house.js';
-import { escapeHtml } from '../ui/ui.js';
+import { escapeHtml, isTouchUI } from '../ui/ui.js';
 
 // Mode décoration (touche B) : choisir un meuble rangé, le placer à la souris,
 // le tourner (R), changer sa couleur (C), le déplacer ou le ranger. Les petits objets
@@ -28,6 +28,8 @@ export class DecorMode {
     const canvas = game.canvas;
     let down = null;
     canvas.addEventListener('pointermove', (e) => {
+      // Au doigt, l'objet ne suit pas le glissement (qui tourne la vue) : un toucher le place.
+      if (e.pointerType === 'touch') return;
       this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
     });
     canvas.addEventListener('pointerdown', (e) => {
@@ -39,6 +41,11 @@ export class DecorMode {
       down = null;
       if (moved < 6) {
         this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+        // Au doigt : un toucher montre l'objet à cet endroit, « ✓ Poser » le pose.
+        if (e.pointerType === 'touch' && this.holding) {
+          this.update();
+          return;
+        }
         this.click();
       }
     });
@@ -144,8 +151,15 @@ export class DecorMode {
     }
     const shopTip = (this.tab === 'murs' || this.tab === 'sols') ? ' · 🔒 motifs en vente à la Menuiserie de Bruno' : this.tab === 'facade' ? ' · 🔒 styles et extras en vente chez Bruno (onglet Travaux)' : '';
     const small = this.holding && FURNITURE[this.holding.id].small;
-    html += `</div><div class="decor-tips">${this.holding ? `<b>Clic</b> : poser${small ? ' (par terre ou sur une table, une commode, une étagère…)' : ''} · <b>R</b> : tourner · <b>C</b> : couleur · <b>Échap</b> : ranger` : `<b>Clic</b> sur un meuble posé : le déplacer · glisser : tourner la vue · molette : zoom${shopTip}`}</div>`;
+    const touch = isTouchUI();
+    // Objet en main : boutons (au doigt, il n'y a ni R, ni C, ni Échap).
+    if (this.holding) {
+      html += `</div><div class="decor-actions">${touch ? '<button class="btn primary" data-dact="place">✓ Poser</button>' : ''}<button class="btn" data-dact="rotate">↻ Tourner</button><button class="btn" data-dact="color">🎨 Couleur</button><button class="btn" data-dact="cancel">📦 Ranger</button>`;
+    }
+    html += `</div><div class="decor-tips">${this.holding && touch ? `Touche le sol${small ? ' (ou une table, une commode, une étagère…)' : ''} pour y montrer l'objet, puis ✓ Poser.` : this.holding ? `<b>Clic</b> : poser${small ? ' (par terre ou sur une table, une commode, une étagère…)' : ''} · <b>R</b> : tourner · <b>C</b> : couleur · <b>Échap</b> : ranger` : touch ? `Touche un meuble posé pour le déplacer · glisse pour tourner la vue${shopTip}` : `<b>Clic</b> sur un meuble posé : le déplacer · glisser : tourner la vue · molette : zoom${shopTip}`}</div>`;
     this.el.innerHTML = html;
+    // Au doigt, objet en main : la liste se replie, il reste les boutons (plus de place pour viser).
+    this.el.classList.toggle('holding', !!this.holding);
     this.el.querySelectorAll('[data-dtab]').forEach((b) => {
       b.onclick = () => {
         if (this.holding) this.cancel();
@@ -155,6 +169,15 @@ export class DecorMode {
       };
     });
     this.el.querySelector('[data-dexit]').onclick = () => this.exit();
+    this.el.querySelectorAll('[data-dact]').forEach((b) => {
+      b.onclick = () => {
+        const act = b.dataset.dact;
+        if (act === 'place') this.click();
+        else if (act === 'rotate') this.rotate();
+        else if (act === 'color') this.recolor();
+        else this.cancel();
+      };
+    });
     this.el.querySelectorAll('[data-fid]').forEach((b) => {
       b.onclick = () => this.take(b.dataset.fid);
     });
