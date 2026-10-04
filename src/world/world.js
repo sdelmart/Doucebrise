@@ -23,6 +23,10 @@ export class World {
     this.platforms = [];
     this.fishingSpots = [];
     this.camBlockers = [];
+    // Sols couverts (potager, nappe, meubles du jardin…) : pas d'herbe dessus, et les
+    // animaux en font le tour pour laisser la place au joueur (voir addCover).
+    this.covers = [];
+    this.coversVersion = 0;
 
     this.terrain = new Terrain();
     this.terrainMesh = this.terrain.createMesh();
@@ -119,6 +123,71 @@ export class World {
       }
     }
     return false;
+  }
+
+  /**
+   * Objet posé au sol : { x, z, r } (disque) ou { x, z, hw, hd, rot } (rectangle).
+   * grass : l'herbe ne pousse pas dessus ; animals : les animaux n'y entrent pas.
+   */
+  addCover(area, { grass = true, animals = true } = {}) {
+    const rot = area.rot || 0;
+    const c = { ...area, cos: Math.cos(rot), sin: Math.sin(rot), grass, animals };
+    this.covers.push(c);
+    this.coversVersion++;
+    return c;
+  }
+
+  removeCover(c) {
+    const i = this.covers.indexOf(c);
+    if (i < 0) return;
+    this.covers.splice(i, 1);
+    this.coversVersion++;
+  }
+
+  /** Le point (avec une marge) est-il sur un sol couvert ? (kind : 'grass' ou 'animals') */
+  covered(x, z, pad = 0, kind = 'grass') {
+    for (const c of this.covers) {
+      if (!c[kind]) continue;
+      const dx = x - c.x;
+      const dz = z - c.z;
+      if (c.r !== undefined) {
+        if (dx * dx + dz * dz < (c.r + pad) ** 2) return true;
+      } else if (Math.abs(dx * c.cos - dz * c.sin) < c.hw + pad && Math.abs(dx * c.sin + dz * c.cos) < c.hd + pad) return true;
+    }
+    return false;
+  }
+
+  /** Repousse un animal (cercle x, z, r) hors des sols qui lui sont interdits. */
+  keepOff(x, z, r) {
+    const out = { x, z };
+    for (const c of this.covers) {
+      if (!c.animals) continue;
+      const dx = out.x - c.x;
+      const dz = out.z - c.z;
+      if (c.r !== undefined) {
+        const d = Math.hypot(dx, dz);
+        const min = c.r + r;
+        if (d < min) {
+          const k = d > 1e-5 ? min / d : 0;
+          out.x = c.x + (k ? dx * k : min);
+          out.z = c.z + dz * k;
+        }
+        continue;
+      }
+      // Repère du rectangle : on sort par le bord le plus proche.
+      const lx = dx * c.cos - dz * c.sin;
+      const lz = dx * c.sin + dz * c.cos;
+      const px = c.hw + r - Math.abs(lx);
+      const pz = c.hd + r - Math.abs(lz);
+      if (px <= 0 || pz <= 0) continue;
+      let nx = lx;
+      let nz = lz;
+      if (px < pz) nx = Math.sign(lx || 1) * (c.hw + r);
+      else nz = Math.sign(lz || 1) * (c.hd + r);
+      out.x = c.x + nx * c.cos + nz * c.sin;
+      out.z = c.z - nx * c.sin + nz * c.cos;
+    }
+    return out;
   }
 
   reserve(x, z, r) {

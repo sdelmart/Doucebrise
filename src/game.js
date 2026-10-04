@@ -1224,7 +1224,10 @@ export class Game {
       return;
     }
 
-    const animal = this.animals.nearest();
+    let animal = this.animals.nearest();
+    // Une parcelle ou une plante à cueillir à portée passe avant l'animal d'à côté (un clic
+    // sur l'animal le désigne quand même).
+    if (animal && this.picked?.ref !== animal && (this.garden.nearest() || this.resources.nearest())) animal = null;
     if (animal) {
       const a = animal;
       this.promptSubject = a;

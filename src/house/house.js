@@ -358,6 +358,11 @@ export class House {
     const z = a.cz + p.z;
     const f = FURNITURE[p.id];
     let y = p.area === 'interior' ? 0 : this.game.world.heightAt(x, z);
+    // Tapis du jardin : posé au plus haut du terrain dessous, pour ne pas s'enfoncer dans la pente.
+    if (p.area === 'yard' && f.rug) {
+      const [fw, fd] = this.footprint(p.id, p.rot);
+      for (const [cx, cz] of [[-fw / 2, -fd / 2], [fw / 2, -fd / 2], [-fw / 2, fd / 2], [fw / 2, fd / 2]]) y = Math.max(y, this.game.world.heightAt(x + cx, z + cz));
+    }
     if (f.wall) y = f.mountY;
     return new THREE.Vector3(x, y, z);
   }
@@ -376,6 +381,11 @@ export class House {
       const [fw, fd] = this.footprint(p.id, p.rot);
       p.collider = this.game.world.colliders.addBox(pos.x, pos.z, fw / 2 - 0.05, fd / 2 - 0.05, 0);
     }
+    // Dans le jardin : pas d'herbe à travers le meuble (ni le tapis).
+    if (p.area === 'yard' && !f.wall) {
+      const [fw, fd] = this.footprint(p.id, p.rot);
+      p.cover = this.game.world.addCover({ x: pos.x, z: pos.z, hw: fw / 2, hd: fd / 2 }, { animals: false });
+    }
     this.placed.push(p);
     this.lightT = 0;
     return p;
@@ -387,6 +397,7 @@ export class House {
       if (o.isMesh && o.name !== 'outline') o.geometry.dispose();
     });
     if (p.collider) this.game.world.colliders.remove(p.collider);
+    if (p.cover) this.game.world.removeCover(p.cover);
     this.placed = this.placed.filter((x) => x !== p);
     this.lightT = 0;
   }

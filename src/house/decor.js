@@ -344,7 +344,7 @@ export class DecorMode {
     hd.valid = h.canPlace(hd.id, this.area, lx, lz, hd.rot, null, wallInfo);
     const wx = a.cx + lx;
     const wz = a.cz + lz;
-    const y = f.wall ? f.mountY : this.area === 'interior' ? 0 : g.world.heightAt(wx, wz);
+    const y = h.worldPos({ id: hd.id, area: this.area, x: lx, z: lz, rot: hd.rot }).y;
     hd.ghost.position.set(wx, y + (hd.valid ? 0 : 0.02), wz);
     hd.ghost.rotation.y = f.wall ? hd.wallRot : hd.rot * (Math.PI / 2);
     const m = hd.ghost.userData.mat;

@@ -532,6 +532,10 @@ export class Village {
       this.world.colliders.addBox((ax + bx) / 2, (az + bz) / 2, 0.15, len / 2, Math.atan2(bx - ax, bz - az));
     }
     this.world.reserve(yard.x, yard.z, yard.r + 1);
+    // Potager (3 × 3 parcelles de 1,5 m, voir game/garden.js) : terre nue, sans herbe, et
+    // les animaux le contournent (on clique sur les parcelles, pas sur eux).
+    yard.bed = { x: yard.x - dx * 0.9, z: yard.z - dz * 0.9, hw: 2.25, hd: 2.25, rot: Math.atan2(dx, dz) };
+    this.world.addCover(yard.bed);
     const dhx = yard.x + dx * 2.6;
     const dhz = yard.z + dz * 2.6;
     this.static.addRaw(place(doghouseGeo(), dhx, this.h(dhx, dhz) - 0.05, dhz, Math.atan2(-dx, -dz)));
@@ -611,6 +615,10 @@ export class Village {
     this.homeSign.position.set(sx, sy + 1.3, sz);
     this.homeSign.rotation.y = base.rot;
     this.homeColliders.push(col.addCircle(mbx, mbz, 0.35), col.addCircle(sx, sz, 0.2));
+    // Devant la porte : les animaux laissent le passage (E ouvre la porte, pas une caresse).
+    if (this.doorCover) this.world.removeCover(this.doorCover);
+    const door = this.doorFront(0, 0.9);
+    this.doorCover = this.world.addCover({ x: door.x, z: door.z, r: 1.1 }, { grass: false });
     this.homeStyle = st;
   }
 
@@ -1007,6 +1015,7 @@ export class Village {
       const z = 17;
       this.static.addRaw(place(picnicGeo(), x, this.h(x, z) + 0.02, z, 0.3));
       this.world.reserve(x, z, 2.5);
+      this.world.addCover({ x, z, hw: 1.55, hd: 1.55, rot: 0.3 });
     }
     // Plage : parasol, serviette, château de sable.
     {

@@ -924,6 +924,7 @@ export class Vegetation {
       if (h < 1.3 || (id === 'pins' && h > 13)) continue;
       if (terrain.pathDistance(x, z) < 1.9) continue;
       if (terrain.slopeAt(x, z) > 0.32) continue;
+      if (this.bareGround(x, z)) continue;
       const key = `${Math.floor(x / TILE)},${Math.floor(z / TILE)}`;
       if (!buckets.has(key)) buckets.set(key, []);
       const col = terrain.colorAt(x, z, h, 1, new THREE.Color()).multiplyScalar(1.25);
@@ -1114,6 +1115,19 @@ export class Vegetation {
     this.flowerMeshes = [...meshes, ...tulips];
   }
 
+  /**
+   * Pas de touffe d'herbe ici : objet posé au sol (potager, nappe… : world.addCover),
+   * obstacle (caisse, banc, tronc…) ou jardin de la maison (une pelouse tondue).
+   */
+  bareGround(x, z) {
+    const w = this.world;
+    const y = w.village.yard;
+    if (y && Math.hypot(x - y.x, z - y.z) < y.r + 0.3) return true;
+    if (w.covered(x, z, 0.3)) return true;
+    const r = w.colliders.resolve(x, z, 0.25);
+    return Math.abs(r.x - x) + Math.abs(r.z - z) > 1e-4;
+  }
+
   placeGrass(rng, mat) {
     // L'herbe est découpée en tuiles de 20 m : seules celles proches et visibles sont dessinées.
     const count = 9000;
@@ -1129,6 +1143,7 @@ export class Vegetation {
       if (Math.hypot(x, z) < 15) continue;
       if (terrain.pathDistance(x, z) < 1.9) continue;
       if (terrain.slopeAt(x, z) > 0.3) continue;
+      if (this.bareGround(x, z)) continue;
       const key = `${Math.floor(x / TILE)},${Math.floor(z / TILE)}`;
       if (!buckets.has(key)) buckets.set(key, []);
       const col = terrain.colorAt(x, z, h, 1, new THREE.Color()).multiplyScalar(1.28);

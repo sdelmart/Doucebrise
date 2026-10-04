@@ -110,6 +110,8 @@ export class Animal {
   }
 
   teleport(x, z) {
+    // Jamais posé sur le potager, une nappe, devant la porte… (world.addCover).
+    if (!this.room) ({ x, z } = this.world.keepOff(x, z, this.model.radius * this.model.scale));
     this.pos.set(x, this.world.groundAt(x, z), z);
     this.target = null;
     this.sync();
@@ -137,9 +139,16 @@ export class Animal {
       const r = this.rng.range(1.5, this.home.r);
       const x = this.home.x + Math.cos(a) * r;
       const z = this.home.z + Math.sin(a) * r;
-      if (this.canGo(x, z)) return { x, z };
+      if (this.canGo(x, z) && !this.offLimits(x, z)) return { x, z };
     }
+    // Centre du domaine (le jardin : le potager) interdit : on reste où l'on est.
+    if (this.offLimits(this.home.x, this.home.z)) return { x: this.pos.x, z: this.pos.z };
     return { x: this.home.x, z: this.home.z };
+  }
+
+  /** Sol où l'animal ne va pas (potager, nappe, devant la porte…), dehors seulement. */
+  offLimits(x, z) {
+    return !this.room && this.world.covered(x, z, this.model.radius * this.model.scale + 0.3, 'animals');
   }
 
   canGo(x, z) {
@@ -184,8 +193,10 @@ export class Animal {
       const row = Math.floor(i / 3);
       const back = ctx.player.rotY + Math.PI + col * (0.62 - row * 0.18);
       const d = 2 + row * 1.5 + (col ? 0.25 : 0);
-      const fx = p.x + Math.sin(back) * d;
-      const fz = p.z + Math.cos(back) * d;
+      let fx = p.x + Math.sin(back) * d;
+      let fz = p.z + Math.cos(back) * d;
+      // Place dans le potager (on jardine) : il attend au bord, sans piétiner sur place.
+      if (!this.room) ({ x: fx, z: fz } = this.world.keepOff(fx, fz, this.model.radius * this.model.scale + 0.05));
       const gap = Math.hypot(fx - this.pos.x, fz - this.pos.z);
       if (distP > 35) {
         this.teleport(fx, fz);
@@ -268,7 +279,9 @@ export class Animal {
         const step = Math.min(moveSpeed * dt, gd);
         const nx = this.pos.x + Math.sin(this.rotY) * step;
         const nz = this.pos.z + Math.cos(this.rotY) * step;
-        const r = this.world.colliders.resolve(nx, nz, this.model.radius * this.model.scale);
+        let r = this.world.colliders.resolve(nx, nz, this.model.radius * this.model.scale);
+        // Il contourne le potager et les objets posés au sol, comme un obstacle.
+        if (!this.room) r = this.world.keepOff(r.x, r.z, this.model.radius * this.model.scale);
         if (this.canGo(r.x, r.z) || following) {
           this.pos.x = r.x;
           this.pos.z = r.z;

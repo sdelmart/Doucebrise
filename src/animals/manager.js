@@ -432,7 +432,7 @@ export class AnimalManager {
     if (!a.follow) {
       a.home = { ...this.yard };
       a.state = 'wander';
-      a.target = { x: a.home.x, z: a.home.z };
+      a.target = a.pickWanderTarget(); // dans le jardin, à côté du potager
       a.stateT = 60;
       g.ui.toast(`🏡 ${a.name} rentre au jardin.`);
     } else {

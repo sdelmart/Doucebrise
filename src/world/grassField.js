@@ -103,7 +103,29 @@ export class GrassField {
     this.setRadius(20);
   }
 
-  /** Masque des obstacles (maisons, murets, pontons, troncs…) : 0 = pas d'herbe. */
+  /** Efface l'herbe du masque là où `test` (relatif au centre de c) est vrai. */
+  paint(mask, c, pad, test) {
+    const half = this.maskHalf;
+    const size = this.maskSize;
+    const r = c.r ?? Math.hypot(c.hw, c.hd);
+    const x0 = Math.max(0, Math.floor((c.x - r - pad + half) / MASK_RES));
+    const x1 = Math.min(size - 1, Math.ceil((c.x + r + pad + half) / MASK_RES));
+    const z0 = Math.max(0, Math.floor((c.z - r - pad + half) / MASK_RES));
+    const z1 = Math.min(size - 1, Math.ceil((c.z + r + pad + half) / MASK_RES));
+    for (let iz = z0; iz <= z1; iz++) {
+      for (let ix = x0; ix <= x1; ix++) {
+        const x = ix * MASK_RES - half + MASK_RES / 2;
+        const z = iz * MASK_RES - half + MASK_RES / 2;
+        if (test(x - c.x, z - c.z)) mask[iz * size + ix] = 0;
+      }
+    }
+  }
+
+  /**
+   * Masque des obstacles (maisons, murets, pontons, troncs…) : 0 = pas d'herbe. Les sols
+   * couverts (potager, nappe, meubles du jardin : world.addCover) s'y ajoutent, et le
+   * masque est refait quand ils changent (voir applyCovers).
+   */
   buildMask() {
     const half = 150;
     const size = Math.round((half * 2) / MASK_RES);
@@ -111,25 +133,13 @@ export class GrassField {
     this.maskSize = size;
     const mask = new Uint8Array(size * size).fill(255);
     const seen = new Set();
-    const paint = (c, pad, test) => {
-      const r = c.r ?? Math.hypot(c.hw, c.hd);
-      const x0 = Math.max(0, Math.floor((c.x - r - pad + half) / MASK_RES));
-      const x1 = Math.min(size - 1, Math.ceil((c.x + r + pad + half) / MASK_RES));
-      const z0 = Math.max(0, Math.floor((c.z - r - pad + half) / MASK_RES));
-      const z1 = Math.min(size - 1, Math.ceil((c.z + r + pad + half) / MASK_RES));
-      for (let iz = z0; iz <= z1; iz++) {
-        for (let ix = x0; ix <= x1; ix++) {
-          const x = ix * MASK_RES - half + MASK_RES / 2;
-          const z = iz * MASK_RES - half + MASK_RES / 2;
-          if (test(x - c.x, z - c.z)) mask[iz * size + ix] = 0;
-        }
-      }
-    };
+    const paint = (c, pad, test) => this.paint(mask, c, pad, test);
     const inBox = (c, pad) => (dx, dz) => {
       const lx = dx * c.cos - dz * c.sin;
       const lz = dx * c.sin + dz * c.cos;
       return Math.abs(lx) < c.hw + pad && Math.abs(lz) < c.hd + pad;
     };
+    this.inBox = inBox;
     for (const list of this.world.colliders.grid.values()) {
       for (const c of list) {
         if (seen.has(c)) continue;
@@ -144,11 +154,32 @@ export class GrassField {
       }
     }
     for (const p of this.world.platforms) paint(p, 0.1, inBox(p, 0.1));
-    const tex = new THREE.DataTexture(mask, size, size, THREE.RedFormat);
+    this.baseMask = mask;
+    this.mask = mask.slice();
+    const tex = new THREE.DataTexture(this.mask, size, size, THREE.RedFormat);
     tex.magFilter = THREE.LinearFilter;
     tex.minFilter = THREE.LinearFilter;
     tex.needsUpdate = true;
+    this.maskTex = tex;
+    this.coversVersion = -1;
+    this.applyCovers();
     return tex;
+  }
+
+  /** Sols couverts : le masque d'origine, moins l'herbe sous chacun d'eux. */
+  applyCovers() {
+    const w = this.world;
+    if (this.coversVersion === w.coversVersion) return;
+    this.coversVersion = w.coversVersion;
+    this.mask.set(this.baseMask);
+    for (const c of w.covers) {
+      if (!c.grass) continue;
+      if (c.r !== undefined) {
+        const rr = c.r + 0.15;
+        this.paint(this.mask, c, 0.15, (dx, dz) => dx * dx + dz * dz < rr * rr);
+      } else this.paint(this.mask, c, 0.15, this.inBox(c, 0.15));
+    }
+    this.maskTex.needsUpdate = true;
   }
 
   material(tile) {
@@ -284,6 +315,7 @@ ${shader.fragmentShader}`
   /** focus : centre du tapis ; push : position qui écarte les brins (le joueur). */
   update(focus, push = focus) {
     const terrain = this.world.terrain;
+    this.applyCovers();
     this.uniforms.uGrassOrigin.value.set(Math.floor(focus.x / SPACING), Math.floor(focus.z / SPACING));
     this.uniforms.uGrassFocus.value.copy(focus);
     this.uniforms.uGrassPush.value.copy(push);
