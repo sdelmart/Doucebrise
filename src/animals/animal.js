@@ -114,6 +114,7 @@ export class Animal {
     if (!this.room) ({ x, z } = this.world.keepOff(x, z, this.model.radius * this.model.scale));
     this.pos.set(x, this.world.groundAt(x, z), z);
     this.target = null;
+    this.navPath = null;
     this.sync();
   }
 
@@ -139,11 +140,61 @@ export class Animal {
       const r = this.rng.range(1.5, this.home.r);
       const x = this.home.x + Math.cos(a) * r;
       const z = this.home.z + Math.sin(a) * r;
-      if (this.canGo(x, z) && !this.offLimits(x, z)) return { x, z };
+      if (this.canGo(x, z) && !this.offLimits(x, z) && this.reachable(x, z)) return { x, z };
     }
     // Centre du domaine (le jardin : le potager) interdit : on reste où l'on est.
     if (this.offLimits(this.home.x, this.home.z)) return { x: this.pos.x, z: this.pos.z };
     return { x: this.home.x, z: this.home.z };
+  }
+
+  get swims() {
+    return this.species === 'canard' || this.species === 'loutre';
+  }
+
+  /** Case libre de la grille de déplacement (pas dans un obstacle ni contre). */
+  reachable(x, z) {
+    const nav = this.world.nav;
+    return this.room || !nav.inside(x, z) || nav.walkable(x, z, this.swims);
+  }
+
+  /**
+   * Prochain point vers lequel marcher pour atteindre `goal` : le but lui-même s'il est en
+   * vue, sinon le prochain coin d'un chemin qui contourne les obstacles (world/navgrid.js).
+   * null : arrivé au plus près d'un but hors d'atteinte.
+   */
+  steer(goal, dt) {
+    const nav = this.world.nav;
+    if (this.room || !nav.inside(this.pos.x, this.pos.z) || !nav.inside(goal.x, goal.z)) return goal;
+    const swim = this.swims;
+    let path = this.navPath;
+    const moved = path ? Math.hypot(goal.x - path.gx, goal.z - path.gz) : Infinity;
+    // Nouveau chemin : nouveau but (ou but qui a bougé : compagnon), ou de temps en temps
+    // pour tenir compte d'un obstacle apparu entre-temps.
+    if (!path || path.age > 2.5 || (moved > 0.75 && path.age > 0.4)) {
+      path = this.navPath = { gx: goal.x, gz: goal.z, age: 0, i: 0, pts: null, reached: true };
+      if (!nav.clear(this.pos.x, this.pos.z, goal.x, goal.z, swim)) {
+        const found = nav.findPath(this.pos.x, this.pos.z, goal.x, goal.z, swim);
+        if (found) {
+          path.pts = found.pts;
+          path.reached = found.reached;
+        }
+      }
+    }
+    path.age += dt;
+    const pts = path.pts;
+    if (!pts) return goal; // en vue (ou enfermé : tout droit, comme avant)
+    // Coin suivant dès que celui-ci est atteint, ou que le suivant est déjà en vue.
+    while (path.i < pts.length - 1) {
+      const c = pts[path.i];
+      const nx = pts[path.i + 1];
+      if (Math.hypot(c.x - this.pos.x, c.z - this.pos.z) < 0.45 || nav.clear(this.pos.x, this.pos.z, nx.x, nx.z, swim)) path.i++;
+      else break;
+    }
+    const last = path.i === pts.length - 1;
+    if (last && path.reached) return goal;
+    const c = pts[path.i];
+    if (last && Math.hypot(c.x - this.pos.x, c.z - this.pos.z) < 0.4) return null;
+    return c;
   }
 
   /** Sol où l'animal ne va pas (potager, nappe, devant la porte…), dehors seulement. */
@@ -195,8 +246,16 @@ export class Animal {
       const d = 2 + row * 1.5 + (col ? 0.25 : 0);
       let fx = p.x + Math.sin(back) * d;
       let fz = p.z + Math.cos(back) * d;
-      // Place dans le potager (on jardine) : il attend au bord, sans piétiner sur place.
-      if (!this.room) ({ x: fx, z: fz } = this.world.keepOff(fx, fz, this.model.radius * this.model.scale + 0.05));
+      // Place dans le potager (on jardine) ou dans un obstacle (joueur contre un mur) : il
+      // attend au plus près, sans piétiner sur place.
+      if (!this.room) {
+        ({ x: fx, z: fz } = this.world.keepOff(fx, fz, this.model.radius * this.model.scale + 0.05));
+        const nav = this.world.nav;
+        if (nav.inside(fx, fz) && !nav.walkable(fx, fz, this.swims)) {
+          const i = nav.nearestOpen(fx, fz, this.swims, 2.5);
+          if (i >= 0) ({ x: fx, z: fz } = nav.center(i));
+        }
+      }
       const gap = Math.hypot(fx - this.pos.x, fz - this.pos.z);
       if (distP > 35) {
         this.teleport(fx, fz);
@@ -264,18 +323,20 @@ export class Animal {
       }
     }
 
-    // Déplacement.
+    // Déplacement : droit vers le but s'il est en vue, sinon de coin en coin le long d'un
+    // chemin qui contourne maisons, clôtures, rochers, potager et eau.
     if (goal && moveSpeed > 0) {
-      const gx = goal.x - this.pos.x;
-      const gz = goal.z - this.pos.z;
-      const gd = Math.hypot(gx, gz);
-      if (gd < 0.35) {
+      const gd = Math.hypot(goal.x - this.pos.x, goal.z - this.pos.z);
+      const aim = gd < 0.35 ? null : this.steer(goal, dt);
+      if (!aim) {
+        // Arrivé (ou au plus près d'un but hors d'atteinte).
         if (this.state === 'wander') {
           this.state = 'idle';
           this.stateT = this.rng.range(3, 8);
         }
+        this.speed = damp(this.speed, 0, 10, dt);
       } else {
-        this.rotY = lerpAngle(this.rotY, Math.atan2(gx, gz), 1 - Math.exp(-8 * dt));
+        this.rotY = lerpAngle(this.rotY, Math.atan2(aim.x - this.pos.x, aim.z - this.pos.z), 1 - Math.exp(-8 * dt));
         const step = Math.min(moveSpeed * dt, gd);
         const nx = this.pos.x + Math.sin(this.rotY) * step;
         const nz = this.pos.z + Math.cos(this.rotY) * step;
@@ -283,11 +344,22 @@ export class Animal {
         // Il contourne le potager et les objets posés au sol, comme un obstacle.
         if (!this.room) r = this.world.keepOff(r.x, r.z, this.model.radius * this.model.scale);
         if (this.canGo(r.x, r.z) || following) {
+          // Bloqué (il n'avance presque plus) : nouveau chemin, puis autre balade.
+          const moved = Math.hypot(r.x - this.pos.x, r.z - this.pos.z);
+          const was = this.stuckT || 0;
+          this.stuckT = moved < step * 0.3 ? was + dt : Math.max(0, was - dt);
           this.pos.x = r.x;
           this.pos.z = r.z;
-          this.speed = damp(this.speed, moveSpeed, 10, dt);
+          this.speed = damp(this.speed, moveSpeed * Math.min(1, moved / Math.max(step, 1e-4) + 0.2), 10, dt);
+          if (was <= 1.2 && this.stuckT > 1.2 && this.navPath) this.navPath.age = 99;
+          if (this.stuckT > 3) {
+            this.stuckT = 0;
+            if (this.state === 'wander') this.target = this.pickWanderTarget();
+            else if (following && gd > 4) this.teleport(goal.x, goal.z);
+          }
         } else {
           this.target = this.pickWanderTarget();
+          this.navPath = null;
           this.speed = 0;
         }
       }

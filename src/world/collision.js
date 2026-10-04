@@ -17,6 +17,7 @@ export class Colliders {
       const i = list.indexOf(c);
       if (i >= 0) list.splice(i, 1);
     }
+    this.onChange?.(c.x, c.z, c.type === 'circle' ? c.r : Math.hypot(c.hw, c.hd));
   }
 
   insert(c, radius) {
@@ -31,6 +32,8 @@ export class Colliders {
         this.grid.get(k).push(c);
       }
     }
+    // Grille de déplacement des animaux (world/navgrid.js) : cases à réévaluer.
+    this.onChange?.(c.x, c.z, radius);
   }
 
   addCircle(x, z, r) {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { Terrain } from './terrain.js';
+import { Terrain, TERRAIN_SIZE } from './terrain.js';
+import { NavGrid } from './navgrid.js';
 import { GrassField } from './grassField.js';
 import { DayNight } from './sky.js';
 import { createWater } from './water.js';
@@ -19,6 +20,9 @@ export class World {
   constructor(scene) {
     this.scene = scene;
     this.colliders = new Colliders();
+    // Chemins des animaux autour des obstacles : réévalués là où un obstacle change.
+    this.nav = new NavGrid(this, TERRAIN_SIZE / 2);
+    this.colliders.onChange = (x, z, r) => this.nav.invalidate(x, z, r);
     this.reserved = [];
     this.platforms = [];
     this.fishingSpots = [];
@@ -102,6 +106,7 @@ export class World {
   addPlatform(x, z, hw, hd, rot, y) {
     this.platforms.push({ x, z, hw, hd, y, cos: Math.cos(rot), sin: Math.sin(rot) });
     this.platGrid = null;
+    this.nav?.invalidate(x, z, Math.hypot(hw, hd));
   }
 
   /** Volume qui bloque la caméra (maison, moulin…) : boîte orientée ou cylindre. */
@@ -134,6 +139,7 @@ export class World {
     const c = { ...area, cos: Math.cos(rot), sin: Math.sin(rot), grass, animals };
     this.covers.push(c);
     this.coversVersion++;
+    this.nav.invalidate(c.x, c.z, c.r ?? Math.hypot(c.hw, c.hd));
     return c;
   }
 
@@ -142,6 +148,7 @@ export class World {
     if (i < 0) return;
     this.covers.splice(i, 1);
     this.coversVersion++;
+    this.nav.invalidate(c.x, c.z, c.r ?? Math.hypot(c.hw, c.hd));
   }
 
   /** Le point (avec une marge) est-il sur un sol couvert ? (kind : 'grass' ou 'animals') */
