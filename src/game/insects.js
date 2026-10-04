@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ITEMS } from './items.js';
 import { zoneAt } from '../world/layout.js';
-import { Shape, G, vertexColorToon, softDotTexture } from '../core/materials.js';
+import { Shape, G, plainVertexColor, softDotTexture } from '../core/materials.js';
 
 // Insectes : 22 espèces à attraper au filet (offert par Noé). Chacune a ses lieux,
 // ses heures et ses saisons ; certaines ne sortent que sous la pluie ou la nuit.
@@ -98,7 +98,7 @@ export function insectMesh(def) {
     if (def.id === 'lucane') for (const x of [-0.03, 0.03]) s.add(G.cone(0.014, 0.1, 5), '#4a2a1a', { pos: [x, 0.05, 0.14], rot: [-1.4, 0, x * 8] });
   }
   const group = new THREE.Group();
-  const mat = def.glow ? new THREE.MeshBasicMaterial({ vertexColors: true }) : vertexColorToon();
+  const mat = def.glow ? new THREE.MeshBasicMaterial({ vertexColors: true }) : plainVertexColor();
   const body = new THREE.Mesh(s.build(), mat);
   group.add(body);
   const wingPairs = [];

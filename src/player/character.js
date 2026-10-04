@@ -4,6 +4,7 @@ import { mergeRig } from '../core/rig.js';
 import { createFaceTextures, createPatternTexture, FACE_PHI, FACE_THETA0, FACE_THETA_LEN } from './face.js';
 import { clamp, damp } from '../core/math.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { SURF, addDecor } from '../world/decor.js';
 
 // Personnage « chibi » construit à partir de primitives, entièrement paramétré
 // par une apparence (voir appearance.js). Hiérarchie :
@@ -101,7 +102,32 @@ export class Character {
     this.foxTail = null;
   }
 
+  /**
+   * Matière de chaque sommet d'après sa couleur : peau, cheveux, chaussures (cuir),
+   * vêtements (tissu) ; le reste (yeux, accessoires…) est deviné par le matériau.
+   */
+  tagSurf(geo) {
+    const col = geo.attributes.color;
+    if (!col) return geo;
+    const a = this.appearance;
+    const keys = [[a.skin, SURF.skin], [a.hairColor, SURF.hair], [a.hairTip, SURF.hair], [a.shoesColor, SURF.leather], [a.topColor, SURF.fabric], [a.topColor2, SURF.fabric], [a.bottomColor, SURF.fabric]]
+      .filter(([hex]) => hex)
+      .map(([hex, s]) => [new THREE.Color(hex), s]);
+    const prev = geo.attributes.aSurf;
+    const out = new Float32Array(col.count);
+    for (let i = 0; i < col.count; i++) {
+      const r = col.getX(i);
+      const g = col.getY(i);
+      const b = col.getZ(i);
+      const hit = keys.find(([c]) => Math.abs(c.r - r) + Math.abs(c.g - g) + Math.abs(c.b - b) < 0.004);
+      out[i] = hit ? hit[1] : prev ? prev.getX(i) : 0;
+    }
+    geo.setAttribute('aSurf', new THREE.BufferAttribute(out, 1));
+    return geo;
+  }
+
   addPart(parent, geo, material = vertexColorToon(), { outline = true, shadow = true } = {}) {
+    if (material.vertexColors) this.tagSurf(geo);
     // Les pièces à couleurs par sommet d'un même groupe sont fusionnées en un seul
     // maillage (voir flushParts) : bien moins d'appels de dessin par personnage.
     if (material === vertexColorToon() && this.pending) {
@@ -122,8 +148,7 @@ export class Character {
   flushParts() {
     for (const [parent, groups] of this.pending) {
       for (const [key, geos] of Object.entries(groups)) {
-        // (Matière du décor, inutile ici : certaines pièces l'ont, d'autres non.)
-        if (geos.length > 1) for (const g of geos) g.deleteAttribute('aSurf');
+        // (Chaque pièce a sa matière : voir tagSurf.)
         const geo = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
         if (geos.length > 1) geos.forEach((g) => g.dispose());
         const mesh = new THREE.Mesh(geo, vertexColorToon());
@@ -152,7 +177,7 @@ export class Character {
     const pattern = createPatternTexture(a.pattern, base, accent);
     pattern.repeat.set(3, 2);
     this.textures.push(pattern);
-    this.clothMat = shadedMaterial({ map: pattern, gradientMap: getGradientMap() });
+    this.clothMat = shadedMaterial({ map: pattern, gradientMap: getGradientMap(), roughness: 0.9 });
     this.materials.push(this.clothMat);
 
     this.armL.position.set(0.2 * b + 0.02, 0.35, 0);
@@ -223,7 +248,7 @@ export class Character {
         shell.scale(b, 1, 0.86 * b);
         const js = new Shape();
         js.add(shell, a.topColor);
-        const jm = shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide });
+        const jm = addDecor(shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide }), { object: true });
         this.materials.push(jm);
         this.addPart(this.torso, js.build(), jm);
         for (const side of [-1, 1]) {

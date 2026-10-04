@@ -1,7 +1,28 @@
 import * as THREE from 'three';
-import { toon, vertexColorToon, withOutline, getGradientMap, shadedMaterial } from '../core/materials.js';
+import { toon, vertexColorToon, withOutline, getGradientMap, shadedMaterial, withBevel } from '../core/materials.js';
 import { FURNITURE, WALLPAPERS, FLOORS, surfaceTexture } from './furniture.js';
 import { DEFAULT_HOME, HOME_SIZES } from '../world/home.js';
+import { addDecor, SURF } from '../world/decor.js';
+
+// Matière de la couleur principale d'un meuble : tissu (canapés, lits, tapis…), émail
+// (cuisine, salle de bains) ou bois peint (le reste) ; avant, une surface unie et mate.
+const FABRIC = /canape|fauteuil|pouf|^lit|coussin|tapis|peluche|hamac|transat|panier|lit-chat|guirlande|lampions|lanterne-papier|parasol|bouee/;
+const ENAMEL = /cuisiniere|frigo|evier|baignoire|lavabo|machine-cafe|plan-travail|vaisselier|aquarium|tv-retro|poele/;
+const _main = new THREE.Color();
+function tagFurniture(id, geo, color) {
+  const col = geo.attributes.color;
+  if (!col || !color) return geo;
+  const surf = FABRIC.test(id) ? SURF.fabric : ENAMEL.test(id) ? SURF.ceramic : SURF.painted;
+  _main.set(color);
+  const prev = geo.attributes.aSurf;
+  const out = new Float32Array(col.count);
+  for (let i = 0; i < col.count; i++) {
+    const same = Math.abs(col.getX(i) - _main.r) + Math.abs(col.getY(i) - _main.g) + Math.abs(col.getZ(i) - _main.b) < 0.004;
+    out[i] = same ? surf : prev ? prev.getX(i) : 0;
+  }
+  geo.setAttribute('aSurf', new THREE.BufferAttribute(out, 1));
+  return geo;
+}
 
 // Maison du joueur : pièce intérieure (murs en coupe côté caméra), meubles posés
 // dedans ou dans le jardin, papier peint et sol, et interactions (lit, cuisinière…).
@@ -285,9 +306,9 @@ export class House {
     const mat = ghost
       ? shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), transparent: true, opacity: 0.72, emissive: '#39d98a', emissiveIntensity: 0.25 })
       : f.doubleSide
-        ? shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide })
+        ? addDecor(shadedMaterial({ vertexColors: true, gradientMap: getGradientMap(), side: THREE.DoubleSide }), { object: true })
         : vertexColorToon();
-    const body = new THREE.Mesh(f.build(color), mat);
+    const body = new THREE.Mesh(tagFurniture(id, withBevel(() => f.build(color)), color), mat);
     body.castShadow = !ghost;
     body.receiveShadow = true;
     if (!ghost && !f.rug) withOutline(body, 0.012);

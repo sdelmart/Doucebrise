@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Shape, G, vertexColorToon, withOutline } from '../core/materials.js';
+import { Shape, G, plainVertexColor, withOutline } from '../core/materials.js';
 import { mergeRig } from '../core/rig.js';
 
 // Espèces d'animaux : fiche (nom, nourriture préférée, caractère) + modèle 3D
@@ -285,7 +285,7 @@ export function buildAnimal(speciesId, variantIndex) {
     const h = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
     m.anchors.torso = { pos: c.toArray(), r: h.toArray() };
   }
-  const mat = vertexColorToon();
+  const mat = plainVertexColor();
   const meshes = [];
   m.root.traverse((o) => {
     if (o.isMesh) meshes.push(o);
@@ -302,7 +302,7 @@ export function buildAnimal(speciesId, variantIndex) {
 }
 
 function mesh(geo, parent, { outline = true } = {}) {
-  const me = new THREE.Mesh(geo, vertexColorToon());
+  const me = new THREE.Mesh(geo, plainVertexColor());
   me.userData.outline = outline;
   parent.add(me);
   return me;

@@ -8,14 +8,23 @@ const $ = (s) => document.querySelector(s);
 // Couleurs qui repeignent aussi un aventurier (peau, cheveux, tenue).
 const PAINT_KEYS = new Set(['skin', 'hairColor', 'topColor', 'topColor2', 'bottomColor', 'shoesColor', 'top', 'bottom']);
 
+// Onglets : un aventurier importé n'a ni visage ni coiffure à régler (ils sont peints sur
+// le modèle) : ces onglets disparaissent, il ne reste que ce qui le change vraiment.
 const TABS = [
   { id: 'style', label: 'Style' },
   { id: 'corps', label: 'Corps' },
-  { id: 'visage', label: 'Visage' },
-  { id: 'cheveux', label: 'Cheveux' },
+  { id: 'visage', label: 'Visage', classic: true },
+  { id: 'cheveux', label: 'Cheveux', classic: true },
   { id: 'tenue', label: 'Tenue' },
   { id: 'accessoires', label: 'Accessoires' },
   { id: 'tenues', label: '💾 Mes tenues' },
+];
+// Aventurier : la coupe de la tenue (seules les couleurs du bas et des jambes changent).
+const MODEL_CUTS = [
+  { id: 'pantalon', label: 'Haut et pantalon', icon: '👖' },
+  { id: 'nues', label: 'Jambes nues', icon: '🩳' },
+  { id: 'robe', label: 'Robe', icon: '👗' },
+  { id: 'salopette', label: 'Salopette', icon: '🧑‍🌾' },
 ];
 const MAX_LOOKS = 6;
 
@@ -58,6 +67,7 @@ export class Creator {
     this.a = { ...appearance };
     this.nameInput.value = this.a.name;
     $('#cr-done').textContent = isNew ? "C'est parti !" : 'Terminé';
+    this.renderTabs();
     this.render();
   }
 
@@ -69,8 +79,16 @@ export class Creator {
     this.a[key] = value;
     this.paintModel(key);
     this.commit();
+    // Changer de personnage peut faire disparaître l'onglet ouvert.
+    if (key === 'model') this.renderTabs();
     this.render();
     this.game.audio.play('ui');
+  }
+
+  /** Onglets utiles pour le personnage choisi. */
+  visibleTabs() {
+    const model = this.a ? resolveModel(this.a) : null;
+    return TABS.filter((t) => (t.id !== 'style' || availableModels().length) && !(t.classic && model));
   }
 
   /** Aventurier : choisir une couleur de tenue passe aux couleurs « à mon goût ». */
@@ -82,8 +100,9 @@ export class Creator {
 
   renderTabs() {
     this.tabsEl.innerHTML = '';
-    for (const t of TABS) {
-      if (t.id === 'style' && !availableModels().length) continue;
+    const tabs = this.visibleTabs();
+    if (!tabs.some((t) => t.id === this.tab)) this.tab = tabs[0].id;
+    for (const t of tabs) {
       const b = document.createElement('button');
       b.className = `tab${t.id === this.tab ? ' active' : ''}`;
       b.textContent = t.label;
@@ -269,6 +288,44 @@ export class Creator {
     return l;
   }
 
+  /** Onglets Corps et Tenue d'un aventurier : uniquement ce qui se voit sur lui. */
+  modelTab(b, a) {
+    if (this.tab === 'corps') {
+      b.append(
+        this.colors('Couleur de peau', 'skin', SKIN_TONES),
+        this.colors('Couleur des cheveux', 'hairColor', HAIR_COLORS),
+        this.slider('Taille', 'height', 0.88, 1.12, ['Petit·e', 'Grand·e']),
+        this.slider('Carrure', 'build', 0.85, 1.2, ['Fine', 'Ronde']),
+      );
+      return;
+    }
+    // Tenue : la coupe, puis les couleurs qui s'appliquent à cette coupe.
+    const cut = modelCut(a);
+    const f = field('Coupe');
+    const wrap = document.createElement('div');
+    wrap.className = 'chips';
+    for (const c of MODEL_CUTS) {
+      const btn = document.createElement('button');
+      btn.className = `chip${c.id === cut ? ' active' : ''}`;
+      btn.textContent = `${c.icon} ${c.label}`;
+      btn.onclick = () => {
+        if (c.id === 'robe' || c.id === 'salopette') this.a.top = c.id;
+        else {
+          if (this.a.top === 'robe' || this.a.top === 'salopette') this.a.top = 'tshirt';
+          this.a.bottom = c.id === 'nues' ? 'jupe' : 'pantalon';
+        }
+        this.set('top', this.a.top);
+      };
+      wrap.appendChild(btn);
+    }
+    f.appendChild(wrap);
+    b.append(f);
+    const main = cut === 'salopette' ? 'Salopette' : cut === 'robe' ? 'Robe' : 'Haut';
+    b.append(this.colors(main, 'topColor', CLOTH_COLORS), this.colors(cut === 'salopette' ? 'Chemise' : 'Détails', 'topColor2', CLOTH_COLORS));
+    if (cut === 'pantalon' || cut === 'nues') b.append(this.colors(cut === 'nues' ? 'Short / jupe' : 'Pantalon', 'bottomColor', CLOTH_COLORS));
+    b.append(this.colors('Chaussures', 'shoesColor', CLOTH_COLORS));
+  }
+
   render() {
     const b = this.body;
     b.innerHTML = '';
@@ -276,35 +333,21 @@ export class Creator {
     // Caméra : en pied pour choisir le personnage, plus près pour les détails du visage.
     this.game.cam.studio.dist = this.tab === 'style' ? 4.6 : 3.3;
     this.game.cam.studio.height = this.tab === 'style' ? 0.7 : 0.95;
-    // Aventurier : ce qui s'applique à lui, onglet par onglet.
     const model = resolveModel(a);
-    if (model && this.tab !== 'style') {
-      const notes = {
-        corps: 'La taille et la carrure s\'appliquent à ton aventurier, la peau aussi avec tes couleurs. La tête concerne le style Classique.',
-        visage: 'Le visage de ton aventurier est peint sur le modèle : ces réglages habillent le style Classique.',
-        cheveux: 'La couleur s\'applique à ton aventurier ; la coiffure, au style Classique.',
-        tenue: 'Les couleurs habillent ton aventurier (robe, jupe et salopette changent aussi ses jambes). Les formes concernent le style Classique.',
-        accessoires: 'Chapeaux, lunettes et accessoires de dos vont aussi à ton aventurier ! Un chapeau remplace sa coiffe, un accessoire de dos sa cape.',
-      };
-      const f = field(`${modelIcon(model)} ${modelLabel(model)}`, notes[this.tab] || '');
-      if (!a.modelColors && ['corps', 'cheveux', 'tenue'].includes(this.tab)) {
-        const btn = document.createElement('button');
-        btn.className = 'btn small';
-        btn.textContent = '🎨 Mettre mes couleurs';
-        btn.onclick = () => this.set('modelColors', true);
-        f.appendChild(btn);
-      }
-      b.append(f);
+    // Aventurier : seulement ce qui le change (couleurs, coupe, taille, accessoires).
+    if (model && (this.tab === 'corps' || this.tab === 'tenue')) {
+      this.modelTab(b, a);
+      return;
     }
     switch (this.tab) {
       case 'style': {
         const current = model || 'classique';
         const opts = [...availableModels().map((m) => ({ id: m.id, label: modelLabel(m.id), icon: modelIcon(m.id) })), { id: 'classique', label: 'Classique', icon: '🎨' }];
-        const f = this.chips('Personnage', 'model', opts, 'Les aventuriers sont des modèles 3D animés, à tes couleurs et avec tes accessoires. Le style Classique se personnalise entièrement : visage, coiffure, formes des tenues.');
+        const f = this.chips('Personnage', 'model', opts, model ? 'Un aventurier garde son visage et sa coiffure ; tu choisis ses couleurs, sa coupe, sa taille et ses accessoires. Pour tout personnaliser (visage, coiffure, formes des tenues) : Classique.' : 'Classique : tout se personnalise (visage, coiffure, tenue, accessoires). Les aventuriers sont des modèles 3D animés, à tes couleurs et avec tes accessoires.');
         f.querySelectorAll('.chip').forEach((c, i) => c.classList.toggle('active', opts[i].id === current));
         b.append(f);
         if (model) {
-          const cf = this.chips('Couleurs', 'modelColors', [{ id: false, label: 'D\'origine', icon: '🛡️' }, { id: true, label: 'À mon goût', icon: '🎨' }], 'À ton goût : peau, cheveux, haut, bas et chaussures prennent les couleurs choisies dans les autres onglets.');
+          const cf = this.chips('Couleurs', 'modelColors', [{ id: false, label: 'D\'origine', icon: '🛡️' }, { id: true, label: 'À mon goût', icon: '🎨' }], 'À ton goût : peau, cheveux, haut, bas et chaussures prennent les couleurs choisies dans les onglets Corps et Tenue.');
           b.append(cf);
           const g = field('Équipement d\'aventurier', 'Un chapeau ou un accessoire de dos (onglet Accessoires) le remplace.');
           const row = document.createElement('div');
@@ -370,6 +413,12 @@ export class Creator {
         break;
     }
   }
+}
+
+/** Coupe d'un aventurier d'après la tenue (robe, salopette, jupe → jambes nues). */
+function modelCut(a) {
+  if (a.top === 'robe' || a.top === 'salopette') return a.top;
+  return a.bottom === 'jupe' ? 'nues' : 'pantalon';
 }
 
 /** Même tenue (le pseudo mis à part), quel que soit l'ordre des champs. */

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { buildAnimal } from '../animals/species.js';
 import { buildOutfit } from '../animals/outfits.js';
-import { vertexColorToon } from '../core/materials.js';
+import { plainVertexColor } from '../core/materials.js';
 
 // Portraits des animaux (fiches d'adoption, compagnons) : le modèle 3D, avec sa tenue, est
 // rendu de trois quarts dans une petite image, avec le moteur du jeu. Gardés en cache.
@@ -37,7 +37,7 @@ export function petPortrait(renderer, species, variant, outfit = {}, size = 168)
   const extra = [];
   for (const [where, geo] of [['head', parts.head], ['body', parts.body]]) {
     if (!geo) continue;
-    const mesh = new THREE.Mesh(geo, vertexColorToon());
+    const mesh = new THREE.Mesh(geo, plainVertexColor());
     (where === 'head' ? m.head : m.body).add(mesh);
     extra.push(mesh);
   }

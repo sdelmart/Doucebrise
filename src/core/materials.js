@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 // ---------------------------------------------------------------------------
 // Rendu « toon » doux : quelques paliers de lumière pour un look cartoon pastel.
@@ -52,11 +53,31 @@ export function toon(color = '#ffffff', opts = {}) {
   return shadedMaterial({ color, ...opts });
 }
 
-/** Matériau partagé à couleurs par sommet (animaux, personnages, décor fusionné). */
+/**
+ * Matériau partagé à couleurs par sommet (personnages, meubles, objets, décor fusionné),
+ * avec les matières du décor quand elles sont chargées (world/decor.js : bois, tissu,
+ * métal, céramique, peau, cheveux…).
+ */
 let vcMaterial = null;
+let enhance = null;
 export function vertexColorToon() {
-  if (!vcMaterial) vcMaterial = toon('#ffffff', { vertexColors: true });
+  if (!vcMaterial) {
+    vcMaterial = toon('#ffffff', { vertexColors: true });
+    if (enhance) enhance(vcMaterial);
+  }
   return vcMaterial;
+}
+
+/** Ajoute les matières aux matériaux à couleurs par sommet (appelé une fois chargées). */
+export function setVertexColorEnhancer(fn) {
+  enhance = fn;
+}
+
+/** Même matériau, sans matières : animaux et insectes gardent leur pelage uni. */
+let plainVc = null;
+export function plainVertexColor() {
+  if (!plainVc) plainVc = toon('#ffffff', { vertexColors: true });
+  return plainVc;
 }
 
 // ---------------------------------------------------------------------------
@@ -303,10 +324,27 @@ export class Shape {
   }
 }
 
+// Arêtes adoucies : dans withBevel, les boîtes ont un petit chanfrein arrondi qui accroche
+// la lumière (meubles) ; des arêtes parfaitement vives et lisses font « pâte à modeler ».
+let bevel = 0;
+export function withBevel(fn, amount = 1) {
+  const prev = bevel;
+  bevel = amount;
+  try {
+    return fn();
+  } finally {
+    bevel = prev;
+  }
+}
+function box(x, y, z) {
+  const r = bevel ? Math.min(0.018 * bevel, Math.min(x, y, z) * 0.14) : 0;
+  return r < 0.003 ? new THREE.BoxGeometry(x, y, z) : new RoundedBoxGeometry(x, y, z, 2, r);
+}
+
 // Raccourcis de primitives (géométries neuves à chaque appel).
 export const G = {
   sphere: (r = 1, w = 16, h = 12) => new THREE.SphereGeometry(r, w, h),
-  box: (x = 1, y = 1, z = 1) => new THREE.BoxGeometry(x, y, z),
+  box: (x = 1, y = 1, z = 1) => box(x, y, z),
   cyl: (rt = 1, rb = 1, h = 1, s = 12, open = false) => new THREE.CylinderGeometry(rt, rb, h, s, 1, open),
   cone: (r = 1, h = 1, s = 12) => new THREE.ConeGeometry(r, h, s),
   capsule: (r = 0.5, len = 1, cs = 6, rs = 12) => new THREE.CapsuleGeometry(r, len, cs, rs),

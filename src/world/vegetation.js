@@ -763,22 +763,20 @@ export class Vegetation {
     });
     this.addTo('pins', bb);
     for (const m of blue.meshes) this.addTo('pins', m);
-    const edel = makeInstanced(edelweissGeo(), flowerMat, 160, { cast: false });
+    // Edelweiss : quelques touffes de 1 à 2 fleurs sur les pentes, toutes à cueillir.
+    const edel = makeInstanced(edelweissGeo(), flowerMat, 30, { cast: false });
     edel.name = 'edelweiss';
-    for (let c = 0; c < 26; c++) {
+    for (let c = 0; c < 300 && edel.count < 24; c++) {
       const cx = I.x + rng.range(-60, 60);
       const cz = I.z + rng.range(-60, 60);
-      let pick = c % 2 === 0;
-      for (let k = 0; k < 7; k++) {
-        const x = cx + rng.range(-2, 2);
-        const z = cz + rng.range(-2, 2);
+      const n = rng.int(1, 2);
+      for (let k = 0; k < n; k++) {
+        const x = cx + rng.range(-0.8, 0.8);
+        const z = cz + rng.range(-0.8, 0.8);
         const h = this.world.heightAt(x, z);
-        if (h < 6 || edel.count >= 160 || !this.world.canPlace(x, z, { minH: 6, maxSlope: 0.6, pathPad: 1.2, pad: 0.2 })) continue;
-        const i = pushInstance(edel, x, h - 0.02, z, rng.range(0, 6.28), rng.range(0.9, 1.4));
-        if (pick) {
-          pick = false;
-          this.resources.push({ type: 'flower', x, z, y: h + 0.4, mesh: edel, index: i, label: 'Cueillir un edelweiss', item: 'edelweiss', amount: [1, 1], regrow: 16 });
-        }
+        if (h < 6 || edel.count >= 24 || !this.world.canPlace(x, z, { minH: 6, maxSlope: 0.6, pathPad: 1.2, pad: 0.2 })) continue;
+        const i = pushInstance(edel, x, h - 0.02, z, rng.range(0, 6.28), rng.range(1.1, 1.5));
+        this.resources.push({ type: 'flower', x, z, y: h + 0.4, mesh: edel, index: i, label: 'Cueillir un edelweiss', item: 'edelweiss', amount: [1, 1], regrow: 16 });
       }
     }
     this.addTo('pins', edel);
@@ -789,12 +787,11 @@ export class Vegetation {
       this.resources.push({ type: 'cone', x, z, y: h + 0.3, mesh: cones, index: i, label: 'Ramasser des pommes de pin', item: 'pomme-pin', amount: [1, 3], regrow: 10 });
     });
     this.addTo('pins', cones);
-    const shrooms = this.kind('mushroom', mushroomGeo, staticMat, 50, { cast: false }, { single: true });
-    let m = 0;
-    this.scatter(rng, 40, 2000, { ...area, pad: 0.5, pathPad: 1.5, maxSlope: 0.45 }, (x, z, h) => {
+    const shrooms = this.kind('mushroom', mushroomGeo, staticMat, 24, { cast: false }, { single: true });
+    this.scatter(rng, 16, 2000, { ...area, pad: 0.5, pathPad: 1.5, maxSlope: 0.45 }, (x, z, h) => {
       if (h > 10) return false;
-      const i = pushInstance(shrooms, x, h - 0.02, z, rng.range(0, 6.28), rng.range(0.8, 1.6));
-      if (m++ % 3 === 0) this.resources.push({ type: 'mushroom', x, z, y: h + 0.3, mesh: shrooms, index: i, label: 'Ramasser des champignons', item: 'champignon', amount: [1, 2], regrow: 14 });
+      const i = pushInstance(shrooms, x, h - 0.02, z, rng.range(0, 6.28), rng.range(1, 1.6));
+      this.resources.push({ type: 'mushroom', x, z, y: h + 0.3, mesh: shrooms, index: i, label: 'Ramasser des champignons', item: 'champignon', amount: [1, 2], regrow: 14 });
     });
     this.addTo('pins', shrooms);
     this.placeIslandGrass(rng, 'pins', 5200, 12);
@@ -855,44 +852,50 @@ export class Vegetation {
     this.addTo('corail', round);
 
     // Hibiscus, fleurs, étoiles de mer, coquillages, coraux du lagon.
-    const hib = makeInstanced(hibiscusGeo(), tallMat, 40);
+    const hib = makeInstanced(hibiscusGeo(), tallMat, 24);
     hib.name = 'hibiscus';
-    this.scatter(rng, 32, 3000, { ...area, pad: 1.6, pathPad: 2, maxSlope: 0.35 }, (x, z, h) => {
+    this.scatter(rng, 22, 3000, { ...area, pad: 1.6, pathPad: 2, maxSlope: 0.35 }, (x, z, h) => {
       const i = pushInstance(hib, x, h - 0.05, z, rng.range(0, 6.28), rng.range(0.9, 1.3));
       this.world.colliders.addCircle(x, z, 0.45);
       this.world.reserve(x, z, 1.1);
-      if (i % 2 === 0) this.resources.push({ type: 'flower', x, z, y: h + 0.8, mesh: hib, index: i, label: 'Cueillir un hibiscus', item: 'hibiscus', amount: [1, 2], regrow: 10 });
+      this.resources.push({ type: 'flower', x, z, y: h + 0.8, mesh: hib, index: i, label: 'Cueillir un hibiscus', item: 'hibiscus', amount: [1, 2], regrow: 10 });
     });
     this.addTo('corail', hib);
-    const flowers = ['#ff8fb1', '#ffd84d', '#ff9f68'].map((c) => this.kind('flower', () => flowerGeo(c), flowerMat, 160, { cast: false }, { single: true, extra: flowerColors(c), key: c }));
-    for (let c = 0; c < 40; c++) {
+    // Fleurs : quelques touffes, chaque fleur se cueille (avant : 280 fleurs pour le décor).
+    const flowers = ['#ff8fb1', '#ffd84d', '#ff9f68'].map((c) => this.kind('flower', () => flowerGeo(c), flowerMat, 12, { cast: false }, { single: true, extra: flowerColors(c), key: c }));
+    let fl = 0;
+    for (let c = 0; c < 300 && fl < 18; c++) {
       const cx = I.x + rng.range(-55, 55);
       const cz = I.z + rng.range(-55, 55);
       const mesh = rng.pick(flowers);
-      for (let j = 0; j < 7; j++) {
-        const x = cx + rng.range(-2, 2);
-        const z = cz + rng.range(-2, 2);
-        if (mesh.count >= 160 || !this.world.canPlace(x, z, { pad: 0.3, pathPad: 1.8, minH: 1.4, maxSlope: 0.3 })) continue;
-        pushInstance(mesh, x, this.world.heightAt(x, z) - 0.02, z, rng.range(0, 6.28), rng.range(0.8, 1.3));
+      const n = rng.int(1, 3);
+      for (let j = 0; j < n && fl < 18; j++) {
+        const x = cx + rng.range(-0.9, 0.9);
+        const z = cz + rng.range(-0.9, 0.9);
+        if (mesh.count >= 12 || !this.world.canPlace(x, z, { pad: 0.3, pathPad: 1.8, minH: 1.4, maxSlope: 0.3 })) continue;
+        const y = this.world.heightAt(x, z) - 0.02;
+        const i = pushInstance(mesh, x, y, z, rng.range(0, 6.28), rng.range(1.1, 1.4));
+        this.resources.push({ type: 'flower', x, z, y: y + 0.6, mesh, index: i, label: 'Cueillir une fleur', item: 'fleur', amount: [1, 2], regrow: 10 });
+        fl++;
       }
     }
     flowers.forEach((f) => this.addTo('corail', f));
-    const stars = makeInstanced(starfishGeo(), staticMat, 40, { cast: false });
-    const corals = makeInstanced(coralGeo(), staticMat, 70, { cast: false });
+    // Étoiles de mer et coraux : tous ramassables.
+    const stars = makeInstanced(starfishGeo(), staticMat, 20, { cast: false });
+    const corals = makeInstanced(coralGeo(), staticMat, 30, { cast: false });
     corals.name = 'coraux';
-    let sp = 0;
     for (let t = 0; t < 3000; t++) {
       const a = rng.range(0, Math.PI * 2);
       const r = rng.range(I.r - 20, I.r + 22);
       const x = I.x + Math.cos(a) * r;
       const z = I.z + Math.sin(a) * r;
       const h = this.world.heightAt(x, z);
-      if (h > 0.15 && h < 1.2 && stars.count < 40 && t % 2 === 0) {
-        const i = pushInstance(stars, x, h + 0.02, z, rng.range(0, 6.28), rng.range(0.9, 1.4));
-        if (sp++ % 2 === 0) this.resources.push({ type: 'shell', x, z, y: h + 0.2, mesh: stars, index: i, label: 'Ramasser une étoile de mer', item: 'etoile-mer', amount: [1, 1], regrow: 12 });
-      } else if (h > -0.5 && h < 0.1 && corals.count < 70) {
-        const i = pushInstance(corals, x, h, z, rng.range(0, 6.28), rng.range(1, 1.8));
-        if (corals.count % 3 === 0) this.resources.push({ type: 'coral', x, z, y: Math.max(h, 0) + 0.3, mesh: corals, index: i, label: 'Ramasser du corail', item: 'corail', amount: [1, 1], regrow: 14, bonus: { item: 'perle', chance: 0.12 } });
+      if (h > 0.15 && h < 1.2 && stars.count < 20 && t % 2 === 0) {
+        const i = pushInstance(stars, x, h + 0.02, z, rng.range(0, 6.28), rng.range(1, 1.4));
+        this.resources.push({ type: 'shell', x, z, y: h + 0.2, mesh: stars, index: i, label: 'Ramasser une étoile de mer', item: 'etoile-mer', amount: [1, 1], regrow: 12 });
+      } else if (h > -0.5 && h < 0.1 && corals.count < 30) {
+        const i = pushInstance(corals, x, h, z, rng.range(0, 6.28), rng.range(1.1, 1.8));
+        this.resources.push({ type: 'coral', x, z, y: Math.max(h, 0) + 0.3, mesh: corals, index: i, label: 'Ramasser du corail', item: 'corail', amount: [1, 1], regrow: 14, bonus: { item: 'perle', chance: 0.18 } });
       }
     }
     this.addTo('corail', stars);
@@ -1077,31 +1080,34 @@ export class Vegetation {
   }
 
   placeFlowers(rng, mat) {
+    // Seulement des fleurs à cueillir : de petites touffes (2 ou 3 fleurs), surtout dans la
+    // Prairie aux Fleurs ; chaque fleur se cueille (avant : des centaines de fleurs, dont
+    // une sur dix environ se cueillait).
     const palette = ['#ff8fb1', '#ffffff', '#c9a0ff', '#ffd84d', '#8fc7ff', '#ff9f68'];
-    const meshes = palette.map((c, i) => this.kind('flower', () => (i === 1 ? flowerGeo('#ffffff', '#ffc94d') : flowerGeo(c)), mat, 500, { cast: false }, { single: true, extra: flowerColors(c), key: c }));
-    const tulips = ['#ff6f91', '#ffb0c8', '#fff07a'].map((c) => this.kind('tulip', () => tulipGeo(c), mat, 200, { cast: false }, { single: true, extra: flowerColors(c), key: c }));
+    const meshes = palette.map((c, i) => this.kind('flower', () => (i === 1 ? flowerGeo('#ffffff', '#ffc94d') : flowerGeo(c)), mat, 40, { cast: false }, { single: true, extra: flowerColors(c), key: c }));
+    const tulips = ['#ff6f91', '#ffb0c8', '#fff07a'].map((c) => this.kind('tulip', () => tulipGeo(c), mat, 20, { cast: false }, { single: true, extra: flowerColors(c), key: c }));
     const meadow = (x, z) => smoothstep(34, 12, Math.hypot(x - 50, z - 8));
-    // Massifs : on tire un centre puis on plante une touffe de fleurs d'une même couleur.
-    for (let c = 0; c < 170; c++) {
-      const inMeadow = c < 90;
-      const cx = inMeadow ? 50 + rng.range(-26, 26) : rng.range(-90, 90);
-      const cz = inMeadow ? 8 + rng.range(-26, 26) : rng.range(-90, 90);
+    const WANT = { meadow: 46, island: 30 };
+    let inMeadowN = 0;
+    let elsewhereN = 0;
+    for (let c = 0; c < 600 && (inMeadowN < WANT.meadow || elsewhereN < WANT.island); c++) {
+      const inMeadow = inMeadowN < WANT.meadow;
+      const cx = inMeadow ? 50 + rng.range(-24, 24) : rng.range(-90, 90);
+      const cz = inMeadow ? 8 + rng.range(-24, 24) : rng.range(-90, 90);
       if (!inMeadow && meadow(cx, cz) > 0.2) continue;
-      const useTulip = rng() < 0.3;
-      const mesh = useTulip ? rng.pick(tulips) : rng.pick(meshes);
-      const n = inMeadow ? rng.int(6, 14) : rng.int(3, 7);
-      let pickable = c % 3 === 0;
+      const mesh = rng() < 0.3 ? rng.pick(tulips) : rng.pick(meshes);
+      const n = rng.int(2, 3);
       for (let i = 0; i < n; i++) {
-        const x = cx + rng.range(-2.2, 2.2);
-        const z = cz + rng.range(-2.2, 2.2);
+        const x = cx + rng.range(-0.9, 0.9);
+        const z = cz + rng.range(-0.9, 0.9);
         if (mesh.count >= mesh.instanceMatrix.count) break;
         if (!this.world.canPlace(x, z, { pad: 0.3, pathPad: 1.8, minH: 0.95, maxSlope: 0.3 })) continue;
         const y = this.world.heightAt(x, z) - 0.02;
-        const idx = pushInstance(mesh, x, y, z, rng.range(0, 6.28), rng.range(0.8, 1.35));
-        if (pickable) {
-          pickable = false;
-          this.resources.push({ type: 'flower', x, z, y: y + 0.5, mesh, index: idx, label: 'Cueillir une fleur', item: 'fleur', amount: [1, 2], regrow: 10 });
-        }
+        // Assez hautes pour dépasser des herbes : on les repère de loin.
+        const idx = pushInstance(mesh, x, y, z, rng.range(0, 6.28), rng.range(1.3, 1.65));
+        this.resources.push({ type: 'flower', x, z, y: y + 0.7, mesh, index: idx, label: 'Cueillir une fleur', item: 'fleur', amount: [1, 2], regrow: 10 });
+        if (inMeadow) inMeadowN++;
+        else elsewhereN++;
       }
     }
     [...meshes, ...tulips].forEach((m) => this.add(m));
@@ -1167,13 +1173,11 @@ export class Vegetation {
   }
 
   placeMushrooms(rng, mat) {
-    const shrooms = this.kind('mushroom', mushroomGeo, mat, 60, { cast: false }, { single: true });
-    let n = 0;
-    this.scatter(rng, 55, 2000, { area: 44, center: [-4, -58], pad: 0.5, pathPad: 1.5 }, (x, z, h) => {
-      const i = pushInstance(shrooms, x, h - 0.02, z, rng.range(0, 6.28), rng.range(0.8, 1.6));
-      if (n++ % 3 === 0) {
-        this.resources.push({ type: 'mushroom', x, z, y: h + 0.3, mesh: shrooms, index: i, label: 'Ramasser des champignons', item: 'champignon', amount: [1, 2], regrow: 14 });
-      }
+    // Tous ramassables (avant : un sur trois).
+    const shrooms = this.kind('mushroom', mushroomGeo, mat, 30, { cast: false }, { single: true });
+    this.scatter(rng, 22, 2000, { area: 44, center: [-4, -58], pad: 0.5, pathPad: 1.5 }, (x, z, h) => {
+      const i = pushInstance(shrooms, x, h - 0.02, z, rng.range(0, 6.28), rng.range(1, 1.6));
+      this.resources.push({ type: 'mushroom', x, z, y: h + 0.3, mesh: shrooms, index: i, label: 'Ramasser des champignons', item: 'champignon', amount: [1, 2], regrow: 14 });
     });
     this.add(shrooms);
     this.placeShells(rng, mat);
@@ -1185,7 +1189,7 @@ export class Vegetation {
     s.add(G.cone(0.1, 0.1, 6), '#fff1e0', { pos: [0.25, 0, 0.1], rot: [0.2, 0.5, 0], scale: [1, 1, 0.5] });
     const shells = makeInstanced(s.build(), mat, 40, { cast: false });
     let placed = 0;
-    for (let t = 0; t < 400 && placed < 26; t++) {
+    for (let t = 0; t < 400 && placed < 16; t++) {
       const a = rng.range(0.85, 2.2);
       const r = rng.range(78, 96);
       const x = Math.cos(a) * r;
@@ -1194,7 +1198,7 @@ export class Vegetation {
       if (h < 0.1 || h > 1.1) continue;
       const i = pushInstance(shells, x, h + 0.03, z, rng.range(0, 6.28), rng.range(0.9, 1.4));
       placed++;
-      if (placed % 2 === 0) this.resources.push({ type: 'shell', x, z, y: h + 0.2, mesh: shells, index: i, label: 'Ramasser un coquillage', item: 'coquillage', amount: [1, 1], regrow: 10 });
+      this.resources.push({ type: 'shell', x, z, y: h + 0.2, mesh: shells, index: i, label: 'Ramasser un coquillage', item: 'coquillage', amount: [1, 1], regrow: 10 });
     }
     this.add(shells);
   }

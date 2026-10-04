@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { buildAnimal, SPECIES } from './species.js';
 import { buildOutfit, cleanOutfit, outfitFromAccessory } from './outfits.js';
 import { damp, lerpAngle, clamp } from '../core/math.js';
-import { vertexColorToon, withOutline } from '../core/materials.js';
+import { plainVertexColor, withOutline } from '../core/materials.js';
 
 // Un animal : modèle 3D + petite intelligence (flâner, fuir, suivre, dormir…).
 
@@ -100,7 +100,7 @@ export class Animal {
     const parts = buildOutfit(this.model, this.outfit);
     for (const [where, geo] of [['head', parts.head], ['body', parts.body]]) {
       if (!geo) continue;
-      const mesh = new THREE.Mesh(geo, vertexColorToon());
+      const mesh = new THREE.Mesh(geo, plainVertexColor());
       mesh.castShadow = true;
       withOutline(mesh, 0.01);
       // Repères de la tête et des yeux : dans le repère de la tête ; cou et torse : du corps.

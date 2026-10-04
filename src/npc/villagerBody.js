@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SURF } from '../world/decor.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { ModelBody } from '../player/avatar.js';
 import { Character, CLASSIC_FRAME } from '../player/character.js';
@@ -541,9 +542,14 @@ function fitParts(parts, base) {
   return out;
 }
 
+// Matière de chaque rôle (voir SURF dans world/decor.js) : peau, cheveux, tissu, cuir.
+const FAB = SURF.fabric;
+const ROLE_SURF = [SURF.auto, SURF.skin, SURF.hair, FAB, FAB, FAB, FAB, FAB, FAB, SURF.leather, SURF.leather];
+
 /** Géométrie d'un habitant : modèle repeint + accessoires, en un seul maillage animé. */
 function villagerGeometry(base, a, { keepColors = false } = {}) {
   const pal = keepColors ? [] : paletteOf(a);
+  const surf = new Float32Array(base.count);
   const acc = fitParts(classicParts(a), base);
   let extra = 0;
   for (const p of acc) extra += p.geo.attributes.position.count;
@@ -557,6 +563,13 @@ function villagerGeometry(base, a, { keepColors = false } = {}) {
   normal.set(base.normal);
   skinIndex.set(base.skinIndex);
   skinWeight.set(base.skinWeight);
+  // Jambes nues (robe, jupe) : de la peau ; armure du chevalier (couleurs d'origine) : du métal.
+  const bare = !keepColors && (a.top === 'robe' || a.bottom === 'jupe');
+  const armor = keepColors && /^Knight/.test(base.name);
+  for (let k = 0; k < base.count; k++) {
+    const ro = base.role[k];
+    surf[k] = ro === ROLE.legs && bare ? SURF.skin : armor && (ro === ROLE.top || ro === ROLE.sleeve || ro === ROLE.shoes) ? SURF.metal : ROLE_SURF[ro] || 0;
+  }
   for (let k = 0; k < base.count; k++) {
     const target = pal[base.role[k]];
     if (!target) {
@@ -601,6 +614,10 @@ function villagerGeometry(base, a, { keepColors = false } = {}) {
   geo.setAttribute('position', new THREE.BufferAttribute(position, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(color, 3));
+  // Accessoires (chapeaux, lunettes, sacs) : matière devinée d'après leur couleur (0).
+  const allSurf = new Float32Array(total);
+  allSurf.set(surf);
+  geo.setAttribute('aSurf', new THREE.BufferAttribute(allSurf, 1));
   geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndex, 4));
   geo.setAttribute('skinWeight', new THREE.BufferAttribute(skinWeight, 4));
   geo.setIndex(total > 65535 ? new THREE.Uint32BufferAttribute(index, 1) : new THREE.Uint16BufferAttribute(index, 1));

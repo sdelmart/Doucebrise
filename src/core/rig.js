@@ -14,7 +14,7 @@ const _m = new THREE.Matrix4();
 const _n = new THREE.Matrix3();
 
 /** Copie de la géométrie d'une pièce, dans le repère de la racine, rattachée à l'os `bone`. */
-function partGeometry(mesh, bone, rootInv, uv) {
+function partGeometry(mesh, bone, rootInv, uv, surf) {
   const src = mesh.geometry;
   const geo = new THREE.BufferGeometry();
   const pos = src.attributes.position;
@@ -38,6 +38,8 @@ function partGeometry(mesh, bone, rootInv, uv) {
   geo.setAttribute('normal', n);
   geo.setAttribute('color', c);
   if (uv) geo.setAttribute('uv', src.attributes.uv.clone());
+  // Matière de chaque sommet (peau, tissu, cuir…), 0 si la pièce n'en précise pas.
+  if (surf) geo.setAttribute('aSurf', src.attributes.aSurf ? src.attributes.aSurf.clone() : new THREE.Float32BufferAttribute(new Float32Array(count), 1));
   const si = new Uint16Array(count * 4);
   const sw = new Float32Array(count * 4);
   for (let i = 0; i < count; i++) {
@@ -92,7 +94,8 @@ export function mergeRig(root, { only = null } = {}) {
   const build = (material, list, cast, receive) => {
     // Coordonnées de texture gardées si le matériau en a besoin (tissu à motif, visage).
     const uv = !!material.map && list.every((p) => p.geometry.attributes.uv);
-    const geos = list.map((part, i) => partGeometry(part, i, rootInv, uv));
+    const surf = list.some((p) => p.geometry.attributes.aSurf);
+    const geos = list.map((part, i) => partGeometry(part, i, rootInv, uv, surf));
     const geo = mergeGeometries(geos, false);
     geos.forEach((g) => g.dispose());
     if (!geo) return;
