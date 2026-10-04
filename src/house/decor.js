@@ -5,10 +5,11 @@ import { ROOM } from './house.js';
 import { escapeHtml } from '../ui/ui.js';
 
 // Mode décoration (touche B) : choisir un meuble rangé, le placer à la souris,
-// le tourner (R), changer sa couleur (C), le déplacer ou le ranger.
+// le tourner (R), changer sa couleur (C), le déplacer ou le ranger. Les petits objets
+// (vases, lampes, plantes, livres…) se posent aussi sur les tables, commodes, étagères…
 
 const GRID = 0.25;
-const snap = (v) => Math.round(v / GRID) * GRID;
+const snap = (v, step = GRID) => Math.round(v / step) * step;
 
 export class DecorMode {
   constructor(game) {
@@ -74,20 +75,24 @@ export class DecorMode {
     const g = this.game;
     g.player.frozen = true;
     this.tab = 'meubles';
-    this.focusArea();
     this.render();
     this.el.classList.remove('hidden');
+    this.focusArea();
     return true;
   }
 
   focusArea() {
     const g = this.game;
     const a = g.house.areas[this.area];
+    // La scène au milieu de la place que laisse le panneau, en bas de l'écran.
+    g.cam.frameBeside(this.el);
     if (this.tab === 'facade') {
       const h = g.world.village.houses[0];
-      // Vue de trois quarts sur la façade.
-      g.cam.setOverview(new THREE.Vector3(h.x, g.world.heightAt(h.x, h.z) + 2, h.z), 17);
-      g.cam.over.yaw = h.rot + 0.5;
+      // De face (un peu de trois quarts), à hauteur de la porte : on voit les murs, les
+      // volets et la porte, pas seulement le toit ; assez loin pour que toute la maison
+      // tienne au-dessus du panneau.
+      g.cam.setOverview(new THREE.Vector3(h.x, g.world.heightAt(h.x, h.z) + 2.4, h.z), Math.min(22, 14 * g.cam.studio.fit), 0.3);
+      g.cam.over.yaw = h.rot + 0.45;
       return;
     }
     g.cam.setOverview(new THREE.Vector3(a.cx, this.area === 'interior' ? 0 : g.world.heightAt(a.cx, a.cz), a.cz), this.area === 'interior' ? 12 + (ROOM.w - 10) * 0.7 : 12);
@@ -100,6 +105,7 @@ export class DecorMode {
     this.el.classList.add('hidden');
     this.game.player.frozen = false;
     this.game.cam.setMode('follow');
+    this.game.cam.setShift(0);
     this.game.requestSave();
     this.game.onDecorClosed?.();
   }
@@ -137,14 +143,15 @@ export class DecorMode {
       }
     }
     const shopTip = (this.tab === 'murs' || this.tab === 'sols') ? ' · 🔒 motifs en vente à la Menuiserie de Bruno' : this.tab === 'facade' ? ' · 🔒 styles et extras en vente chez Bruno (onglet Travaux)' : '';
-    html += `</div><div class="decor-tips">${this.holding ? '<b>Clic</b> : poser · <b>R</b> : tourner · <b>C</b> : couleur · <b>Échap</b> : ranger' : `<b>Clic</b> sur un meuble posé : le déplacer · glisser : tourner la vue · molette : zoom${shopTip}`}</div>`;
+    const small = this.holding && FURNITURE[this.holding.id].small;
+    html += `</div><div class="decor-tips">${this.holding ? `<b>Clic</b> : poser${small ? ' (par terre ou sur une table, une commode, une étagère…)' : ''} · <b>R</b> : tourner · <b>C</b> : couleur · <b>Échap</b> : ranger` : `<b>Clic</b> sur un meuble posé : le déplacer · glisser : tourner la vue · molette : zoom${shopTip}`}</div>`;
     this.el.innerHTML = html;
     this.el.querySelectorAll('[data-dtab]').forEach((b) => {
       b.onclick = () => {
         if (this.holding) this.cancel();
         this.tab = b.dataset.dtab;
-        this.focusArea();
         this.render();
+        this.focusArea();
       };
     });
     this.el.querySelector('[data-dexit]').onclick = () => this.exit();
@@ -283,6 +290,7 @@ export class DecorMode {
       const f = FURNITURE[hd.id];
       const p = { id: hd.id, area: this.area, x: hd.x, z: hd.z, rot: hd.rot, color: hd.color };
       if (f.wall) Object.assign(p, { wallName: hd.wallName, along: hd.along, wallRot: hd.wallRot });
+      if (hd.support) p.y = hd.y;
       h.place(p);
       hd.ghost.removeFromParent();
       this.holding = null;
@@ -301,8 +309,37 @@ export class DecorMode {
     while (o && !o.userData.placed) o = o.parent;
     if (!o) return;
     const p = o.userData.placed;
+    // Un meuble qu'on déplace : ce qui est posé dessus retourne dans le rangement.
+    const on = FURNITURE[p.id].top !== undefined ? h.itemsOn(p) : [];
+    for (const it of on) {
+      h.unplace(it);
+      h.addToStorage(it.id);
+    }
+    if (on.length) g.ui.toast(`📦 ${on.length > 1 ? 'Les objets posés dessus sont rangés' : 'L\'objet posé dessus est rangé'} (onglet Meubles).`, 2600);
     h.unplace(p);
     this.take(p.id, p);
+  }
+
+  /**
+   * Petit objet tenu au-dessus d'un meuble support : le plateau visé par la souris (le
+   * plus proche de la caméra), ou null.
+   */
+  supportUnderPointer() {
+    const g = this.game;
+    const h = g.house;
+    const ray = this.raycaster.ray;
+    this.raycaster.setFromCamera(this.pointer, g.camera);
+    const hit = new THREE.Vector3();
+    let best = null;
+    for (const p of h.placed) {
+      if (p.area !== this.area || !p.obj.visible || FURNITURE[p.id].top === undefined) continue;
+      const b = h.supportBox(p);
+      if (!ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -b.top), hit)) continue;
+      if (Math.abs(hit.x - b.x) > b.hw + 0.05 || Math.abs(hit.z - b.z) > b.hd + 0.05) continue;
+      const d = ray.origin.distanceTo(hit);
+      if (!best || d < best.d) best = { p, b, x: hit.x, z: hit.z, d };
+    }
+    return best;
   }
 
   update() {
@@ -314,6 +351,28 @@ export class DecorMode {
     if (!pt) return;
     const a = h.areas[this.area];
     const f = FURNITURE[hd.id];
+    hd.support = null;
+    // Petit objet au-dessus d'une table, d'une commode, d'une étagère… : posé sur le plateau.
+    const st = f.small ? this.supportUnderPointer() : null;
+    if (st) {
+      const { b } = st;
+      const [fw, fd] = h.footprint(hd.id, hd.rot);
+      const mx = Math.max(0, b.hw - Math.min(b.hw, Math.max(0.03, fw * 0.2)));
+      const mz = Math.max(0, b.hd - Math.min(b.hd, Math.max(0.03, fd * 0.2)));
+      const wx = Math.min(b.x + mx, Math.max(b.x - mx, a.cx + snap(st.x - a.cx, 0.05)));
+      const wz = Math.min(b.z + mz, Math.max(b.z - mz, a.cz + snap(st.z - a.cz, 0.05)));
+      hd.support = st.p;
+      hd.x = wx - a.cx;
+      hd.z = wz - a.cz;
+      hd.y = b.top;
+      hd.valid = h.canStack(hd.id, this.area, wx, wz, hd.rot, st.p);
+      hd.ghost.position.set(wx, b.top + (hd.valid ? 0.005 : 0.03), wz);
+      hd.ghost.rotation.y = hd.rot * (Math.PI / 2);
+      const m = hd.ghost.userData.mat;
+      m.emissive.set(hd.valid ? '#39d98a' : '#ff4d6d');
+      m.emissiveIntensity = hd.valid ? 0.25 : 0.55;
+      return;
+    }
     let lx = snap(pt.x - a.cx);
     let lz = snap(pt.z - a.cz);
     let wallInfo = null;

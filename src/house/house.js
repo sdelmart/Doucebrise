@@ -81,15 +81,22 @@ export class House {
       ROOM.w = r.w;
       ROOM.d = r.d;
       this.buildShell();
-      // Les objets accrochés aux murs suivent les murs.
+      // Les objets accrochés aux murs suivent les murs (et ce qui est posé sur les étagères).
       for (const p of this.placed) {
         const f = FURNITURE[p.id];
         if (!f.wall) continue;
+        const on = f.top !== undefined ? this.itemsOn(p) : [];
+        const [ox, oz] = [p.x, p.z];
         const inset = 0.1 + f.d / 2;
         if (p.wallName === 'back') p.z = -ROOM.d / 2 + inset;
         else if (p.wallName === 'left') p.x = -ROOM.w / 2 + inset;
         else if (p.wallName === 'right') p.x = ROOM.w / 2 - inset;
         p.obj.position.copy(this.worldPos(p));
+        for (const it of on) {
+          it.x += p.x - ox;
+          it.z += p.z - oz;
+          it.obj.position.copy(this.worldPos(it));
+        }
       }
     }
   }
@@ -357,6 +364,8 @@ export class House {
     const x = a.cx + p.x;
     const z = a.cz + p.z;
     const f = FURNITURE[p.id];
+    // Posé sur un meuble : hauteur de son plateau (gardée telle quelle).
+    if (p.y !== undefined) return new THREE.Vector3(x, p.y, z);
     let y = p.area === 'interior' ? 0 : this.game.world.heightAt(x, z);
     // Tapis du jardin : posé au plus haut du terrain dessous, pour ne pas s'enfoncer dans la pente.
     if (p.area === 'yard' && f.rug) {
@@ -377,12 +386,12 @@ export class House {
     this.group.add(obj);
     p.obj = obj;
     obj.userData.placed = p;
-    if (!f.rug && !f.wall) {
+    if (!f.rug && !f.wall && p.y === undefined) {
       const [fw, fd] = this.footprint(p.id, p.rot);
       p.collider = this.game.world.colliders.addBox(pos.x, pos.z, fw / 2 - 0.05, fd / 2 - 0.05, 0);
     }
     // Dans le jardin : pas d'herbe à travers le meuble (ni le tapis).
-    if (p.area === 'yard' && !f.wall) {
+    if (p.area === 'yard' && !f.wall && p.y === undefined) {
       const [fw, fd] = this.footprint(p.id, p.rot);
       p.cover = this.game.world.addCover({ x: pos.x, z: pos.z, hw: fw / 2, hd: fd / 2 }, { animals: false });
     }
@@ -442,11 +451,47 @@ export class House {
       if (Math.abs(dhx - x) < 1.0 + fw / 2 && Math.abs(dhz - z) < 1.0 + fd / 2) return false;
     }
     for (const p of this.placed) {
-      if (p === ignore || p.area !== area || FURNITURE[p.id].wall) continue;
+      if (p === ignore || p.area !== area || FURNITURE[p.id].wall || p.y !== undefined) continue;
       const pf = FURNITURE[p.id];
       if (pf.rug !== f.rug) continue; // un tapis peut passer sous les meubles
       const [pw, pd] = this.footprint(p.id, p.rot);
       if (Math.abs(p.x - x) < (pw + fw) / 2 - 0.02 && Math.abs(p.z - z) < (pd + fd) / 2 - 0.02) return false;
+    }
+    return true;
+  }
+
+  // --- Déco superposable -------------------------------------------------------
+
+  /** Plateau d'un meuble support : centre, demi-tailles (repère du monde) et hauteur. */
+  supportBox(sp) {
+    const f = FURNITURE[sp.id];
+    const o = sp.obj;
+    const turned = Math.abs(Math.sin(o.rotation.y)) > 0.5;
+    return { x: o.position.x, z: o.position.z, hw: (turned ? f.d : f.w) / 2, hd: (turned ? f.w : f.d) / 2, top: o.position.y + f.top };
+  }
+
+  /** Objets posés sur ce meuble. */
+  itemsOn(sp) {
+    const b = this.supportBox(sp);
+    return this.placed.filter((p) => p !== sp && p.y !== undefined && Math.abs(p.y - b.top) < 0.03 && Math.abs(p.obj.position.x - b.x) <= b.hw + 0.01 && Math.abs(p.obj.position.z - b.z) <= b.hd + 0.01);
+  }
+
+  /** Un petit objet peut-il aller sur ce meuble, centré en (wx, wz) (repère du monde) ? */
+  canStack(id, area, wx, wz, rot, sp, ignore = null) {
+    const f = FURNITURE[id];
+    if (!f.small || FURNITURE[sp.id].top === undefined) return false;
+    if ((area === 'interior' && f.where === 'out') || (area === 'yard' && f.where === 'in')) return false;
+    const b = this.supportBox(sp);
+    const [fw, fd] = this.footprint(id, rot);
+    // Il peut dépasser un peu du bord, pas tomber.
+    if (fw / 2 > b.hw + 0.08 || fd / 2 > b.hd + 0.08) return false;
+    const mx = Math.min(b.hw, Math.max(0.03, fw * 0.2));
+    const mz = Math.min(b.hd, Math.max(0.03, fd * 0.2));
+    if (Math.abs(wx - b.x) > b.hw - mx + 1e-6 || Math.abs(wz - b.z) > b.hd - mz + 1e-6) return false;
+    for (const p of this.itemsOn(sp)) {
+      if (p === ignore) continue;
+      const [pw, pd] = this.footprint(p.id, p.rot);
+      if (Math.abs(p.obj.position.x - wx) < (pw + fw) * 0.4 && Math.abs(p.obj.position.z - wz) < (pd + fd) * 0.4) return false;
     }
     return true;
   }
@@ -588,7 +633,7 @@ export class House {
   serialize() {
     return {
       storage: this.storage,
-      placed: this.placed.map((p) => ({ id: p.id, area: p.area, x: +p.x.toFixed(3), z: +p.z.toFixed(3), rot: p.rot, color: p.color, wallName: p.wallName, along: p.along, wallRot: p.wallRot })),
+      placed: this.placed.map((p) => ({ id: p.id, area: p.area, x: +p.x.toFixed(3), z: +p.z.toFixed(3), y: p.y === undefined ? undefined : +p.y.toFixed(3), rot: p.rot, color: p.color, wallName: p.wallName, along: p.along, wallRot: p.wallRot })),
       wall: this.wallId,
       floor: this.floorId,
       ownedWalls: [...this.ownedWalls],

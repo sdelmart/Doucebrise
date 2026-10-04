@@ -47,9 +47,10 @@ export class FollowCamera {
   }
 
   /** Vue plongeante sur une zone (décoration). */
-  setOverview(target, dist = 12) {
+  /** Vue d'ensemble (décoration) ; pitch : inclinaison (vue plongeante par défaut). */
+  setOverview(target, dist = 12, pitch = 0.95) {
     this.mode = 'overview';
-    this.over = { target: target.clone(), dist, yaw: this.yaw };
+    this.over = { target: target.clone(), dist, yaw: this.yaw, pitch };
   }
 
   /**
@@ -131,7 +132,7 @@ export class FollowCamera {
       o.dist = clamp(o.dist * (1 + wheel * 0.1), 6, 22);
       this.yaw = o.yaw;
       look.copy(o.target);
-      const pitch = 0.95;
+      const pitch = o.pitch ?? 0.95;
       desired.set(Math.sin(o.yaw) * Math.cos(pitch) * o.dist, Math.sin(pitch) * o.dist, Math.cos(o.yaw) * Math.cos(pitch) * o.dist).add(look);
     } else {
       if (drag.dx || drag.dy || input.drag.active) this.manualT = MANUAL_HOLD;

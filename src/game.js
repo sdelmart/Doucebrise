@@ -1398,7 +1398,8 @@ export class Game {
 
     const res = this.resources.nearest();
     if (res) {
-      this.ui.setPrompt({ pos: new THREE.Vector3(res.x, res.y + 0.9, res.z), title: `${ITEMS[res.item].emoji} ${ITEMS[res.item].label}`, actions: [{ key: 'E', label: res.label }] });
+      const left = res.hits - this.resources.strikes(res);
+      this.ui.setPrompt({ pos: new THREE.Vector3(res.x, res.y + 0.9, res.z), title: `${ITEMS[res.item].emoji} ${ITEMS[res.item].label}`, actions: [{ key: 'E', label: left < res.hits ? 'Encore un coup !' : res.hits > 1 ? `${res.label} (${res.hits} coups)` : res.label }] });
       if (input.hit('KeyE')) this.resources.harvest(res);
       return;
     }
@@ -2080,6 +2081,7 @@ export class Game {
     this.postfx.setSize(window.innerWidth, window.innerHeight);
     // Personnalisation : le panneau change de place (à droite / en bas) avec la fenêtre.
     if (this.state === 'creator') this.cam.frameBeside(document.querySelector('#creator'), { now: true });
+    if (this.decor?.active) this.cam.frameBeside(this.decor.el);
   }
 
   // --- Sauvegarde --------------------------------------------------------------

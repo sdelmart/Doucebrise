@@ -4,6 +4,13 @@ import { ITEMS } from './items.js';
 // Cueillette : baies, pommes, carottes, graines, champignons, coquillages, fleurs,
 // et sur les îles : myrtilles, cristaux, pommes de pin, noix de coco, corail (perles).
 
+// Ressources précieuses : plusieurs coups de E (le cristal se fissure, puis se détache).
+const HITS = { crystal: 2, coral: 2 };
+const STRIKE = {
+  crystal: '⛏️ Le cristal se fissure… encore un coup !',
+  coral: '🪸 Le corail se détache un peu… encore un coup !',
+};
+
 export class Resources {
   constructor(game) {
     this.game = game;
@@ -11,6 +18,8 @@ export class Resources {
     this.nodes.forEach((n, i) => {
       n.id = `${n.type}-${i}`;
       n.harvestedAt = null;
+      n.hits = HITS[n.type] || 1;
+      n.struck = 0;
     });
     this.checkT = 0;
   }
@@ -71,8 +80,25 @@ export class Resources {
     return best;
   }
 
+  /** Coups déjà donnés (remis à zéro si l'on s'en va un moment). */
+  strikes(n) {
+    if (n.struck && performance.now() - n.struckAt > 10000) n.struck = 0;
+    return n.struck;
+  }
+
   harvest(n) {
     const g = this.game;
+    if (n.hits > 1 && this.strikes(n) + 1 < n.hits) {
+      n.struck++;
+      n.struckAt = performance.now();
+      g.player.face(n.x, n.z);
+      g.player.character.play('pick', 0.6);
+      g.particles.emit('sparkle', new THREE.Vector3(n.x, n.y, n.z), { count: 4, spread: 0.5 });
+      g.audio?.play('snowhit');
+      g.ui.toast(STRIKE[n.type] || 'Encore un coup !', 1800);
+      return false;
+    }
+    n.struck = 0;
     const [a, b] = n.amount;
     let count = a + Math.floor(Math.random() * (b - a + 1));
     if (Math.random() < g.progress.perk('cueillette') * 0.07) count++;
@@ -96,6 +122,7 @@ export class Resources {
     g.progress.addXp('cueillette', 3 + count);
     g.ui.refreshInventory();
     g.requestSave();
+    return true;
   }
 
   update(dt) {

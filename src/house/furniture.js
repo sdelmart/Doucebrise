@@ -2362,6 +2362,24 @@ export const FURNITURE_CATS = [
   { id: 'pasteque', label: '🍉 Pastèque' },
 ];
 
+// Déco superposable : les petits objets se posent sur le plateau des meubles « supports »
+// (hauteur du plateau, en mètres, mesurée sur le modèle), pas seulement par terre.
+const TOPS = {
+  'table-chevet': 0.56, commode: 0.92, coffre: 0.68, 'table-basse': 0.44, table: 0.82, 'table-ronde': 0.78,
+  bureau: 0.78, 'plan-travail': 0.92, cheminee: 1.3, bibliotheque: 1.92, coiffeuse: 0.8, 'etagere-rondins': 1.54,
+  'table-bistrot': 0.78, 'table-rondins': 0.88, 'table-jardin': 0.74, 'table-pasteque': 0.74, armoire: 2.18,
+  piano: 1.2, etagere: 0.24, evier: 0.92, 'tv-retro': 1.12, 'bar-tiki': 1.08, lavabo: 0.92, frigo: 1.76,
+  cuisiniere: 0.92, 'coffre-pirate': 0.74,
+};
+for (const [id, top] of Object.entries(TOPS)) if (F[id]) F[id].top = top;
+const SMALL = [
+  'plante', 'cactus', 'vase-fleurs', 'pile-livres', 'globe', 'bougies', 'lampe-lune', 'lampe-champignon', 'machine-cafe',
+  'gateau-etage', 'trophee-cuisine', 'trophee', 'bocal-poisson', 'lanterne-gardien', 'lanterne-chalet', 'lanterne-marine',
+  'peluche-pasteque', 'lampe-pasteque', 'statue-chat', 'maquette-bateau', 'panier-oeufs', 'caisse-fruits', 'pot-fleurs',
+  'coquillage-geant', 'fontaine-chat',
+];
+for (const id of SMALL) if (F[id]) F[id].small = true;
+
 export const FURNITURE = F;
 
 /** Meubles vendus par Bruno (hors récompenses). */

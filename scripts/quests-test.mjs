@@ -123,7 +123,8 @@ await page.evaluate(() => {
         if (!n) throw new Error(`plus de ressource disponible : ${item || 'n’importe laquelle'}`);
         g.player.teleport(n.x + 0.8, n.z + 0.8, 0);
         await frames(1);
-        g.resources.harvest(n);
+        // Cristaux, coraux : plusieurs coups de E.
+        for (let k = 0; k < (n.hits || 1) && !g.resources.harvest(n); k++);
       }
     },
     /** Caresse n animaux différents (espèce facultative), comme la touche E. */
