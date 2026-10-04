@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SURF } from '../world/decor.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { ModelBody } from '../player/avatar.js';
+import { ModelBody, restBox } from '../player/avatar.js';
 import { Character, CLASSIC_FRAME } from '../player/character.js';
 import { getModel, pixelsOf } from '../core/models.js';
 import { vertexColorToon } from '../core/materials.js';
@@ -676,9 +676,10 @@ class VillagerBody extends ModelBody {
     const w = 1 + ((this.appearance.build || 1) - 1) * 0.6;
     this.model.scale.set(s * w, s, s * w);
     this.model.position.y = 0;
-    this.root.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(this.model);
-    this.model.position.y = this.pivot.getWorldPosition(_v).y - box.min.y;
+    // Toute la chaîne (parents compris) : le personnage vient peut-être d'être déplacé.
+    this.root.updateWorldMatrix(true, true);
+    const box = restBox(this.model);
+    if (!box.isEmpty()) this.model.position.y = this.pivot.getWorldPosition(_v).y - box.min.y;
   }
 
   /** Animation moins fréquente au loin (distance à la caméra, en mètres). */

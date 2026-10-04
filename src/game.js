@@ -435,7 +435,10 @@ export class Game {
         document.querySelector('#creator').classList.remove('hidden');
         this.ui.showHUD(false);
         this.cam.setMode('studio');
-        this.cam.setShift(window.innerWidth > 720 ? 0.17 : 0);
+        // Directement devant le personnage, cadré à côté du panneau (sans longue descente
+        // depuis la vue de l'écran titre, qui le laissait hors champ quand le jeu démarre).
+        this.cam.frameBeside(document.querySelector('#creator'), { now: true });
+        this.cam.snap = true;
         this.input.enabled = false;
         break;
       case 'pets':
@@ -1138,12 +1141,14 @@ export class Game {
     const favKnown = this.animals.discovered[a.species]?.fav;
     let feedLabel = 'Donner à manger (sac vide)';
     if (food) feedLabel = food === a.sp.fav ? `Donner ${ITEMS[food].emoji}${favKnown ? ' (préféré !)' : ''}` : `Donner ${ITEMS[food].emoji}`;
+    // brief : aussi dans la petite bulle (sans cliquer sur l'animal) — nourrir quand on a
+    // de quoi, adopter quand c'est possible.
     const actions = [
       { key: 'E', label: a.state === 'sleep' ? 'Caresser (il dort…)' : 'Caresser' },
-      { key: 'F', label: feedLabel, dim: !food },
+      { key: 'F', label: feedLabel, dim: !food, brief: !!food, short: food && `Nourrir ${ITEMS[food].emoji}` },
     ];
     if (this.unlocks.has('tool:plumeau')) actions.push({ key: 'G', label: 'Jouer 🪶' });
-    if (!a.adopted && a.trust >= 100) actions.push({ key: 'R', label: 'Adopter 💖' });
+    if (!a.adopted && a.trust >= 100) actions.push({ key: 'R', label: 'Adopter 💖', brief: this.features.unlocked('adoption') });
     if (a.adopted) actions.push({ key: 'R', label: a.follow ? 'Attends-moi au jardin' : 'Suis-moi !' });
     return {
       pos: a.headPosition().add(new THREE.Vector3(0, 0.35, 0)),
@@ -2073,6 +2078,8 @@ export class Game {
     this.renderer.setPixelRatio(this.fullPixelRatio());
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.postfx.setSize(window.innerWidth, window.innerHeight);
+    // Personnalisation : le panneau change de place (à droite / en bas) avec la fenêtre.
+    if (this.state === 'creator') this.cam.frameBeside(document.querySelector('#creator'), { now: true });
   }
 
   // --- Sauvegarde --------------------------------------------------------------

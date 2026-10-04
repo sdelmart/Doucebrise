@@ -163,6 +163,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .prompt.brief { min-width: 0; padding: 5px 11px; border-radius: 14px; }
 .prompt.brief .act { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .prompt.brief .b-em { font-size: 16px; }
+.prompt.brief .b-more { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; padding-left: 10px; border-left: 2px solid var(--line); }
 .prompt .p-note { font-weight: 700; font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
 .pick-card { z-index: 11; opacity: 0.96; }
 kbd, .key {

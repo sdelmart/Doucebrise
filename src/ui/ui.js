@@ -702,11 +702,15 @@ export class UI {
     this.place(el, target.pos);
   }
 
-  /** Touche + action principale, précédées de l'emoji du titre (« 🐱 E Caresser »). */
+  /**
+   * Touche + action principale, précédées de l'emoji du titre (« 🐱 E Caresser »), et les
+   * actions marquées `brief` (« F Nourrir » quand on a de quoi).
+   */
   briefHtml(target, touch) {
     const a = target.actions[0];
     const emoji = (target.title || '').split(' ')[0];
-    return `<div class="act">${emoji ? `<span class="b-em">${emoji}</span>` : ''}${a ? `${this.keyHtml(a.key, touch)}${escapeHtml(a.label)}` : ''}</div>`;
+    const more = target.actions.slice(1).filter((x) => x.brief).map((x) => `<span class="b-more">${this.keyHtml(x.key, touch)}${escapeHtml(x.short || x.label)}</span>`).join('');
+    return `<div class="act">${emoji ? `<span class="b-em">${emoji}</span>` : ''}${a ? `${this.keyHtml(a.key, touch)}${escapeHtml(a.label)}` : ''}${more}</div>`;
   }
 
   cardHtml(target, touch, note = '') {

@@ -149,6 +149,23 @@ const _pq = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const _e2 = new THREE.Euler(0, 0, 0, 'YXZ');
 const _v = new THREE.Vector3();
+const _box = new THREE.Box3();
+
+/**
+ * Boîte englobante (repère du monde) des maillages visibles dans leur pose de repos. Pour
+ * poser les pieds au sol : la boîte d'un maillage animé dépend de ses os, qui ne sont mis à
+ * jour qu'à l'affichage ; caché pendant l'écran titre, le personnage gardait des os d'un
+ * autre endroit et se retrouvait en l'air (ou hors du cadre) dans la personnalisation.
+ */
+export function restBox(model, out = new THREE.Box3()) {
+  out.makeEmpty();
+  model.traverse((o) => {
+    if (!o.isMesh || !o.visible || !o.geometry?.attributes.position) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    out.union(_box.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld));
+  });
+  return out;
+}
 
 function toonFrom(mat) {
   const m = shadedMaterial({
@@ -280,7 +297,8 @@ export class ModelBody {
   boneHeight(name) {
     const b = this.bones[name];
     if (!b) return 0;
-    this.root.updateMatrixWorld(true);
+    // Toute la chaîne (parents compris) : le personnage vient peut-être d'être déplacé.
+    this.root.updateWorldMatrix(true, true);
     return b.getWorldPosition(_v).y - this.root.getWorldPosition(new THREE.Vector3()).y;
   }
 
@@ -289,9 +307,10 @@ export class ModelBody {
     const s = this.unit * (this.appearance.height || 1);
     this.model.scale.setScalar(s);
     this.model.position.y = 0;
-    this.root.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(this.model);
-    this.model.position.y = this.pivot.getWorldPosition(_v).y - box.min.y;
+    // Toute la chaîne (parents compris) : le personnage vient peut-être d'être déplacé.
+    this.root.updateWorldMatrix(true, true);
+    const box = restBox(this.model);
+    if (!box.isEmpty()) this.model.position.y = this.pivot.getWorldPosition(_v).y - box.min.y;
   }
 
   setAppearance(a) {

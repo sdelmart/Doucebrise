@@ -20,7 +20,7 @@ export class FollowCamera {
     this.dist = 9;
     this.target = new THREE.Vector3();
     this.mode = 'follow';
-    this.studio = { yaw: 0, dist: 3.3, height: 0.95 };
+    this.studio = { yaw: 0, dist: 3.3, height: 0.95, fit: 1 };
     this.shift = 0;
     this.shiftTarget = 0;
     this.shiftY = 0;
@@ -61,6 +61,39 @@ export class FollowCamera {
     this.shiftYTarget = fy;
   }
 
+  /**
+   * Personnalisation : le personnage au milieu de la place que laisse le panneau (à droite
+   * sur grand écran, en bas sur téléphone ou dans une fenêtre étroite), un peu plus loin
+   * s'il faut pour qu'il y tienne en entier. now : sans glissement (à l'ouverture).
+   */
+  frameBeside(el, { now = false } = {}) {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const r = el?.getBoundingClientRect();
+    let fx = 0;
+    let fy = 0;
+    let fit = 1;
+    if (r && r.width && r.height) {
+      if (r.top > H * 0.2) {
+        // Panneau en bas : le haut de l'écran est libre.
+        const free = Math.max(r.top, H * 0.2);
+        fy = (H - free) / 2 / H;
+        fit = Math.max(1, (0.75 * H) / free);
+      } else {
+        // Panneau à droite : la gauche est libre.
+        const free = Math.max(r.left, W * 0.2);
+        fx = (W - free) / 2 / W;
+        fit = Math.max(1, (0.47 * H) / free);
+      }
+    }
+    this.studio.fit = fit;
+    this.setShift(fx, fy);
+    if (now) {
+      this.shift = fx;
+      this.shiftY = fy;
+    }
+  }
+
   update(dt, player, input, elapsed) {
     const drag = input.consumeDrag();
     const wheel = input.consumeWheel();
@@ -77,7 +110,8 @@ export class FollowCamera {
       const h = player.character.appearance.height;
       const ry = player.rotY + this.studio.yaw;
       look.copy(player.pos).add(new THREE.Vector3(0, this.studio.height * h, 0));
-      desired.set(Math.sin(ry) * this.studio.dist, 0.25, Math.cos(ry) * this.studio.dist).add(look);
+      const d = this.studio.dist * this.studio.fit;
+      desired.set(Math.sin(ry) * d, 0.25, Math.cos(ry) * d).add(look);
     } else if (this.mode === 'pet' && this.pet) {
       // Garde-robe : gros plan sur l'animal, qu'on fait tourner en glissant.
       const pv = this.pet;
