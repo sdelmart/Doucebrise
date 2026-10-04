@@ -88,7 +88,9 @@ try {
     await page.fill('#cr-name', 'Fumée');
     await page.click('#cr-done');
     await page.waitForFunction(() => window.game.state === 'play', null, { timeout: 60000 });
-    await page.waitForTimeout(3000);
+    // La carte du chapitre 1 arrive par un minuteur, qu'une image lente (rendu logiciel) peut
+    // retarder : on attend qu'elle se soit montrée avant de la refermer.
+    await page.waitForFunction(() => window.game.quests.seenChapters.length > 0, null, { timeout: 60000, polling: 250 });
     await settle();
     const back = await page.evaluate(() => (window.game.titleScene.active || !window.game.character.root.visible ? 'visite du titre pas arrêtée' : ''));
     if (back) throw new Error(back);
