@@ -2011,7 +2011,10 @@ export class Game {
     const w = this.world;
     const sky = w.sky;
     const golden = sky.sunDir.y > 0 ? 1 - Math.min(1, sky.sunDir.y / 0.35) : 0;
-    this.postfx.setMood({ night: sky.nightFactor, golden, flash: w.weather.flash * 0.25, fog: w.weather.fogAmt });
+    // Le halo de nuit fait briller lanternes et fenêtres dans le noir ; dans une pièce éclairée
+    // par ses lampes, presque tout dépassait son seuil et l'intérieur était noyé de blanc.
+    const halo = this.indoors ? sky.nightFactor * 0.15 : sky.nightFactor;
+    this.postfx.setMood({ night: halo, golden: this.indoors ? 0 : golden, flash: this.indoors ? 0 : w.weather.flash * 0.25, fog: this.indoors ? 0 : w.weather.fogAmt });
     const festival = this.calendar.festival?.id === 'etoiles';
     // Quelques étoiles filantes par nuit (une pluie pendant la Nuit des étoiles).
     sky.shootEvery = festival ? [2, 5] : [70, 140];

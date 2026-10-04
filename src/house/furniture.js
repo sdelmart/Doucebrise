@@ -859,7 +859,7 @@ def('tapis-arcenciel', {
   },
 });
 def('pouf-poire', {
-  label: 'Pouf poire', emoji: '🫘', price: 160, w: 0.8, d: 0.8, color: '#8fd6e8', cat: 'salon', where: 'both', seats: [[0, 0, 0.32]],
+  label: 'Pouf poire', emoji: '🍐', price: 160, w: 0.8, d: 0.8, color: '#8fd6e8', cat: 'salon', where: 'both', seats: [[0, 0, 0.32]],
   build(c) {
     const s = new Shape();
     s.add(G.sphere(0.42, 14, 10), c, { pos: [0, 0.3, 0], scale: [1, 0.72, 1] });

@@ -967,7 +967,7 @@ export class Visits {
       return;
     }
     const night = this.game.world.sky.nightFactor;
-    this.fill.intensity = 6 + night * 5;
+    this.fill.intensity = 5.5 + night * 1.5;
     this.skyMat.color.setRGB(0.75, 0.9, 0.98).lerp(new THREE.Color('#2b3566'), night);
     const c = camera.position;
     for (const w of this.walls) {

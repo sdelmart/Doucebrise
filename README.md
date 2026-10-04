@@ -202,7 +202,7 @@ Le premier jour de chaque saison (sauf le tout premier jour de la partie) :
   - **Fleurs, tulipes et champignons** construits plus finement (`src/world/flowers.js`) : pétales courbés en dégradé, tige souple, feuilles. De même pour les **tournesols** (deux rangs de pétales, larges feuilles), les **carottes sauvages** (seul le collet dépasse, fanes retombantes), les **edelweiss** (étoile de bractées laineuses), les **hibiscus** (buisson de feuilles et grandes fleurs à pistil), les **cristaux** (prismes clairs à la pointe) et les **coraux** (branches qui se divisent).
   - En style Cartoon, buissons, fleurs, champignons, rochers et palmiers restent ceux des packs importés (KayKit Forest, Kenney Nature Kit), recolorés dans la palette du jeu, comme les arbres.
 - **Eau** : houle et vaguelettes, reflet du ciel selon l'angle (Fresnel), éclat du soleil, écume en dentelle sur les rivages, lagon turquoise.
-- **Halo lumineux** (lanternes, fenêtres et étoiles qui brillent la nuit), étalonnage et vignette.
+- **Halo lumineux** (lanternes, fenêtres et étoiles qui brillent la nuit), étalonnage et vignette. À l'intérieur (ta maison, chez les habitants), le halo reste celui du jour et la lumière d'ambiance ne double plus la nuit : les lampes éclairent sans tout noyer de blanc ; les fenêtres de la maison passent au bleu nuit le soir.
 - Ombres jusqu'à 4096 px, anticrénelage FXAA / SMAA / MSAA.
 
 ### 🧱 Textures du sol et des arbres (dossier `assets/textures/`)

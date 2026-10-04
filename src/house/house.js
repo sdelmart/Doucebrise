@@ -27,6 +27,7 @@ function tagFurniture(id, geo, color) {
 // Maison du joueur : pièce intérieure (murs en coupe côté caméra), meubles posés
 // dedans ou dans le jardin, papier peint et sol, et interactions (lit, cuisinière…).
 
+const _nightSky = new THREE.Color('#2b3566');
 export const ROOM = { x: 600, z: 600, w: 10, d: 8, h: 3.2 };
 const MAX_LIGHTS = 4;
 let uid = 1;
@@ -561,7 +562,11 @@ export class House {
   update(dt, elapsed, camera) {
     const p = this.game.player.pos;
     this.inside = Math.hypot(p.x - ROOM.x, p.z - ROOM.z) < 20;
-    this.fill.intensity = this.inside ? 5 + this.game.world.sky.nightFactor * 5 : 0;
+    // Lumière d'ambiance de la pièce : un peu plus la nuit (plus de soleil aux fenêtres), sans
+    // doubler, les lampes font le reste.
+    this.fill.intensity = this.inside ? 4.5 + this.game.world.sky.nightFactor * 1.5 : 0;
+    // Le ciel des fenêtres suit l'heure (bleu nuit le soir, comme chez les habitants).
+    if (this.inside) this.windowMat.color.setRGB(1, 1, 1).lerp(_nightSky, this.game.world.sky.nightFactor * 0.85);
 
     // Murs coupés côté caméra.
     if (this.inside || this.game.decorMode?.area === 'interior') {
