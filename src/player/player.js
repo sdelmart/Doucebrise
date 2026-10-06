@@ -152,41 +152,53 @@ export class Player {
     v.speed = damp(v.speed, target * boost, target > v.speed ? def.accel * 0.6 : 2.2, dt);
     v.roll = damp(v.roll || 0, dt > 0 ? clamp((-turn / dt) * 0.12 * clamp(v.speed / def.speed, 0, 1), -0.3, 0.3) : 0, 6, dt);
 
-    const step = v.speed * dt;
     const ok = (x, z) => {
       if (def.mode === 'water') return this.world.terrain.heightAt(x, z) < -0.45 && !this.world.onPlatform(x, z);
       if (def.mode === 'air') return Math.hypot(x, z) < 135;
       return this.world.isWalkable(x, z) && this.world.groundAt(x, z) - this.pos.y <= 1.0;
     };
-    let nx = this.pos.x + Math.sin(this.rotY) * step;
-    let nz = this.pos.z + Math.cos(this.rotY) * step;
-    if (def.mode !== 'air') {
-      const res = this.world.colliders.resolve(nx, nz, def.radius);
-      nx = res.x;
-      nz = res.z;
-      for (const o of this.obstacles ? this.obstacles() : []) {
-        const ddx = nx - o.x;
-        const ddz = nz - o.z;
-        const d = Math.hypot(ddx, ddz);
-        const min = def.radius + 0.4;
-        if (d < min && d > 1e-4) {
-          nx = o.x + (ddx / d) * min;
-          nz = o.z + (ddz / d) * min;
+    // Par petits pas : lancé à pleine vitesse pendant une image lente (île qui se charge,
+    // téléphone), un véhicule sauterait par-dessus une rambarde fine (ponts) au lieu de
+    // s'y arrêter.
+    const step = v.speed * dt;
+    const n = def.mode === 'air' ? 1 : Math.max(1, Math.ceil(Math.abs(step) / Math.min(0.25, def.radius * 0.5)));
+    const obstacles = def.mode !== 'air' && this.obstacles ? this.obstacles() : [];
+    let slide = false;
+    let blocked = false;
+    for (let k = 0; k < n; k++) {
+      let nx = this.pos.x + (Math.sin(this.rotY) * step) / n;
+      let nz = this.pos.z + (Math.cos(this.rotY) * step) / n;
+      if (def.mode !== 'air') {
+        const res = this.world.colliders.resolve(nx, nz, def.radius);
+        nx = res.x;
+        nz = res.z;
+        for (const o of obstacles) {
+          const ddx = nx - o.x;
+          const ddz = nz - o.z;
+          const d = Math.hypot(ddx, ddz);
+          const min = def.radius + 0.4;
+          if (d < min && d > 1e-4) {
+            nx = o.x + (ddx / d) * min;
+            nz = o.z + (ddz / d) * min;
+          }
         }
       }
+      if (ok(nx, nz)) {
+        this.pos.x = nx;
+        this.pos.z = nz;
+      } else if (ok(nx, this.pos.z)) {
+        this.pos.x = nx;
+        slide = true;
+      } else if (ok(this.pos.x, nz)) {
+        this.pos.z = nz;
+        slide = true;
+      } else {
+        blocked = true;
+        break;
+      }
     }
-    if (ok(nx, nz)) {
-      this.pos.x = nx;
-      this.pos.z = nz;
-    } else if (ok(nx, this.pos.z)) {
-      this.pos.x = nx;
-      v.speed *= 0.96;
-    } else if (ok(this.pos.x, nz)) {
-      this.pos.z = nz;
-      v.speed *= 0.96;
-    } else {
-      v.speed *= 0.4;
-    }
+    if (blocked) v.speed *= 0.4;
+    else if (slide) v.speed *= 0.96;
 
     const ground = this.world.groundAt(this.pos.x, this.pos.z);
     if (def.mode === 'water') {

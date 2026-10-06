@@ -451,9 +451,13 @@ export class UI {
     el.className = 'speech';
     el.textContent = text;
     $('#bubbles').appendChild(el);
-    const b = { el, posFn: typeof posFn === 'function' ? posFn : () => posFn, t: ms / 1000 };
+    // Durée en temps réel (pas en temps de jeu, ralenti quand les images sont lentes) :
+    // les répliques des scènes, programmées en temps réel, ne se chevauchent pas.
+    const b = { el, posFn: typeof posFn === 'function' ? posFn : () => posFn, end: performance.now() + ms, t: ms / 1000 };
+    b.w = el.offsetWidth;
     this.bubbles.push(b);
     while (this.bubbles.length > 6) this.removeBubble(this.bubbles[0]);
+    return b;
   }
 
   removeBubble(b) {
@@ -461,9 +465,14 @@ export class UI {
     this.bubbles = this.bubbles.filter((x) => x !== b);
   }
 
-  updateBubbles(dt) {
+  clearBubbles() {
+    for (const b of [...this.bubbles]) this.removeBubble(b);
+  }
+
+  updateBubbles() {
+    const now = performance.now();
     for (const b of [...this.bubbles]) {
-      b.t -= dt;
+      b.t = (b.end - now) / 1000;
       if (b.t <= 0) {
         this.removeBubble(b);
         continue;
@@ -473,7 +482,10 @@ export class UI {
       const g = this.game;
       const hidden = _v.z > 1 || (g.busy && !g.inFinale) || g.panel;
       b.el.style.display = hidden ? 'none' : '';
-      b.el.style.left = `${Math.round((_v.x * 0.5 + 0.5) * window.innerWidth)}px`;
+      // Gardée dans l'écran (longues répliques des scènes, téléphone).
+      const half = b.w / 2 + 6;
+      const x = Math.min(window.innerWidth - half, Math.max(half, (_v.x * 0.5 + 0.5) * window.innerWidth));
+      b.el.style.left = `${Math.round(x)}px`;
       b.el.style.top = `${Math.round((-_v.y * 0.5 + 0.5) * window.innerHeight)}px`;
       b.el.style.opacity = Math.min(1, b.t * 3);
     }
@@ -773,7 +785,7 @@ export class UI {
     if (w.current !== 'clair') icon = night ? w.info.night : w.info.emoji;
     this.el.clockIcon.textContent = icon;
     this.el.clockIcon.title = `${w.info.label} · Demain : ${w.forecast?.() || ''}`;
-    this.updateBubbles(dt);
+    this.updateBubbles();
     this.updateHud(dt);
     this.hintT = (this.hintT || 0) - dt;
     if (this.hintT <= 0) {

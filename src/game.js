@@ -41,7 +41,7 @@ import { setRenderStyle, softDotTexture } from './core/materials.js';
 import { AutoQuality, effectiveGraphics, initialLevel } from './core/autoquality.js';
 import { ViewCull } from './core/viewcull.js';
 import { loadSave, writeSave, clearSave, getSlot } from './core/save.js';
-import { UI } from './ui/ui.js';
+import { UI, readTime } from './ui/ui.js';
 import { Creator } from './ui/creator.js';
 import { PetsPanel } from './ui/pets.js';
 import { Dialogue } from './ui/dialogue.js';
@@ -64,6 +64,7 @@ const EMOTES = { Digit1: ['wave', 1.6], Digit2: ['dance', 5], Digit3: ['sit', 0]
 const TOOLS = { 'tool:filet': '🥅 Filet à papillons', 'tool:plumeau': '🪶 Plumeau' };
 const UPGRADE_PRICES = [0, 4000, 10000];
 const RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const PANELS = ['#creator', '#pets', '#map', '#help', '#journal', '#bag', '#settings', '#pause', '#credits'];
 
 // Chef d'orchestre : rendu, boucle, états (titre / création / jeu), interactions, sauvegarde.
@@ -577,13 +578,16 @@ export class Game {
     this.character.play('dance', 3);
     for (let k = 0; k < 5; k++) setTimeout(() => this.particles.emit('note', new THREE.Vector3(bs.x + (Math.random() - 0.5) * 3, bs.y + 2.2, bs.z + (Math.random() - 0.5) * 3), { count: 2, spread: 0.8 }), k * 500);
     let fans = 0;
+    let talkers = 0;
     for (const v of this.villagers.list) {
       if (v.pos.distanceTo(this.player.pos) < 22 && !v.home) {
         fans++;
-        setTimeout(() => {
-          v.character.play('clap', 2);
-          if (Math.random() < 0.5) v.say(['Bravo !', 'Encore !', 'Quel talent !', '♪ ♫ ♪', 'J\'adore cet air !'][Math.floor(Math.random() * 5)], 2200);
-        }, 1500 + Math.random() * 1200);
+        setTimeout(() => v.character.play('clap', 2), 1500 + Math.random() * 1200);
+        // Deux bravos au plus, l'un après l'autre (pas une nuée de bulles).
+        if (talkers < 2 && Math.random() < 0.5) {
+          setTimeout(() => v.say(['Bravo !', 'Encore !', 'Quel talent !', '♪ ♫ ♪', 'J\'adore cet air !'][Math.floor(Math.random() * 5)], 2200), 1800 + talkers * 2900);
+          talkers++;
+        }
       }
     }
     this.emit('music', { fans });
@@ -1457,6 +1461,49 @@ export class Game {
     this.ui.setPrompt(null);
   }
 
+  // --- Répliques des scènes ---------------------------------------------------------
+
+  /**
+   * Répliques d'une scène, une seule bulle à la fois : chacune reste le temps de la lire,
+   * puis vient la suivante. Un clic (ou Espace, Entrée, E) passe à la suivante.
+   */
+  async sceneLines(lines) {
+    this.ui.clearBubbles();
+    for (const [v, text, min = 2600] of lines) {
+      const ms = readTime(text, min, 12000);
+      const b = v?.say(text, ms);
+      if (!b) continue;
+      const t0 = performance.now();
+      await new Promise((resolve) => {
+        const end = () => {
+          clearTimeout(timer);
+          this.ui.removeBubble(b);
+          window.removeEventListener('keydown', key, true);
+          window.removeEventListener('pointerdown', skip, true);
+          resolve();
+        };
+        const skip = () => {
+          if (performance.now() - t0 >= 700) end();
+        };
+        const key = (e) => {
+          if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyE') skip();
+        };
+        const timer = setTimeout(end, ms + 250);
+        window.addEventListener('keydown', key, true);
+        window.addEventListener('pointerdown', skip, true);
+      });
+    }
+  }
+
+  /** Les habitants qui ne parlent pas fêtent ça en silence : petits cœurs au-dessus d'eux. */
+  cheer(list, spread = 900) {
+    list.forEach((v, i) => setTimeout(() => {
+      if (!v.root.visible) return;
+      const h = 2.2 * (v.def.appearance.height || 1);
+      this.particles.emit(i % 3 ? 'heart' : 'sparkle', v.pos.clone().setY(v.pos.y + h), { count: 3, spread: 0.4, size: 0.55, rise: 0.8, life: 1.6 });
+    }, Math.random() * spread + i * 120));
+  }
+
   // --- Grande finale ---------------------------------------------------------------
 
   /** Le village rassemblé au pied du phare, qui se rallume. */
@@ -1467,6 +1514,7 @@ export class Game {
     this.standUp();
     if (this.fishing.active) this.fishing.stop();
     this.ui.setPrompt(null);
+    this.ui.showHUD(false);
     const toCenter = Math.atan2(-L.x, -L.z);
     const fx = Math.sin(toCenter);
     const fz = Math.cos(toCenter);
@@ -1488,27 +1536,30 @@ export class Game {
       this.cam.setCinematic(new THREE.Vector3(L.x + fx * 21 + fz * 5, gy + 4, L.z + fz * 21 - fx * 5), new THREE.Vector3(L.x, gy + 7, L.z));
       this.cam.snap = true;
     }, 500);
-    const say = (i, text, t) => setTimeout(() => this.villagers.list[i % this.villagers.list.length].say(text, 3200), t);
-    say(0, 'Tout le monde est là !', 1600);
-    say(4, 'Vas-y, c\'est ton moment !', 2600);
-    setTimeout(() => {
+    const V = (id) => this.villagers.get(id);
+    const name = this.character.appearance.name;
+    // Une réplique à la fois ; les autres habitants fêtent ça en silence (petits cœurs).
+    const scene = async () => {
+      await wait(1300);
+      await this.sceneLines([[V('rose'), 'Tout le monde est là… Vas-y, c\'est ton moment !']]);
       this.character.play('celebrate', 2.5);
       this.world.village.setLighthouseLevel(1, true);
       this.audio.play('chapter');
       this.ui.levelBanner('🗼 Le Cœur de Doucebrise brille à nouveau !');
       for (const v of this.villagers.list) v.character.play('celebrate', 2);
-    }, 4200);
-    for (let k = 0; k < 14; k++) {
-      setTimeout(() => {
-        const a = Math.random() * Math.PI * 2;
-        const pos = new THREE.Vector3(L.x + Math.cos(a) * 6, this.world.heightAt(L.x, L.z) + 14 + Math.random() * 8, L.z + Math.sin(a) * 6);
-        this.particles.emit(k % 3 === 0 ? 'heart' : 'sparkle', pos, { count: 10, spread: 5, size: 1.1, rise: 0.4, life: 2.2, delay: 0.03 });
-        this.audio.play('pick');
-      }, 4600 + k * 520);
-    }
-    const lines = ['Il brille !', 'Magnifique…', `Merci, ${this.character.appearance.name} !`, 'Comme avant !', 'Hourra !', 'Snif… c\'est beau.', 'Miaou ♥', 'Trop cool !'];
-    this.villagers.list.forEach((v, i) => say(i, lines[i % lines.length], 6000 + i * 700));
-    setTimeout(() => {
+      for (let k = 0; k < 14; k++) {
+        setTimeout(() => {
+          const a = Math.random() * Math.PI * 2;
+          const pos = new THREE.Vector3(L.x + Math.cos(a) * 6, this.world.heightAt(L.x, L.z) + 14 + Math.random() * 8, L.z + Math.sin(a) * 6);
+          this.particles.emit(k % 3 === 0 ? 'heart' : 'sparkle', pos, { count: 10, spread: 5, size: 1.1, rise: 0.4, life: 2.2, delay: 0.03 });
+          this.audio.play('pick');
+        }, 400 + k * 520);
+      }
+      const talkers = ['marin', 'mimi', 'leo', 'rose'];
+      this.cheer(this.villagers.list.filter((v) => !talkers.includes(v.def.id)), 900);
+      await wait(2800);
+      await this.sceneLines([[V('marin'), 'Il brille… comme avant !'], [V('mimi'), 'Miaou ♥'], [V('leo'), 'Trop cool !'], [V('rose'), `Merci, ${name}. Merci du fond du cœur.`]]);
+      await wait(500);
       const el = document.querySelector('#chapter');
       el.innerHTML = `<div class="chapter-card finale"><div class="chap-emoji">🗼💛</div><div class="chap-num">Fin du chapitre 8</div>
         <h2>Le Cœur de Doucebrise</h2><p>Le phare brille à nouveau, plus fort que jamais. Ce soir, tout le village s'est retrouvé grâce à toi, ${this.character.appearance.name}. Doucebrise est ta maison, maintenant. ♥</p>
@@ -1523,6 +1574,7 @@ export class Game {
             v.placeAt(v.scheduled(this.world.sky.hour));
           }
           this.inFinale = false;
+          this.ui.showHUD(true);
           this.cam.setMode('follow');
           this.cam.yaw = this.player.rotY + Math.PI;
           this.cam.pitch = 0.36;
@@ -1534,7 +1586,8 @@ export class Game {
           setTimeout(() => this.quests.showChapter(), 3000);
         }, 400);
       };
-    }, 13500);
+    };
+    scene();
   }
 
   // --- Mise en scène de l'histoire -------------------------------------------------------
@@ -1677,14 +1730,20 @@ export class Game {
       this.cam.snap = true;
       this.world.village.beamMat.color.set('#ffb3c8');
     }, 500);
-    const say = (v, text, t, ms = 3600) => setTimeout(() => v.say(text, ms), t);
-    say(aurele, 'Rose… Tu es venue.', 1800);
-    say(rose, 'Cinquante ans, vieux têtard. Tu en as mis, du temps.', 4800);
-    say(aurele, 'J\'avais une question à te poser… le soir où le phare serait le plus beau de tous.', 8000, 4200);
-    setTimeout(() => aurele.character.play('think', 2.5), 11600);
-    say(aurele, 'Rose… veux-tu bien m\'épouser ?', 12300, 3400);
-    say(rose, 'Tu crois que j\'ai gardé ta lanterne cinquante ans pour te dire non ? Oui. Mille fois oui !', 16000, 4000);
-    setTimeout(() => {
+    // Une réplique à la fois (la foule réagit en silence) ; un clic passe à la suivante.
+    const scene = async () => {
+      await wait(1800);
+      await this.sceneLines([
+        [aurele, 'Rose… Tu es venue.', 3000],
+        [rose, 'Cinquante ans, vieux têtard. Tu en as mis, du temps.'],
+        [aurele, 'J\'avais une question à te poser… le soir où le phare serait le plus beau de tous.'],
+      ]);
+      aurele.character.play('think', 2.5);
+      await wait(900);
+      await this.sceneLines([
+        [aurele, 'Rose… veux-tu bien m\'épouser ?', 3000],
+        [rose, 'Tu crois que j\'ai gardé ta lanterne cinquante ans pour te dire non ? Oui. Mille fois oui !'],
+      ]);
       rose.character.play('dance', 4);
       aurele.character.play('dance', 4);
       this.character.play('celebrate', 2.5);
@@ -1698,11 +1757,10 @@ export class Game {
       for (let k = 0; k < 5; k++) {
         setTimeout(() => fw?.launch(new THREE.Vector3(L.x - toC.x * 10 + side.x * (k - 2) * 6, 2, L.z - toC.z * 10 + side.z * (k - 2) * 6), { kind: 'coeur', color: ['#ff8fab', '#ffd166', '#ff6f91', '#c9a0ff', '#ffb3c8'][k], camera: this.camera, height: 22 + k }), k * 700);
       }
-    }, 19600);
-    say(rose, 'Et toi, mon petit… merci. Tu as rallumé bien plus qu\'un phare.', 24200, 4200);
-    const lines = ['Ohhh ♥', 'Enfin !', 'Snif…', 'Vive les mariés !', 'Miaou ♥', 'Quelle histoire !', 'Bravo !'];
-    crowd.forEach((v, i) => say(v, lines[i % lines.length], 21000 + i * 450, 2400));
-    setTimeout(() => {
+      this.cheer(crowd, 1200);
+      await wait(2600);
+      await this.sceneLines([[rose, 'Et toi, mon petit… merci. Tu as rallumé bien plus qu\'un phare.']]);
+      await wait(600);
       this.fade(() => {
         for (const v of [rose, aurele, ...crowd]) {
           v.override = null;
@@ -1718,7 +1776,8 @@ export class Game {
         this.cam.snap = true;
         done();
       }, 500);
-    }, 29500);
+    };
+    scene();
   }
 
   // --- Scènes de l'archipel ----------------------------------------------------------
@@ -1745,23 +1804,24 @@ export class Game {
       this.cam.snap = true;
       this.ui.showHUD(false);
     }, 500);
-    setTimeout(() => pins[0].say('Tout le monde est là… À toi l\'honneur !', 3000), 1400);
-    setTimeout(() => {
+    // Une réplique à la fois ; un clic passe à la suivante.
+    const scene = async () => {
+      await wait(1400);
+      await this.sceneLines([[pins[0], 'Tout le monde est là… À toi l\'honneur !']]);
       this.character.play('celebrate', 2.5);
       this.world.islands.setFirLit(true);
       this.audio.play('chapter');
       this.ui.levelBanner('🌲 Le grand sapin des Veilleurs brille à nouveau !');
       for (const v of pins) v.character.play('celebrate', 2);
-    }, 3600);
-    for (let k = 0; k < 10; k++) {
-      setTimeout(() => {
-        const a = Math.random() * Math.PI * 2;
-        this.particles.emit(k % 3 ? 'sparkle' : 'heart', new THREE.Vector3(B.x + Math.cos(a) * 2.5, gy + 5 + Math.random() * 5, B.z + Math.sin(a) * 2.5), { count: 8, spread: 2.5, size: 0.9, life: 2 });
-      }, 3800 + k * 450);
-    }
-    const lines = ['Magnifique…', 'Comme quand j\'étais petite !', 'Il n\'a jamais été aussi beau !', 'Merci, vraiment.'];
-    pins.forEach((v, i) => setTimeout(() => v.say(lines[i], 3000), 5200 + i * 900));
-    setTimeout(() => {
+      for (let k = 0; k < 10; k++) {
+        setTimeout(() => {
+          const a = Math.random() * Math.PI * 2;
+          this.particles.emit(k % 3 ? 'sparkle' : 'heart', new THREE.Vector3(B.x + Math.cos(a) * 2.5, gy + 5 + Math.random() * 5, B.z + Math.sin(a) * 2.5), { count: 8, spread: 2.5, size: 0.9, life: 2 });
+        }, 200 + k * 450);
+      }
+      await wait(2200);
+      await this.sceneLines([[pins[1], 'Comme quand j\'étais petite !'], [pins[2], 'Il n\'a jamais été aussi beau !'], [pins[3], 'Merci, vraiment.', 2200]]);
+      await wait(400);
       this.fade(() => {
         for (const v of pins) {
           v.override = null;
@@ -1774,7 +1834,8 @@ export class Game {
         this.cam.snap = true;
         done();
       }, 400);
-    }, 10500);
+    };
+    scene();
   }
 
   /** Chapitre 10 : la conque chante, la baleine revient au large du lagon. */

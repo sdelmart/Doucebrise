@@ -8,6 +8,7 @@ import { ITEMS } from '../game/items.js';
 import { damp, lerpAngle } from '../core/math.js';
 import { skipHiddenChildren } from '../core/matrices.js';
 import { PATHS } from '../world/layout.js';
+import { readTime } from '../ui/ui.js';
 
 const _right = new THREE.Vector3();
 const _dir = new THREE.Vector3();
@@ -1200,9 +1201,9 @@ export class Villager {
 
   /** Petite bulle de texte au-dessus de la tête. */
   say(text, ms = 2600) {
-    if (!this.root.visible) return;
+    if (!this.root.visible) return null;
     const h = 2.35 * (this.def.appearance.height || 1);
-    this.game.ui.bubble?.(() => this.pos.clone().setY(this.pos.y + h), text, ms);
+    return this.game.ui.bubble?.(() => this.pos.clone().setY(this.pos.y + h), text, ms) || null;
   }
 
   serialize() {
@@ -1268,7 +1269,8 @@ export class VillagerManager {
   /** Bavardages : bulles quand on passe près des habitants. */
   updateChatter(dt) {
     const g = this.game;
-    if (g.state !== 'play' || g.dialogue?.open) return;
+    // Pas de bavardages pendant les scènes (phare, sapin…) : leurs répliques passent avant.
+    if (g.state !== 'play' || g.dialogue?.open || g.inFinale) return;
     const p = g.player.pos;
     for (const v of this.list) {
       if (!v.root.visible || v.home) continue;
@@ -1280,9 +1282,11 @@ export class VillagerManager {
       const other = this.list.find((o) => o !== v && o.root.visible && !o.home && Math.hypot(o.pos.x - v.pos.x, o.pos.z - v.pos.z) < 5);
       if (other && Math.random() < 0.6) {
         const [a, b] = (Math.random() < 0.4 && festivalChatter(g)) || CHATTER[Math.floor(Math.random() * CHATTER.length)];
+        // La réponse arrive quand la première bulle s'efface : une seule à la fois.
+        const wait = readTime(a, 2800, 12000) + 200;
         v.say(a, 2800);
-        other.bubbleT = Math.max(other.bubbleT, 6);
-        setTimeout(() => other.say(b, 2800), 2300);
+        other.bubbleT = Math.max(other.bubbleT, wait / 1000 + 6);
+        setTimeout(() => other.say(b, 2800), wait);
       } else {
         const list = BUBBLES[v.def.id] || ['♪'];
         const fest = Math.random() < 0.3 ? festivalBubble(g) : null;

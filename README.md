@@ -114,6 +114,7 @@ L'écran reste dégagé pour profiter de l'île (Paramètres → Affichage → I
   - À chaque quête finie, l'habitant concerné dit un **petit mot** (dans une bulle s'il est là, sinon en message).
   - Les habitants **parlent de l'histoire** : le phare qui se réveille, le gardien (Marin s'en souvient, Bruno connaît la lanterne de son grand-père), et après les retrouvailles, Rose et Aurèle.
   - Correction : les répliques des habitants s'affichent enfin pendant les grandes scènes (phare, sapin, retrouvailles).
+  - Grandes scènes (phare, sapin, retrouvailles) : **une réplique à la fois**, chacune le temps de la lire (un clic, `Espace` ou `E` passe à la suivante) ; les autres habitants fêtent ça en silence (petits cœurs), les bavardages se taisent pendant la scène et les longues répliques passent à la ligne (téléphone).
 - Une **astuce** apparaît la première fois qu'on découvre quelque chose (voyages, vœux, source chaude, luge, visites…).
 - **Guide** : balise lumineuse, flèche au bord de l'écran avec la distance et étoile sur la mini-carte — dorée pour l'histoire, violette pour les quêtes des habitants, bleue pour les petits boulots.
 
@@ -267,6 +268,7 @@ assets/models/
 
 ### 🚲 Véhicules
 - Trottinette, vélo, scooter, voiturette, petit bateau et montgolfière.
+- Déplacement par petits pas : même quand une image prend du retard (île qui se charge, téléphone), un véhicule lancé à pleine vitesse s'arrête contre les rambardes des ponts au lieu de passer au travers.
 
 ## Organisation du code
 
