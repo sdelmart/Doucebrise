@@ -1,8 +1,0 @@
-{
-    "name": "but3/td2-twig",
-    "description": "R5A.05 - TD2 Twig : corrigé",
-    "require": {
-        "php": ">=8.1",
-        "twig/twig": "^3.0"
-    }
-}
