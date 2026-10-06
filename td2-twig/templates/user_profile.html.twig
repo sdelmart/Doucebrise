@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+</head>
+<body>
+    <h1>Profil de {{ user.name }}</h1>
+    <p>Âge : {{ user.age }} ans</p>
+    <p>Email : {{ user.email }}</p>
+
+    <h2>Produits favoris</h2>
+    <ul>
+        {% for product in products %}
+            <li>{{ product.name }} - {{ product.price }}€</li>
+        {% else %}
+            <li>Aucun produit favori</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

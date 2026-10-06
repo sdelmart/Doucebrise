@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+</head>
+<body>
+    <h1>Résultats de {{ student.firstname }} {{ student.lastname }}</h1>
+    <p>Classe : {{ student.class }} | Moyenne générale : {{ average }}/20</p>
+
+    <h2>Notes par matière</h2>
+    <table border="1">
+        <tr>
+            <th>Matière</th>
+            <th>Note</th>
+            <th>Coefficient</th>
+            <th>Appréciation</th>
+        </tr>
+        {% for grade in grades %}
+            <tr>
+                <td>{{ grade.subject }}</td>
+                <td>{{ grade.score }}/20</td>
+                <td>{{ grade.coefficient }}</td>
+                <td>
+                    {% if grade.score >= 16 %}
+                        Excellent
+                    {% elseif grade.score >= 14 %}
+                        Bien
+                    {% elseif grade.score >= 10 %}
+                        Assez bien
+                    {% else %}
+                        À améliorer
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <p>
+        {% if average >= 12 %}
+            Félicitations !
+        {% else %}
+            Continue tes efforts !
+        {% endif %}
+    </p>
+</body>
+</html>

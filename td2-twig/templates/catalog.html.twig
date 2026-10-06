@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+</head>
+<body>
+    <h1>{{ shop.name }}</h1>
+    <p>{{ shop.slogan }}</p>
+
+    {% for category in categories %}
+        <h2>{{ category.name }}</h2>
+        <ul>
+            {% for product in category.products %}
+                <li>
+                    {{ product.name }} - {{ product.price }} € -
+                    {% if product.stock == 0 %}
+                        En rupture
+                    {% else %}
+                        En stock ({{ product.stock }} unités)
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endfor %}
+</body>
+</html>

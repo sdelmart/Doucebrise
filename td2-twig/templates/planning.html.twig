@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }} {{ week_number }}</title>
+</head>
+<body>
+    <h1>{{ title }} {{ week_number }}</h1>
+
+    {% for day, courses in schedule %}
+        <h2>{{ day }}</h2>
+        {% if courses is empty %}
+            <p>Aucun cours aujourd'hui</p>
+        {% else %}
+            <ul>
+            {% for course in courses %}
+                <li>
+                    {{ course.start }} - {{ course.end }} :
+                    <strong>{{ course.subject }}</strong>
+                    ({{ course.room }})
+                    {% if course.teacher %}
+                        - Prof. {{ course.teacher }}
+                    {% endif %}
+                </li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endfor %}
+</body>
+</html>

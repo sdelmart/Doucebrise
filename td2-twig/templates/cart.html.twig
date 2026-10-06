@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+</head>
+<body>
+    {# 1. |title : majuscule à chaque mot / |lower : tout en minuscules #}
+    <h1>Panier de {{ user.name|title }}</h1>
+    <p>Email : {{ user.email|lower }}</p>
+    {# 5. |date : convertit la chaîne '2023-05-15' et la formate #}
+    <p>Membre depuis le {{ user.registration_date|date('d/m/Y') }}</p>
+
+    {# 2. |length : nombre d'éléments du tableau #}
+    <h2>Vos articles ({{ cart|length }} produits)</h2>
+    {# 7. Bonus : |map extrait le nom de chaque article, |join les concatène #}
+    <p>Résumé : {{ cart|map(item => item.name)|join(', ') }}</p>
+
+    <table border="1">
+        <tr>
+            <th>Produit</th>
+            <th>Description</th>
+            <th>Prix unitaire</th>
+            <th>Quantité</th>
+            <th>Total</th>
+        </tr>
+        {% for item in cart %}
+            <tr>
+                <td>{{ item.name }}</td>
+                {# 4. |slice(0, 50) : garde les 50 premiers caractères #}
+                <td>{{ item.description|slice(0, 50) }}{% if item.description|length > 50 %}...{% endif %}</td>
+                {# 3. |number_format(2, ',', ' ') : 2 décimales, virgule, espace pour les milliers #}
+                <td>{{ item.price|number_format(2, ',', ' ') }} €</td>
+                <td>{{ item.quantity }}</td>
+                {# 6. |round(2) : arrondit le calcul à 2 décimales #}
+                <td>{{ (item.price * item.quantity)|round(2)|number_format(2, ',', ' ') }} €</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    {# Sous-total : somme de prix x quantité de chaque article #}
+    {% set subtotal = cart|reduce((sum, item) => sum + item.price * item.quantity, 0)|round(2) %}
+    {% set shipping_cost = user.premium ? 0 : shipping %}
+    {% set total = (subtotal + shipping_cost)|round(2) %}
+
+    <h3>Récapitulatif</h3>
+    <p>Total des articles (hors frais de port) : {{ subtotal|number_format(2, ',', ' ') }} €</p>
+    <p>
+        Frais de port :
+        {% if user.premium %}
+            <span style="color: green">GRATUIT</span> (membre premium)
+        {% else %}
+            {{ shipping|number_format(2, ',', ' ') }} €
+        {% endif %}
+    </p>
+
+    <h2>Total final : {{ total|number_format(2, ',', ' ') }} €</h2>
+
+    {# 2. |first / |last : premier et dernier élément du tableau #}
+    <p>Premier article : {{ (cart|first).name }} | Dernier article : {{ (cart|last).name }}</p>
+</body>
+</html>
