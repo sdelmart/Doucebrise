@@ -1,7 +1,7 @@
 {
   "name": "doucebrise",
   "private": true,
-  "version": "0.24.1",
+  "version": "0.24.2",
   "description": "Doucebrise — un jeu 3D cosy : un archipel à explorer, des animaux à apprivoiser, une maison à construire, des villages et une histoire.",
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "app": "vite build && electron .",
     "dist:win": "vite build && electron-builder --win --x64",
     "dist:mac": "vite build && electron-builder --mac --universal",
+    "dist:linux": "vite build && electron-builder --linux --x64",
     "test:smoke": "node scripts/smoke.mjs",
     "test:quests": "node scripts/quests-test.mjs",
     "music:levels": "node scripts/music-levels.mjs"
@@ -24,7 +25,8 @@
     "vite": "^8.3.1"
   },
   "author": {
-    "name": "Doucebrise"
+    "name": "Doucebrise",
+    "email": "118569837+sdelmart@users.noreply.github.com"
   },
   "main": "electron/main.cjs",
   "build": {
@@ -54,10 +56,16 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.png",
-      "artifactName": "Doucebrise-${version}-${arch}-${target}.${ext}"
+      "artifactName": "Doucebrise-${version}-windows.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -78,6 +86,12 @@
           "arch": [
             "universal"
           ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "universal"
+          ]
         }
       ],
       "category": "public.app-category.games",
@@ -89,6 +103,39 @@
     },
     "dmg": {
       "title": "Doucebrise"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Game",
+      "icon": "build/icon.png",
+      "executableName": "doucebrise",
+      "synopsis": "Un jeu 3D cosy",
+      "artifactName": "Doucebrise-${version}-linux.${ext}",
+      "syncDesktopName": true
+    },
+    "deb": {
+      "artifactName": "Doucebrise-${version}-installation-linux.${ext}"
     }
-  }
+  },
+  "homepage": "https://github.com/sdelmart/Doucebrise",
+  "desktopName": "doucebrise.desktop"
 }

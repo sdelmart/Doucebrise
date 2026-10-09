@@ -4,19 +4,20 @@ Un jeu 3D **cosy** dans l'esprit de *Heartopia* : un archipel de trois îles et 
 
 Le jeu est écrit avec Three.js. Il se joue **dans le navigateur** ou comme **application de bureau Windows et macOS**. Le personnage, les habitants, les fleurs et les rochers viennent de packs de modèles 3D libres (KayKit, Kenney) ; les arbres réalistes sont générés au lancement, avec des écorces et des rameaux photographiés ; les maisons, les animaux, les meubles, le ciel, l'eau et les bruitages sont générés par le code ; les musiques viennent du dossier `music/`.
 
-## Télécharger l'application (Windows / macOS)
+## Télécharger l'application (Windows / macOS / Linux)
 
-Chaque envoi sur GitHub construit automatiquement les applications (workflow **Applications Windows et macOS**) :
+Chaque envoi sur GitHub construit automatiquement les applications (workflow **Applications Windows, macOS et Linux**) :
 
 1. Onglet **Actions** du dépôt → dernier passage vert du workflow → section **Artifacts**.
-2. **Doucebrise-Windows** : installateur `Doucebrise-x.y.z-installation.exe` et version portable `Doucebrise-x.y.z-portable.exe` (aucune installation).
-3. **Doucebrise-macOS** : `Doucebrise-x.y.z-mac.dmg`, universel (Mac Intel et Apple Silicon). L'application n'étant pas signée par un compte développeur Apple, au premier lancement : clic droit sur Doucebrise → **Ouvrir** → **Ouvrir**.
+2. **Doucebrise-Windows** : installateur `Doucebrise-x.y.z-installation.exe` et version portable `Doucebrise-x.y.z-portable.exe` (aucune installation), et archive `Doucebrise-x.y.z-windows.tar.gz` (dossier du jeu prêt à lancer : `Doucebrise.exe`).
+3. **Doucebrise-macOS** : `Doucebrise-x.y.z-mac.dmg`, universel (Mac Intel et Apple Silicon). L'application n'étant pas signée par un compte développeur Apple, au premier lancement : clic droit sur Doucebrise → **Ouvrir** → **Ouvrir**. Archive `Doucebrise-x.y.z-mac.tar.gz` : l'application `Doucebrise.app` prête à lancer.
+4. **Doucebrise-Linux** : installateur `Doucebrise-x.y.z-installation-linux.deb` (Debian, Ubuntu, Mint…), `Doucebrise-x.y.z-linux.AppImage` (rendre exécutable puis lancer, sans installation) et archive `Doucebrise-x.y.z-linux.tar.gz` (dossier du jeu ; lancer `./doucebrise`).
 
-**Mettre à jour sans perdre sa partie** : les sauvegardes ne sont pas rangées avec le programme, mais dans le dossier de l'utilisateur (`%APPDATA%\Doucebrise` sous Windows, `~/Library/Application Support/Doucebrise` sous macOS). Il suffit d'installer la nouvelle version par-dessus l'ancienne (ou de remplacer le `.exe` portable) puis de choisir **Continuer** : la partie reprend où elle en était, les anciennes sauvegardes sont toujours relues par les nouvelles versions. Par précaution, avant une mise à jour : **Paramètres → Sauvegarde → 📤 Exporter le profil** ; en cas de souci, **écran titre → Profils → 📥 Importer**. Dans le navigateur, la sauvegarde reste dans le navigateur : il suffit de recharger la page (même adresse, même navigateur).
+**Mettre à jour sans perdre sa partie** : les sauvegardes ne sont pas rangées avec le programme, mais dans le dossier de l'utilisateur (`%APPDATA%\Doucebrise` sous Windows, `~/Library/Application Support/Doucebrise` sous macOS, `~/.config/Doucebrise` sous Linux). Il suffit d'installer la nouvelle version par-dessus l'ancienne (ou de remplacer le `.exe` portable) puis de choisir **Continuer** : la partie reprend où elle en était, les anciennes sauvegardes sont toujours relues par les nouvelles versions. Par précaution, avant une mise à jour : **Paramètres → Sauvegarde → 📤 Exporter le profil** ; en cas de souci, **écran titre → Profils → 📥 Importer**. Dans le navigateur, la sauvegarde reste dans le navigateur : il suffit de recharger la page (même adresse, même navigateur).
 
 Un tag `v*` (par exemple `v0.5.0`) publie aussi les fichiers dans une **Release** GitHub. L'application vérifie au démarrage si une Release plus récente existe et l'annonce sur l'écran titre, avec un lien pour la télécharger (désactivable dans Paramètres → Jeu ; nécessite un dépôt public).
 
-Pour construire soi-même : `npm run dist:win` (sous Windows) ou `npm run dist:mac` (sous macOS). `npm run app` lance l'application de bureau en local.
+Pour construire soi-même : `npm run dist:win` (sous Windows), `npm run dist:mac` (sous macOS) ou `npm run dist:linux` (sous Linux). `npm run app` lance l'application de bureau en local.
 
 ## Lancer la version navigateur
 

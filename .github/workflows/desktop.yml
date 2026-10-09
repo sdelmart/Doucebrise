@@ -1,4 +1,4 @@
-name: Applications Windows et macOS
+name: Applications Windows, macOS et Linux
 
 on:
   push:
@@ -21,11 +21,20 @@ jobs:
             args: --win --x64
             files: |
               release/*.exe
+              release/*.tar.gz
           - os: macos-latest
             name: macOS
             args: --mac --universal
             files: |
               release/*.dmg
+              release/*.tar.gz
+          - os: ubuntu-latest
+            name: Linux
+            args: --linux --x64
+            files: |
+              release/*.AppImage
+              release/*.deb
+              release/*.tar.gz
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
